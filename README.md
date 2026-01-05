@@ -21,7 +21,9 @@
 
 ### 1. 設定ファイルの編集
 
-`config.json`を編集して、実行するプロセスを設定します。各プロセスは個別に実行できます。設定はページごとに記述できます。
+`config.json`を編集して、実行するプロセスを設定します。各プロセスは個別に実行できます。**ページ遷移時に、各ページのJSONファイルが自動的に読み込まれます。**
+
+#### config.json（メイン設定ファイル）
 
 ```json
 {
@@ -29,26 +31,11 @@
   "Pages": [
     {
       "Title": "1.V1 移行ツール適用",
-      "Processes": [
-        {
-          "Name": "1.EB移行ツール適用",
-          "ExecuteButtonText": "実行",
-          "LogButtonText": "ログ確認",
-          "BatchFiles": [
-            {
-              "Name": "バッチファイルの表示名",
-              "Path": "バッチファイルのパス（相対パスまたは絶対パス）"
-            }
-          ],
-          "CsvMoveOperations": [
-            {
-              "Source": "CSVファイルのソースディレクトリ",
-              "Destination": "CSVファイルの移動先ディレクトリ"
-            }
-          ],
-          "ExecutionDelay": 1
-        }
-      ]
+      "JsonPath": "page1.json"
+    },
+    {
+      "Title": "2.V2 移行ツール適用",
+      "JsonPath": "page2.json"
     }
   ]
 }
@@ -56,14 +43,45 @@
 
 - `Title`: デフォルトのタイトル（ページにTitleがない場合に使用）
 - `Pages`: ページの配列
-  - `Title`: そのページのヘッダーに表示されるタイトル（オプション）
-  - `Processes`: プロセスの配列（最大8つまで1ページに表示）
-    - `Name`: テキストボックスに表示されるプロセス名
-    - `ExecuteButtonText`: 実行ボタンに表示されるテキスト（デフォルト: "実行"）
-    - `LogButtonText`: ログ確認ボタンに表示されるテキスト（デフォルト: "ログ確認"）
-    - `BatchFiles`: 実行するbatファイルの配列
-    - `CsvMoveOperations`: CSVファイルの移動操作の配列
-    - `ExecutionDelay`: 実行間隔（秒）
+  - `Title`: そのページのヘッダーに表示されるタイトル
+  - `JsonPath`: そのページのプロセス設定が記述されたJSONファイルのパス（相対パスまたは絶対パス）
+
+#### ページごとのJSONファイル（例: page1.json）
+
+```json
+{
+  "Processes": [
+    {
+      "Name": "1.EB移行ツール適用",
+      "ExecuteButtonText": "実行",
+      "LogButtonText": "ログ確認",
+      "BatchFiles": [
+        {
+          "Name": "バッチファイルの表示名",
+          "Path": "バッチファイルのパス（相対パスまたは絶対パス）"
+        }
+      ],
+      "CsvMoveOperations": [
+        {
+          "Source": "CSVファイルのソースディレクトリ",
+          "Destination": "CSVファイルの移動先ディレクトリ"
+        }
+      ],
+      "ExecutionDelay": 1
+    }
+  ]
+}
+```
+
+- `Processes`: プロセスの配列（最大8つまで1ページに表示）
+  - `Name`: テキストボックスに表示されるプロセス名
+  - `ExecuteButtonText`: 実行ボタンに表示されるテキスト（デフォルト: "実行"）
+  - `LogButtonText`: ログ確認ボタンに表示されるテキスト（デフォルト: "ログ確認"）
+  - `BatchFiles`: 実行するbatファイルの配列
+  - `CsvMoveOperations`: CSVファイルの移動操作の配列
+  - `ExecutionDelay`: 実行間隔（秒）
+
+**注意**: ページ遷移のたびに、そのページのJSONファイルが読み込まれます。JSONファイルを編集した場合は、ページを切り替えると最新の内容が反映されます。
 
 ### 2. アプリケーションの起動
 

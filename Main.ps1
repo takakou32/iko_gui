@@ -25,6 +25,7 @@ $script:processesPerPage = 8
 $script:processControls = @()
 $script:processLogs = @{}
 $script:pages = @()
+$script:pageProcessCache = @{}
 
 # ページ設定の読み込み
 if ($config.Pages) {
@@ -34,6 +35,7 @@ if ($config.Pages) {
     if ($config.Processes) {
         $script:pages = @(@{
             Title = if ($config.Title) { $config.Title } else { "" }
+            JsonPath = $null
             Processes = $config.Processes
         })
     } else {
@@ -44,9 +46,44 @@ if ($config.Pages) {
 
 # 現在のページのプロセス一覧を取得
 function Get-CurrentPageProcesses {
-    if ($script:currentPage -lt $script:pages.Count) {
-        return $script:pages[$script:currentPage].Processes
+    if ($script:currentPage -ge $script:pages.Count) {
+        return @()
     }
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    
+    # JsonPathが指定されている場合は、そのJSONファイルを読み込む
+    if ($pageConfig.JsonPath) {
+        $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+            $pageConfig.JsonPath
+        } else {
+            Join-Path $PSScriptRoot $pageConfig.JsonPath
+        }
+        
+        if (Test-Path $jsonPath) {
+            try {
+                $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                if ($pageJson.Processes) {
+                    return $pageJson.Processes
+                } else {
+                    Write-Log "JSONファイルにProcessesが含まれていません: $jsonPath" "WARN"
+                    return @()
+                }
+            } catch {
+                Write-Log "JSONファイルの読み込みに失敗しました: $jsonPath - $($_.Exception.Message)" "ERROR"
+                return @()
+            }
+        } else {
+            Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+            return @()
+        }
+    }
+    
+    # JsonPathが指定されていない場合は、直接Processesを使用（後方互換性）
+    if ($pageConfig.Processes) {
+        return $pageConfig.Processes
+    }
+    
     return @()
 }
 
@@ -235,8 +272,11 @@ function Show-ProcessLog {
 
 # プロセスコントロールの更新
 function Update-ProcessControls {
+    # ページ遷移時にJSONファイルを読み込む
     $currentProcesses = Get-CurrentPageProcesses
     $totalPages = $script:pages.Count
+    
+    Write-Log "ページ $($script:currentPage + 1) のプロセスを読み込みました (プロセス数: $($currentProcesses.Count))" "INFO"
     
     # 既存のコントロールをクリア
     foreach ($ctrlGroup in $script:processControls) {
