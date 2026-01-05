@@ -1,113 +1,127 @@
-{
-  "Processes": [
-    {
-      "Name": "1.EB移行ツール適用",
-      "ExecuteButtonText": "実行",
-      "LogButtonText": "ログ確認",
-      "BatchFiles": [
-        {
-          "Name": "サンプル1",
-          "Path": "sample.bat"
-        }
-      ],
-      "CsvMoveOperations": [
-        {
-          "Source": "csv_source",
-          "Destination": "csv_destination"
-        }
-      ],
-      "ExecutionDelay": 1
-    },
-    {
-      "Name": "2.EB移行ツール適用",
-      "ExecuteButtonText": "実行",
-      "LogButtonText": "ログ確認",
-      "BatchFiles": [
-        {
-          "Name": "サンプル2",
-          "Path": "sample2.bat"
-        }
-      ],
-      "CsvMoveOperations": [],
-      "ExecutionDelay": 1
-    },
-    {
-      "Name": "3.EB移行ツール適用",
-      "ExecuteButtonText": "実行",
-      "LogButtonText": "ログ確認",
-      "BatchFiles": [
-        {
-          "Name": "サンプル1",
-          "Path": "sample.bat"
-        }
-      ],
-      "CsvMoveOperations": [],
-      "ExecutionDelay": 1
-    },
-    {
-      "Name": "4.EB移行ツール適用",
-      "ExecuteButtonText": "実行",
-      "LogButtonText": "ログ確認",
-      "BatchFiles": [
-        {
-          "Name": "サンプル2",
-          "Path": "sample2.bat"
-        }
-      ],
-      "CsvMoveOperations": [],
-      "ExecutionDelay": 1
-    },
-    {
-      "Name": "5.EB移行ツール適用",
-      "ExecuteButtonText": "実行",
-      "LogButtonText": "ログ確認",
-      "BatchFiles": [
-        {
-          "Name": "サンプル1",
-          "Path": "sample.bat"
-        }
-      ],
-      "CsvMoveOperations": [],
-      "ExecutionDelay": 1
-    },
-    {
-      "Name": "6.EB移行ツール適用",
-      "ExecuteButtonText": "実行",
-      "LogButtonText": "ログ確認",
-      "BatchFiles": [
-        {
-          "Name": "サンプル2",
-          "Path": "sample2.bat"
-        }
-      ],
-      "CsvMoveOperations": [],
-      "ExecutionDelay": 1
-    },
-    {
-      "Name": "7.EB移行ツール適用",
-      "ExecuteButtonText": "実行",
-      "LogButtonText": "ログ確認",
-      "BatchFiles": [
-        {
-          "Name": "サンプル1",
-          "Path": "sample.bat"
-        }
-      ],
-      "CsvMoveOperations": [],
-      "ExecutionDelay": 1
-    },
-    {
-      "Name": "8.EB移行ツール適用",
-      "ExecuteButtonText": "実行",
-      "LogButtonText": "ログ確認",
-      "BatchFiles": [
-        {
-          "Name": "サンプル2",
-          "Path": "sample2.bat"
-        }
-      ],
-      "CsvMoveOperations": [],
-      "ExecutionDelay": 1
-    }
-  ]
+﻿{
+    "Processes":  [
+                      {
+                          "Name":  "1.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル1",
+                                                 "Path":  "新しいフォルダー\\sample.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+                                                    {
+                                                        "Source":  "csv_source",
+                                                        "Destination":  "csv_destination"
+                                                    }
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "2.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル2",
+                                                 "Path":  "sample2.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "3.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル1",
+                                                 "Path":  "sample.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "4.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル2",
+                                                 "Path":  "sample2.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "5.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル1",
+                                                 "Path":  "sample.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "6.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル2",
+                                                 "Path":  "sample2.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "7.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル1",
+                                                 "Path":  "sample.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "8.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル2",
+                                                 "Path":  "sample2.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      }
+                  ]
 }

@@ -25,7 +25,8 @@ $script:processesPerPage = 8
 $script:processControls = @()
 $script:processLogs = @{}
 $script:pages = @()
-$script:pageProcessCache = @{}
+$script:pageProcessCache = @()
+$script:editMode = $false
 
 # ページ設定の読み込み
 if ($config.Pages) {
@@ -89,13 +90,37 @@ function Get-CurrentPageProcesses {
 
 # ログ出力関数
 function Write-Log {
-    param([string]$Message, [string]$Level = "INFO", [int]$ProcessIndex = -1)
+    param([string]$Message, [string]$Level = "INFO", [int]$ProcessIndex = -1, [string]$LogDir = $null)
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logMessage = "[$timestamp] [$Level] $Message"
     
     # プロセス固有のログファイル
     if ($ProcessIndex -ge 0) {
-        $processLogFile = Join-Path $logDir "process_${script:currentPage}_${ProcessIndex}.log"
+        # LogDirが指定されていない場合、ProcessIndexから取得
+        if (-not $LogDir) {
+            $currentProcesses = Get-CurrentPageProcesses
+            if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
+                $processConfig = $currentProcesses[$ProcessIndex]
+                if ($processConfig.LogOutputDir) {
+                    $LogDir = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
+                        $processConfig.LogOutputDir
+                    } else {
+                        Join-Path $PSScriptRoot $processConfig.LogOutputDir
+                    }
+                } else {
+                    $LogDir = $script:logDir
+                }
+            } else {
+                $LogDir = $script:logDir
+            }
+        }
+        
+        # ログディレクトリが存在しない場合は作成
+        if (-not (Test-Path $LogDir)) {
+            New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+        }
+        
+        $processLogFile = Join-Path $LogDir "process_${script:currentPage}_${ProcessIndex}.log"
         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
         [System.IO.File]::AppendAllText($processLogFile, $logMessage + "`r`n", $utf8NoBom)
         $script:processLogs["${script:currentPage}_${ProcessIndex}"] = $processLogFile
@@ -117,16 +142,55 @@ function Invoke-BatchFile {
         [int]$ProcessIndex
     )
     
+    # パスの正規化処理
+    if ([string]::IsNullOrWhiteSpace($BatchPath)) {
+        Write-Log "バッチファイルパスが空です" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    # 先頭・末尾の空白を削除
+    $BatchPath = $BatchPath.Trim()
+    
+    # パスを正規化（相対パスの解決、区切り文字の統一など）
+    try {
+        # 相対パスの場合は$PSScriptRootを基準に解決
+        if (-not [System.IO.Path]::IsPathRooted($BatchPath)) {
+            $BatchPath = Join-Path $PSScriptRoot $BatchPath
+        }
+        # パスを正規化（..や.を解決、区切り文字を統一）
+        $BatchPath = [System.IO.Path]::GetFullPath($BatchPath)
+    } catch {
+        Write-Log "バッチファイルパスの正規化に失敗しました: $BatchPath - $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+    
     if (-not (Test-Path $BatchPath)) {
         Write-Log "バッチファイルが見つかりません: $BatchPath" "ERROR" $ProcessIndex
         return $false
     }
     
+    # ログ出力ディレクトリの決定
+    $currentProcesses = Get-CurrentPageProcesses
+    $processLogDir = $script:logDir
+    if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
+        $processConfig = $currentProcesses[$ProcessIndex]
+        if ($processConfig.LogOutputDir) {
+            $processLogDir = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
+                $processConfig.LogOutputDir
+            } else {
+                Join-Path $PSScriptRoot $processConfig.LogOutputDir
+            }
+            if (-not (Test-Path $processLogDir)) {
+                New-Item -ItemType Directory -Path $processLogDir -Force | Out-Null
+            }
+        }
+    }
+    
     Write-Log "バッチファイルを実行中: $DisplayName ($BatchPath)" "INFO" $ProcessIndex
     
     try {
-        $stdoutFile = Join-Path $logDir "process_${script:currentPage}_${ProcessIndex}_stdout.log"
-        $stderrFile = Join-Path $logDir "process_${script:currentPage}_${ProcessIndex}_stderr.log"
+        $stdoutFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}_stdout.log"
+        $stderrFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}_stderr.log"
         
         $process = Start-Process -FilePath $BatchPath -WorkingDirectory (Split-Path $BatchPath) -Wait -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
         
@@ -183,9 +247,159 @@ function Move-CsvFiles {
     }
 }
 
+# バッチファイルパス保存関数
+function Save-BatchFilePath {
+    param([int]$ProcessIndex, [string]$BatchFilePath, [int]$BatchIndex = 0)
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $process = $jsonContent.Processes[$ProcessIndex]
+        if (-not $process.BatchFiles) {
+            $process.BatchFiles = @()
+        }
+        
+        if ($BatchIndex -ge $process.BatchFiles.Count) {
+            # 新しいバッチファイルエントリを追加
+            $process.BatchFiles += @{
+                Name = "バッチファイル"
+                Path = $BatchFilePath
+            }
+        } else {
+            # 既存のバッチファイルエントリを更新
+            $process.BatchFiles[$BatchIndex].Path = $BatchFilePath
+        }
+        
+        # 相対パスに変換（可能な場合）
+        $relativePath = try {
+            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $targetPath = [System.IO.Path]::GetFullPath($BatchFilePath).TrimEnd('\', '/')
+            
+            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                if ([string]::IsNullOrEmpty($relative)) {
+                    $relative = Split-Path $targetPath -Leaf
+                }
+                $relative
+            } else {
+                $BatchFilePath
+            }
+        } catch {
+            $BatchFilePath
+        }
+        
+        $process.BatchFiles[$BatchIndex].Path = $relativePath
+        
+        # JSONファイルに保存
+        $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
+        Write-Log "バッチファイルパスを保存しました: $relativePath" "INFO" $ProcessIndex
+        return $true
+    } catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
+# ログ出力フォルダパス保存関数
+function Save-ProcessLogOutputDir {
+    param([int]$ProcessIndex, [string]$LogOutputDir)
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $process = $jsonContent.Processes[$ProcessIndex]
+        $process.LogOutputDir = $LogOutputDir
+        
+        # JSONファイルに保存
+        $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
+        Write-Log "ログ出力フォルダパスを保存しました: $LogOutputDir" "INFO" $ProcessIndex
+        return $true
+    } catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
 # プロセス実行関数
 function Start-ProcessFlow {
     param([int]$ProcessIndex)
+    
+    # 編集モード中はファイル選択ダイアログを表示
+    if ($script:editMode) {
+        $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+        $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+        $fileDialog.Title = "バッチファイルを選択してください"
+        
+        # 現在のバッチファイルパスを初期値として設定
+        $currentProcesses = Get-CurrentPageProcesses
+        $processConfig = $currentProcesses[$ProcessIndex]
+        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+            $currentBatch = $processConfig.BatchFiles[0]
+            $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                $currentBatch.Path
+            } else {
+                Join-Path $PSScriptRoot $currentBatch.Path
+            }
+            if (Test-Path $initialPath) {
+                $fileDialog.InitialDirectory = Split-Path $initialPath
+                $fileDialog.FileName = Split-Path $initialPath -Leaf
+            }
+        }
+        
+        if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $selectedFile = $fileDialog.FileName
+            Save-BatchFilePath -ProcessIndex $ProcessIndex -BatchFilePath $selectedFile -BatchIndex 0
+            Write-Log "バッチファイルを設定しました: $selectedFile" "INFO" $ProcessIndex
+            [System.Windows.Forms.MessageBox]::Show("バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            
+            # コントロールを更新して新しい設定を反映
+            Update-ProcessControls
+        }
+        $fileDialog.Dispose()
+        return
+    }
     
     $currentProcesses = Get-CurrentPageProcesses
     $processConfig = $currentProcesses[$ProcessIndex]
@@ -257,11 +471,76 @@ function Start-ProcessFlow {
 function Show-ProcessLog {
     param([int]$ProcessIndex)
     
+    # 編集モード中はフォルダ選択ダイアログを表示
+    if ($script:editMode) {
+        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $folderDialog.Description = "ログ出力フォルダを選択してください"
+        $folderDialog.ShowNewFolderButton = $true
+        
+        # 現在のログフォルダを初期値として設定
+        $currentProcesses = Get-CurrentPageProcesses
+        $processConfig = $currentProcesses[$ProcessIndex]
+        if ($processConfig.LogOutputDir) {
+            $initialPath = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
+                $processConfig.LogOutputDir
+            } else {
+                Join-Path $PSScriptRoot $processConfig.LogOutputDir
+            }
+            if (Test-Path $initialPath) {
+                $folderDialog.SelectedPath = $initialPath
+            }
+        } else {
+            if (Test-Path $logDir) {
+                $folderDialog.SelectedPath = $logDir
+            }
+        }
+        
+        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $selectedPath = $folderDialog.SelectedPath
+            # 相対パスに変換（可能な場合）
+            $relativePath = try {
+                $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+                $targetPath = [System.IO.Path]::GetFullPath($selectedPath).TrimEnd('\', '/')
+                
+                if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                    if ([string]::IsNullOrEmpty($relative)) {
+                        $relative = Split-Path $targetPath -Leaf
+                    }
+                    $relative
+                } else {
+                    $selectedPath
+                }
+            } catch {
+                $selectedPath
+            }
+            
+            # JSONファイルを更新
+            Save-ProcessLogOutputDir -ProcessIndex $ProcessIndex -LogOutputDir $relativePath
+            Write-Log "ログ出力フォルダを設定しました: $relativePath" "INFO" $ProcessIndex
+            [System.Windows.Forms.MessageBox]::Show("ログ出力フォルダを設定しました。`n$relativePath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        }
+        $folderDialog.Dispose()
+        return
+    }
+    
+    # 通常モードではログファイルを開く
+    $currentProcesses = Get-CurrentPageProcesses
+    $processConfig = $currentProcesses[$ProcessIndex]
+    $processLogDir = $logDir
+    if ($processConfig.LogOutputDir) {
+        $processLogDir = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
+            $processConfig.LogOutputDir
+        } else {
+            Join-Path $PSScriptRoot $processConfig.LogOutputDir
+        }
+    }
+    
     $logKey = "${script:currentPage}_${ProcessIndex}"
     if ($script:processLogs.ContainsKey($logKey) -and (Test-Path $script:processLogs[$logKey])) {
         Start-Process notepad.exe -ArgumentList $script:processLogs[$logKey]
     } else {
-        $processLogFile = Join-Path $logDir "process_${script:currentPage}_${ProcessIndex}.log"
+        $processLogFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}.log"
         if (Test-Path $processLogFile) {
             Start-Process notepad.exe -ArgumentList $processLogFile
         } else {
@@ -386,9 +665,9 @@ $titleLabel.Font = New-Object System.Drawing.Font("メイリオ", 12, [System.Drawin
 $headerPanel.Controls.Add($titleLabel)
 $script:titleLabel = $titleLabel
 
-# 左矢印ボタン
+    # 左矢印ボタン
 $leftArrowButton = New-Object System.Windows.Forms.Button
-$leftArrowButton.Location = New-Object System.Drawing.Point(700, 10)
+$leftArrowButton.Location = New-Object System.Drawing.Point(690, 10)
 $leftArrowButton.Size = New-Object System.Drawing.Size(40, 30)
 $leftArrowButton.Text = "<"
 $leftArrowButton.BackColor = [System.Drawing.Color]::Black
@@ -405,7 +684,7 @@ $headerPanel.Controls.Add($leftArrowButton)
 
 # 右矢印ボタン
 $rightArrowButton = New-Object System.Windows.Forms.Button
-$rightArrowButton.Location = New-Object System.Drawing.Point(750, 10)
+$rightArrowButton.Location = New-Object System.Drawing.Point(740, 10)
 $rightArrowButton.Size = New-Object System.Drawing.Size(40, 30)
 $rightArrowButton.Text = ">"
 $rightArrowButton.BackColor = [System.Drawing.Color]::Black
@@ -423,12 +702,37 @@ $headerPanel.Controls.Add($rightArrowButton)
 # ページラベル
 $pageLabel = New-Object System.Windows.Forms.Label
 $pageLabel.Location = New-Object System.Drawing.Point(420, 10)
-$pageLabel.Size = New-Object System.Drawing.Size(200, 30)
+$pageLabel.Size = New-Object System.Drawing.Size(150, 30)
 $pageLabel.Text = "ページ 1 / $($script:pages.Count)"
 $pageLabel.Font = New-Object System.Drawing.Font("メイリオ", 10)
 $pageLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $headerPanel.Controls.Add($pageLabel)
 $script:pageLabel = $pageLabel
+
+# 編集モード切り替えボタン
+$editModeButton = New-Object System.Windows.Forms.Button
+$editModeButton.Location = New-Object System.Drawing.Point(580, 10)
+$editModeButton.Size = New-Object System.Drawing.Size(100, 30)
+$editModeButton.Text = "編集モード OFF"
+$editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
+$editModeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$editModeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+$editModeButton.FlatAppearance.BorderSize = 1
+$editModeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+$editModeButton.Add_Click({
+    $script:editMode = -not $script:editMode
+    if ($script:editMode) {
+        $editModeButton.Text = "編集モード ON"
+        $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
+        Write-Log "編集モードを有効にしました" "INFO"
+    } else {
+        $editModeButton.Text = "編集モード OFF"
+        $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
+        Write-Log "編集モードを無効にしました" "INFO"
+    }
+})
+$headerPanel.Controls.Add($editModeButton)
+$script:editModeButton = $editModeButton
 
 # プロセス制御エリア（黄色/ベージュ背景）
 $processPanel = New-Object System.Windows.Forms.Panel
