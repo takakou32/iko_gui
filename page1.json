@@ -11,10 +11,7 @@
                                              }
                                          ],
                           "CsvMoveOperations":  [
-                                                    {
-                                                        "Destination":  "csv_destination",
-                                                        "Source":  "csv_source"
-                                                    }
+
                                                 ],
                           "ExecutionDelay":  1,
                           "LogOutputDir":  "新しいフォルダー"

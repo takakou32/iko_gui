@@ -640,7 +640,7 @@ function Start-ProcessFlow {
 
 # ファイル移動設定ダイアログ表示関数
 function Show-FileMoveSettingsDialog {
-    param([int]$ProcessIndex)
+    param([int]$ProcessIndex, [string]$ProcessName)
     
     # 現在のプロセス設定を取得
     $currentProcesses = Get-CurrentPageProcesses
@@ -651,7 +651,7 @@ function Show-FileMoveSettingsDialog {
     
     $processConfig = $currentProcesses[$ProcessIndex]
     
-    # 既存のCsvMoveOperationsをテキスト形式に変換
+    # 既存のCsvMoveOperationsをテキスト形式に変換（デフォルト）
     $initialText = ""
     if ($processConfig.CsvMoveOperations -and $processConfig.CsvMoveOperations.Count -gt 0) {
         $lines = @()
@@ -659,6 +659,24 @@ function Show-FileMoveSettingsDialog {
             $lines += "$($csvOp.Source)|$($csvOp.Destination)"
         }
         $initialText = $lines -join "`r`n"
+    }
+    # movefiles フォルダのファイルがあればそれを優先して読み込み
+    $fileNameRaw = if ($processConfig.Name) { $processConfig.Name } elseif ($ProcessName) { $ProcessName } else { "" }
+    $fileNameRaw = $fileNameRaw.Trim()
+    if (-not $fileNameRaw) {
+        $fileNameRaw = "process_${script:currentPage + 1}_${ProcessIndex + 1}"
+    }
+    $safeFileName = [regex]::Replace($fileNameRaw, '[<>:"/\\|?*\r\n\t]', '_')
+    $moveFilesDir = Join-Path $PSScriptRoot "movefiles"
+    if (Test-Path $moveFilesDir) {
+        $candidatePath = Join-Path $moveFilesDir ($safeFileName + ".txt")
+        if (Test-Path $candidatePath) {
+            try {
+                $initialText = Get-Content -Path $candidatePath -Encoding UTF8 -Raw
+            } catch {
+                Write-Log "移動設定ファイルの読み込みに失敗しました: $candidatePath - $($_.Exception.Message)" "WARN" $ProcessIndex
+            }
+        }
     }
     
     # ダイアログフォームを作成
@@ -723,13 +741,29 @@ function Show-FileMoveSettingsDialog {
     $result = $dialogForm.ShowDialog()
     
     if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        # テキストをファイルに保存（movefiles フォルダ）
+        $fileNameRaw = if ($processConfig.Name) { $processConfig.Name } elseif ($ProcessName) { $ProcessName } else { "" }
+        $fileNameRaw = $fileNameRaw.Trim()
+        if (-not $fileNameRaw) {
+            # 空の場合はページ・インデックスで代替
+            $fileNameRaw = "process_${script:currentPage + 1}_${ProcessIndex + 1}"
+        }
+        # ファイル名として使えない文字を置換（改行やタブも除去）
+        $safeFileName = [regex]::Replace($fileNameRaw, '[<>:"/\\|?*\r\n\t]', '_')
+        $moveFilesDir = Join-Path $PSScriptRoot "movefiles"
+        if (-not (Test-Path $moveFilesDir)) {
+            New-Item -ItemType Directory -Path $moveFilesDir -Force | Out-Null
+        }
+        $moveFilePath = Join-Path $moveFilesDir ($safeFileName + ".txt")
+        Set-Content -Path $moveFilePath -Value $textBox.Text -Encoding UTF8
+        
         # テキストを解析してCsvMoveOperationsに変換
         $csvMoveOperations = @()
         $lines = $textBox.Text -split "`r`n|`n" | Where-Object { $_.Trim() -ne "" }
         
         foreach ($line in $lines) {
             $line = $line.Trim()
-            if ($line -match "^(.+?)\|(.+)$") {
+            if ($line -match '^(.+?)\|(.+)$') {
                 $source = $matches[1].Trim()
                 $destination = $matches[2].Trim()
                 if ($source -and $destination) {
@@ -934,8 +968,9 @@ function Update-ProcessControls {
             $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
             $fileMoveButton.Visible = $script:editMode
             $processIdx = $i
+            $processNameText = $nameTextBox.Text
             $fileMoveButton.Add_Click({
-                Show-FileMoveSettingsDialog -ProcessIndex $processIdx
+                Show-FileMoveSettingsDialog -ProcessIndex $processIdx -ProcessName $processNameText
             })
             $script:processPanel.Controls.Add($fileMoveButton)
             
