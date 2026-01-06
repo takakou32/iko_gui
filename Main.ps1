@@ -596,7 +596,11 @@ function Update-ProcessControls {
             $executeX = [int]($x + 210)
             $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
             $executeButton.Size = New-Object System.Drawing.Size(80, 40)
-            $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
+            if ($script:editMode) {
+                $executeButton.Text = "参照"
+            } else {
+                $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
+            }
             $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
             $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
             $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
@@ -613,7 +617,11 @@ function Update-ProcessControls {
             $logX = [int]($x + 300)
             $logButton.Location = New-Object System.Drawing.Point($logX, $y)
             $logButton.Size = New-Object System.Drawing.Size(80, 40)
-            $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
+            if ($script:editMode) {
+                $logButton.Text = "参照"
+            } else {
+                $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
+            }
             $logButton.BackColor = [System.Drawing.Color]::FromArgb(200, 255, 200)
             $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
             $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
@@ -730,6 +738,8 @@ $editModeButton.Add_Click({
         $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
         Write-Log "編集モードを無効にしました" "INFO"
     }
+    # ボタンのテキストを更新
+    Update-ProcessControls
 })
 $headerPanel.Controls.Add($editModeButton)
 $script:editModeButton = $editModeButton

@@ -7,7 +7,7 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル1",
-                                                 "Path":  "新しいフォルダー\\sample.bat"
+                                                 "Path":  "C:\\work\\新しいフォルダー\\新しいフォルダー\\sample.bat"
                                              }
                                          ],
                           "CsvMoveOperations":  [
