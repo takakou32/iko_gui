@@ -1,6 +1,5 @@
 ﻿# PowerShellスクリプト - GUIアプリケーション
 # エンコーディング: UTF-8 BOM付
-
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
@@ -842,7 +841,7 @@ $titleLabel.Font = New-Object System.Drawing.Font("メイリオ", 12, [System.Dr
 $headerPanel.Controls.Add($titleLabel)
 $script:titleLabel = $titleLabel
 
-    # 左矢印ボタン
+# 左矢印ボタン
 $leftArrowButton = New-Object System.Windows.Forms.Button
 $leftArrowButton.Location = New-Object System.Drawing.Point(690, 10)
 $leftArrowButton.Size = New-Object System.Drawing.Size(40, 30)
