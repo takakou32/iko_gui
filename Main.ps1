@@ -638,6 +638,141 @@ function Start-ProcessFlow {
     $executeButton.Enabled = $true
 }
 
+# ファイル移動設定ダイアログ表示関数
+function Show-FileMoveSettingsDialog {
+    param([int]$ProcessIndex)
+    
+    # 現在のプロセス設定を取得
+    $currentProcesses = Get-CurrentPageProcesses
+    if (-not $currentProcesses -or $ProcessIndex -ge $currentProcesses.Count) {
+        [System.Windows.Forms.MessageBox]::Show("プロセス情報を取得できませんでした。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        return
+    }
+    
+    $processConfig = $currentProcesses[$ProcessIndex]
+    
+    # 既存のCsvMoveOperationsをテキスト形式に変換
+    $initialText = ""
+    if ($processConfig.CsvMoveOperations -and $processConfig.CsvMoveOperations.Count -gt 0) {
+        $lines = @()
+        foreach ($csvOp in $processConfig.CsvMoveOperations) {
+            $lines += "$($csvOp.Source)|$($csvOp.Destination)"
+        }
+        $initialText = $lines -join "`r`n"
+    }
+    
+    # ダイアログフォームを作成
+    $dialogForm = New-Object System.Windows.Forms.Form
+    $dialogForm.Text = "ファイル移動設定 - $($processConfig.Name)"
+    $dialogForm.Size = New-Object System.Drawing.Size(600, 400)
+    $dialogForm.StartPosition = "CenterParent"
+    $dialogForm.FormBorderStyle = "FixedDialog"
+    $dialogForm.MaximizeBox = $false
+    $dialogForm.MinimizeBox = $false
+    $dialogForm.ShowInTaskbar = $false
+    $dialogForm.BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
+    
+    # 説明ラベル
+    $label = New-Object System.Windows.Forms.Label
+    $label.Location = New-Object System.Drawing.Point(10, 10)
+    $label.Size = New-Object System.Drawing.Size(560, 40)
+    $label.Text = "移動元パス|移動先パス の形式で1行に1つずつ入力してください。`n例: csv_source|csv_destination"
+    $label.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $dialogForm.Controls.Add($label)
+    
+    # テキスト入力エリア
+    $textBox = New-Object System.Windows.Forms.TextBox
+    $textBox.Location = New-Object System.Drawing.Point(10, 55)
+    $textBox.Size = New-Object System.Drawing.Size(560, 250)
+    $textBox.Multiline = $true
+    $textBox.ScrollBars = "Vertical"
+    $textBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $textBox.Text = $initialText
+    $textBox.AcceptsReturn = $true  # エンターキーで改行できるようにする
+    $dialogForm.Controls.Add($textBox)
+    
+    # 保存ボタン
+    $saveButton = New-Object System.Windows.Forms.Button
+    $saveButton.Location = New-Object System.Drawing.Point(400, 320)
+    $saveButton.Size = New-Object System.Drawing.Size(80, 30)
+    $saveButton.Text = "保存"
+    $saveButton.BackColor = [System.Drawing.Color]::FromArgb(100, 150, 255)
+    $saveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $saveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+    $saveButton.FlatAppearance.BorderSize = 1
+    $saveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $saveButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    # AcceptButtonを設定しない（エンターキーで改行できるようにするため）
+    $dialogForm.Controls.Add($saveButton)
+    
+    # キャンセルボタン
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Location = New-Object System.Drawing.Point(490, 320)
+    $cancelButton.Size = New-Object System.Drawing.Size(80, 30)
+    $cancelButton.Text = "キャンセル"
+    $cancelButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
+    $cancelButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $cancelButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+    $cancelButton.FlatAppearance.BorderSize = 1
+    $cancelButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $dialogForm.CancelButton = $cancelButton
+    $dialogForm.Controls.Add($cancelButton)
+    
+    # ダイアログを表示
+    $result = $dialogForm.ShowDialog()
+    
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        # テキストを解析してCsvMoveOperationsに変換
+        $csvMoveOperations = @()
+        $lines = $textBox.Text -split "`r`n|`n" | Where-Object { $_.Trim() -ne "" }
+        
+        foreach ($line in $lines) {
+            $line = $line.Trim()
+            if ($line -match "^(.+?)\|(.+)$") {
+                $source = $matches[1].Trim()
+                $destination = $matches[2].Trim()
+                if ($source -and $destination) {
+                    $csvMoveOperations += @{
+                        Source = $source
+                        Destination = $destination
+                    }
+                }
+            }
+        }
+        
+        # JSONファイルに保存
+        $pageConfig = $script:pages[$script:currentPage]
+        if ($pageConfig.JsonPath) {
+            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                $pageConfig.JsonPath
+            } else {
+                Join-Path $PSScriptRoot $pageConfig.JsonPath
+            }
+            
+            if (Test-Path $jsonPath) {
+                try {
+                    $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+                    if ($jsonContent.Processes -and $ProcessIndex -lt $jsonContent.Processes.Count) {
+                        $process = $jsonContent.Processes[$ProcessIndex]
+                        $process.CsvMoveOperations = $csvMoveOperations
+                        
+                        # JSONファイルに保存
+                        $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
+                        Write-Log "ファイル移動設定を保存しました: $($processConfig.Name)" "INFO" $ProcessIndex
+                        [System.Windows.Forms.MessageBox]::Show("ファイル移動設定を保存しました。", "保存完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    }
+                } catch {
+                    Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+                    [System.Windows.Forms.MessageBox]::Show("保存に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                }
+            }
+        }
+    }
+    
+    $dialogForm.Dispose()
+}
+
 # ログ確認関数
 function Show-ProcessLog {
     param([int]$ProcessIndex)
@@ -799,9 +934,8 @@ function Update-ProcessControls {
             $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
             $fileMoveButton.Visible = $script:editMode
             $processIdx = $i
-            # ガワだけ作成（クリックイベントは空）
             $fileMoveButton.Add_Click({
-                # TODO: ファイル移動設定の処理を実装
+                Show-FileMoveSettingsDialog -ProcessIndex $processIdx
             })
             $script:processPanel.Controls.Add($fileMoveButton)
             

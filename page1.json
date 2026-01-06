@@ -12,8 +12,8 @@
                                          ],
                           "CsvMoveOperations":  [
                                                     {
-                                                        "Source":  "csv_source",
-                                                        "Destination":  "csv_destination"
+                                                        "Destination":  "csv_destination",
+                                                        "Source":  "csv_source"
                                                     }
                                                 ],
                           "ExecutionDelay":  1,
