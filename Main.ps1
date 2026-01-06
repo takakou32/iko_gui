@@ -349,7 +349,13 @@ function Save-ProcessLogOutputDir {
         }
         
         $process = $jsonContent.Processes[$ProcessIndex]
-        $process.LogOutputDir = $LogOutputDir
+        
+        # LogOutputDirプロパティが存在しない場合は追加
+        if (-not (Get-Member -InputObject $process -Name "LogOutputDir" -MemberType NoteProperty)) {
+            Add-Member -InputObject $process -MemberType NoteProperty -Name "LogOutputDir" -Value $LogOutputDir
+        } else {
+            $process.LogOutputDir = $LogOutputDir
+        }
         
         # JSONファイルに保存
         $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
@@ -681,19 +687,32 @@ function Show-ProcessLog {
             }
             
             # JSONファイルを更新
-            Save-ProcessLogOutputDir -ProcessIndex $ProcessIndex -LogOutputDir $relativePath
-            Write-Log "ログ出力フォルダを設定しました: $relativePath" "INFO" $ProcessIndex
-            [System.Windows.Forms.MessageBox]::Show("ログ出力フォルダを設定しました。`n$relativePath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            if (Save-ProcessLogOutputDir -ProcessIndex $ProcessIndex -LogOutputDir $relativePath) {
+                Write-Log "ログ出力フォルダを設定しました: $relativePath" "INFO" $ProcessIndex
+                [System.Windows.Forms.MessageBox]::Show("ログ出力フォルダを設定しました。`n$relativePath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            } else {
+                [System.Windows.Forms.MessageBox]::Show("ログ出力フォルダの保存に失敗しました。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+            }
         }
         $folderDialog.Dispose()
         return
     }
     
-    # 通常モードではログファイルを開く
+    # 通常モードではJSONファイルで設定されているログ出力フォルダをエクスプローラで開く
+    # JSONファイルから最新の情報を読み込む
     $currentProcesses = Get-CurrentPageProcesses
+    if (-not $currentProcesses -or $ProcessIndex -ge $currentProcesses.Count) {
+        [System.Windows.Forms.MessageBox]::Show("プロセス情報を取得できませんでした。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        Write-Log "プロセス情報を取得できませんでした: ProcessIndex=$ProcessIndex" "ERROR" $ProcessIndex
+        return
+    }
+    
     $processConfig = $currentProcesses[$ProcessIndex]
-    $processLogDir = $logDir
+    
+    # JSONファイルで設定されているLogOutputDirを取得
+    $processLogDir = $logDir  # デフォルト値
     if ($processConfig.LogOutputDir) {
+        # LogOutputDirが設定されている場合はそれを使用
         $processLogDir = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
             $processConfig.LogOutputDir
         } else {
@@ -701,15 +720,25 @@ function Show-ProcessLog {
         }
     }
     
-    $logKey = "${script:currentPage}_${ProcessIndex}"
-    if ($script:processLogs.ContainsKey($logKey) -and (Test-Path $script:processLogs[$logKey])) {
-        Start-Process notepad.exe -ArgumentList $script:processLogs[$logKey]
+    # ログ出力フォルダをエクスプローラで開く
+    if (Test-Path $processLogDir) {
+        # エクスプローラでフォルダを開く
+        try {
+            Start-Process explorer.exe -ArgumentList $processLogDir
+            Write-Log "ログ出力フォルダを開きました: $processLogDir" "INFO" $ProcessIndex
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("エクスプローラを起動できませんでした。`n$processLogDir`n`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+            Write-Log "エクスプローラを起動できませんでした: $processLogDir - $($_.Exception.Message)" "ERROR" $ProcessIndex
+        }
     } else {
-        $processLogFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}.log"
-        if (Test-Path $processLogFile) {
-            Start-Process notepad.exe -ArgumentList $processLogFile
-        } else {
-            [System.Windows.Forms.MessageBox]::Show("ログファイルが見つかりません。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        # フォルダが存在しない場合は作成してから開く
+        try {
+            New-Item -ItemType Directory -Path $processLogDir -Force | Out-Null
+            Start-Process explorer.exe -ArgumentList $processLogDir
+            Write-Log "ログ出力フォルダを作成して開きました: $processLogDir" "INFO" $ProcessIndex
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("ログ出力フォルダを開けませんでした。`n$processLogDir`n`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+            Write-Log "ログ出力フォルダを開けませんでした: $processLogDir - $($_.Exception.Message)" "ERROR" $ProcessIndex
         }
     }
 }

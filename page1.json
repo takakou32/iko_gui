@@ -7,7 +7,7 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル1",
-                                                 "Path":  "C:\\work\\新しいフォルダー\\新しいフォルダー\\sample.bat"
+                                                 "Path":  "新しいフォルダー\\sample.bat"
                                              }
                                          ],
                           "CsvMoveOperations":  [
@@ -16,7 +16,8 @@
                                                         "Destination":  "csv_destination"
                                                     }
                                                 ],
-                          "ExecutionDelay":  1
+                          "ExecutionDelay":  1,
+                          "LogOutputDir":  "新しいフォルダー"
                       },
                       {
                           "Name":  "2.EB移行ツール適用",

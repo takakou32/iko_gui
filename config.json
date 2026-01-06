@@ -14,6 +14,13 @@
                       "SourcePath":  "",
                       "DestinationPath":  "",
                       "LogStoragePath":  ""
+                  },
+                  {
+                      "Title":  "3.java移行ツール実行",
+                      "JsonPath":  "page3.json",
+                      "SourcePath":  "",
+                      "DestinationPath":  "",
+                      "LogStoragePath":  ""
                   }
               ]
 }
