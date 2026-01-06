@@ -1,13 +1,19 @@
-{
-  "Title": "1.V1 移行ツール適用",
-  "Pages": [
-    {
-      "Title": "1.V1 移行ツール適用",
-      "JsonPath": "page1.json"
-    },
-    {
-      "Title": "2.V2 移行ツール適用",
-      "JsonPath": "page2.json"
-    }
-  ]
+﻿{
+    "Title":  "1.V1 移行ツール適用",
+    "Pages":  [
+                  {
+                      "Title":  "1.V1 移行ツール適用",
+                      "JsonPath":  "page1.json",
+                      "SourcePath":  "C:\\work\\SpringSample",
+                      "DestinationPath":  "C:\\work\\新しいフォルダー",
+                      "LogStoragePath":  "C:\\work\\test"
+                  },
+                  {
+                      "Title":  "2.V2 移行ツール適用",
+                      "JsonPath":  "page2.json",
+                      "SourcePath":  "",
+                      "DestinationPath":  "",
+                      "LogStoragePath":  ""
+                  }
+              ]
 }
