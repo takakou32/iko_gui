@@ -1,25 +1,25 @@
-# PowerShellƒXƒNƒŠƒvƒg - GUIƒAƒvƒŠƒP[ƒVƒ‡ƒ“
-# ƒGƒ“ƒR[ƒfƒBƒ“ƒO: Shift-JIS
+# PowerShellï¿½Xï¿½Nï¿½ï¿½ï¿½vï¿½g - GUIï¿½Aï¿½vï¿½ï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½
+# ï¿½Gï¿½ï¿½ï¿½Rï¿½[ï¿½fï¿½Bï¿½ï¿½ï¿½O: Shift-JIS
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# İ’èƒtƒ@ƒCƒ‹‚Ì“Ç‚İ‚İ
+# ï¿½İ’ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ì“Ç‚İï¿½ï¿½ï¿½
 $configPath = Join-Path $PSScriptRoot "config.json"
 if (Test-Path $configPath) {
     $config = Get-Content $configPath -Encoding UTF8 | ConvertFrom-Json
 } else {
-    Write-Host "İ’èƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ: $configPath"
+    Write-Host "ï¿½İ’ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $configPath"
     exit 1
 }
 
-# ƒƒOƒtƒ@ƒCƒ‹‚ÌƒpƒX
+# ï¿½ï¿½ï¿½Oï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ìƒpï¿½X
 $logDir = Join-Path $PSScriptRoot "logs"
 if (-not (Test-Path $logDir)) {
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 }
 
-# ƒOƒ[ƒoƒ‹•Ï”
+# ï¿½Oï¿½ï¿½ï¿½[ï¿½oï¿½ï¿½ï¿½Ïï¿½
 $script:currentPage = 0
 $script:processesPerPage = 8
 $script:processControls = @()
@@ -28,11 +28,11 @@ $script:pages = @()
 $script:pageProcessCache = @()
 $script:editMode = $false
 
-# ƒy[ƒWİ’è‚Ì“Ç‚İ‚İ
+# ï¿½yï¿½[ï¿½Wï¿½İ’ï¿½Ì“Ç‚İï¿½ï¿½ï¿½
 if ($config.Pages) {
     $script:pages = $config.Pages
 } else {
-    # Œã•ûŒİŠ·«‚Ì‚½‚ßA‹ŒŒ`®‚Ìİ’è‚àƒTƒ|[ƒg
+    # ï¿½ï¿½ï¿½ï¿½İŠï¿½ï¿½ï¿½ï¿½Ì‚ï¿½ï¿½ßAï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½Ìİ’ï¿½ï¿½ï¿½Tï¿½|ï¿½[ï¿½g
     if ($config.Processes) {
         $script:pages = @(@{
             Title = if ($config.Title) { $config.Title } else { "" }
@@ -40,12 +40,12 @@ if ($config.Pages) {
             Processes = $config.Processes
         })
     } else {
-        Write-Host "İ’èƒtƒ@ƒCƒ‹‚ÌŒ`®‚ª³‚µ‚­‚ ‚è‚Ü‚¹‚ñ"
+        Write-Host "ï¿½İ’ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ÌŒ`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½"
         exit 1
     }
 }
 
-# Œ»İ‚Ìƒy[ƒW‚ÌƒvƒƒZƒXˆê——‚ğæ“¾
+# ï¿½ï¿½ï¿½İ‚Ìƒyï¿½[ï¿½Wï¿½Ìƒvï¿½ï¿½ï¿½Zï¿½Xï¿½ê——ï¿½ï¿½ï¿½æ“¾
 function Get-CurrentPageProcesses {
     if ($script:currentPage -ge $script:pages.Count) {
         return @()
@@ -53,7 +53,7 @@ function Get-CurrentPageProcesses {
     
     $pageConfig = $script:pages[$script:currentPage]
     
-    # JsonPath‚ªw’è‚³‚ê‚Ä‚¢‚éê‡‚ÍA‚»‚ÌJSONƒtƒ@ƒCƒ‹‚ğ“Ç‚İ‚Ş
+    # JsonPathï¿½ï¿½ï¿½wï¿½è‚³ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ê‡ï¿½ÍAï¿½ï¿½ï¿½ï¿½JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½Ç‚İï¿½ï¿½ï¿½
     if ($pageConfig.JsonPath) {
         $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
             $pageConfig.JsonPath
@@ -67,20 +67,20 @@ function Get-CurrentPageProcesses {
                 if ($pageJson.Processes) {
                     return $pageJson.Processes
                 } else {
-                    Write-Log "JSONƒtƒ@ƒCƒ‹‚ÉProcesses‚ªŠÜ‚Ü‚ê‚Ä‚¢‚Ü‚¹‚ñ: $jsonPath" "WARN"
+                    Write-Log "JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½Processesï¿½ï¿½ï¿½Ü‚Ü‚ï¿½Ä‚ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $jsonPath" "WARN"
                     return @()
                 }
             } catch {
-                Write-Log "JSONƒtƒ@ƒCƒ‹‚Ì“Ç‚İ‚İ‚É¸”s‚µ‚Ü‚µ‚½: $jsonPath - $($_.Exception.Message)" "ERROR"
+                Write-Log "JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ì“Ç‚İï¿½ï¿½İ‚Éï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $jsonPath - $($_.Exception.Message)" "ERROR"
                 return @()
             }
         } else {
-            Write-Log "JSONƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ: $jsonPath" "ERROR"
+            Write-Log "JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $jsonPath" "ERROR"
             return @()
         }
     }
     
-    # JsonPath‚ªw’è‚³‚ê‚Ä‚¢‚È‚¢ê‡‚ÍA’¼ÚProcesses‚ğg—piŒã•ûŒİŠ·«j
+    # JsonPathï¿½ï¿½ï¿½wï¿½è‚³ï¿½ï¿½Ä‚ï¿½ï¿½È‚ï¿½ï¿½ê‡ï¿½ÍAï¿½ï¿½ï¿½ï¿½Processesï¿½ï¿½ï¿½gï¿½pï¿½iï¿½ï¿½ï¿½ï¿½İŠï¿½ï¿½ï¿½ï¿½j
     if ($pageConfig.Processes) {
         return $pageConfig.Processes
     }
@@ -88,15 +88,15 @@ function Get-CurrentPageProcesses {
     return @()
 }
 
-# ƒƒOo—ÍŠÖ”
+# ï¿½ï¿½ï¿½Oï¿½oï¿½ÍŠÖï¿½
 function Write-Log {
     param([string]$Message, [string]$Level = "INFO", [int]$ProcessIndex = -1, [string]$LogDir = $null)
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logMessage = "[$timestamp] [$Level] $Message"
     
-    # ƒvƒƒZƒXŒÅ—L‚ÌƒƒOƒtƒ@ƒCƒ‹
+    # ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½Å—Lï¿½Ìƒï¿½ï¿½Oï¿½tï¿½@ï¿½Cï¿½ï¿½
     if ($ProcessIndex -ge 0) {
-        # LogDir‚ªw’è‚³‚ê‚Ä‚¢‚È‚¢ê‡AProcessIndex‚©‚çæ“¾
+        # LogDirï¿½ï¿½ï¿½wï¿½è‚³ï¿½ï¿½Ä‚ï¿½ï¿½È‚ï¿½ï¿½ê‡ï¿½AProcessIndexï¿½ï¿½ï¿½ï¿½æ“¾
         if (-not $LogDir) {
             $currentProcesses = Get-CurrentPageProcesses
             if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
@@ -115,7 +115,7 @@ function Write-Log {
             }
         }
         
-        # ƒƒOƒfƒBƒŒƒNƒgƒŠ‚ª‘¶İ‚µ‚È‚¢ê‡‚Íì¬
+        # ï¿½ï¿½ï¿½Oï¿½fï¿½Bï¿½ï¿½ï¿½Nï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½İ‚ï¿½ï¿½È‚ï¿½ï¿½ê‡ï¿½Íì¬
         if (-not (Test-Path $LogDir)) {
             New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
         }
@@ -126,7 +126,7 @@ function Write-Log {
         $script:processLogs["${script:currentPage}_${ProcessIndex}"] = $processLogFile
     }
     
-    # GUI‚ÌƒƒO•\¦ƒGƒŠƒA‚É’Ç‰Á
+    # GUIï¿½Ìƒï¿½ï¿½Oï¿½\ï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½Aï¿½É’Ç‰ï¿½
     $script:logTextBox.AppendText("$logMessage`r`n")
     $script:logTextBox.SelectionStart = $script:logTextBox.Text.Length
     $script:logTextBox.ScrollToCaret()
@@ -134,7 +134,7 @@ function Write-Log {
     Write-Host $logMessage
 }
 
-# Batƒtƒ@ƒCƒ‹ÀsŠÖ”
+# Batï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½sï¿½Öï¿½
 function Invoke-BatchFile {
     param(
         [string]$BatchPath,
@@ -142,34 +142,34 @@ function Invoke-BatchFile {
         [int]$ProcessIndex
     )
     
-    # ƒpƒX‚Ì³‹K‰»ˆ—
+    # ï¿½pï¿½Xï¿½Ìï¿½ï¿½Kï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     if ([string]::IsNullOrWhiteSpace($BatchPath)) {
-        Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹ƒpƒX‚ª‹ó‚Å‚·" "ERROR" $ProcessIndex
+        Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½pï¿½Xï¿½ï¿½ï¿½ï¿½Å‚ï¿½" "ERROR" $ProcessIndex
         return $false
     }
     
-    # æ“ªE––”ö‚Ì‹ó”’‚ğíœ
+    # ï¿½æ“ªï¿½Eï¿½ï¿½ï¿½ï¿½ï¿½Ì‹ó”’‚ï¿½ï¿½íœ
     $BatchPath = $BatchPath.Trim()
     
-    # ƒpƒX‚ğ³‹K‰»i‘Š‘ÎƒpƒX‚Ì‰ğŒˆA‹æØ‚è•¶š‚Ì“ˆê‚È‚Çj
+    # ï¿½pï¿½Xï¿½ğ³‹Kï¿½ï¿½ï¿½iï¿½ï¿½ï¿½Îƒpï¿½Xï¿½Ì‰ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½Ø‚è•¶ï¿½ï¿½ï¿½Ì“ï¿½ï¿½ï¿½È‚Çj
     try {
-        # ‘Š‘ÎƒpƒX‚Ìê‡‚Í$PSScriptRoot‚ğŠî€‚É‰ğŒˆ
+        # ï¿½ï¿½ï¿½Îƒpï¿½Xï¿½Ìê‡ï¿½ï¿½$PSScriptRootï¿½ï¿½ï¿½î€ï¿½É‰ï¿½ï¿½ï¿½
         if (-not [System.IO.Path]::IsPathRooted($BatchPath)) {
             $BatchPath = Join-Path $PSScriptRoot $BatchPath
         }
-        # ƒpƒX‚ğ³‹K‰»i..‚â.‚ğ‰ğŒˆA‹æØ‚è•¶š‚ğ“ˆêj
+        # ï¿½pï¿½Xï¿½ğ³‹Kï¿½ï¿½ï¿½i..ï¿½ï¿½.ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½ï¿½Ø‚è•¶ï¿½ï¿½ï¿½ğ“ˆï¿½j
         $BatchPath = [System.IO.Path]::GetFullPath($BatchPath)
     } catch {
-        Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹ƒpƒX‚Ì³‹K‰»‚É¸”s‚µ‚Ü‚µ‚½: $BatchPath - $($_.Exception.Message)" "ERROR" $ProcessIndex
+        Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½pï¿½Xï¿½Ìï¿½ï¿½Kï¿½ï¿½ï¿½Éï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $BatchPath - $($_.Exception.Message)" "ERROR" $ProcessIndex
         return $false
     }
     
     if (-not (Test-Path $BatchPath)) {
-        Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ: $BatchPath" "ERROR" $ProcessIndex
+        Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $BatchPath" "ERROR" $ProcessIndex
         return $false
     }
     
-    # ƒƒOo—ÍƒfƒBƒŒƒNƒgƒŠ‚ÌŒˆ’è
+    # ï¿½ï¿½ï¿½Oï¿½oï¿½Íƒfï¿½Bï¿½ï¿½ï¿½Nï¿½gï¿½ï¿½ï¿½ÌŒï¿½ï¿½ï¿½
     $currentProcesses = Get-CurrentPageProcesses
     $processLogDir = $script:logDir
     if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
@@ -186,7 +186,7 @@ function Invoke-BatchFile {
         }
     }
     
-    Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ğÀs’†: $DisplayName ($BatchPath)" "INFO" $ProcessIndex
+    Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½sï¿½ï¿½: $DisplayName ($BatchPath)" "INFO" $ProcessIndex
     
     try {
         $stdoutFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}_stdout.log"
@@ -195,19 +195,19 @@ function Invoke-BatchFile {
         $process = Start-Process -FilePath $BatchPath -WorkingDirectory (Split-Path $BatchPath) -Wait -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
         
         if ($process.ExitCode -eq 0) {
-            Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ÌÀs‚ªŠ®—¹‚µ‚Ü‚µ‚½: $DisplayName (I—¹ƒR[ƒh: $($process.ExitCode))" "INFO" $ProcessIndex
+            Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ìï¿½ï¿½sï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $DisplayName (ï¿½Iï¿½ï¿½ï¿½Rï¿½[ï¿½h: $($process.ExitCode))" "INFO" $ProcessIndex
             return $true
         } else {
-            Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ÌÀs‚ÅƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½: $DisplayName (I—¹ƒR[ƒh: $($process.ExitCode))" "ERROR" $ProcessIndex
+            Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ìï¿½ï¿½sï¿½ÅƒGï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $DisplayName (ï¿½Iï¿½ï¿½ï¿½Rï¿½[ï¿½h: $($process.ExitCode))" "ERROR" $ProcessIndex
             return $false
         }
     } catch {
-        Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ÌÀs’†‚É—áŠO‚ª”­¶‚µ‚Ü‚µ‚½: $DisplayName - $($_.Exception.Message)" "ERROR" $ProcessIndex
+        Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ìï¿½ï¿½sï¿½ï¿½ï¿½É—ï¿½Oï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $DisplayName - $($_.Exception.Message)" "ERROR" $ProcessIndex
         return $false
     }
 }
 
-# CSVƒtƒ@ƒCƒ‹ˆÚ“®ŠÖ”
+# CSVï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½Öï¿½
 function Move-CsvFiles {
     param(
         [string]$SourcePath,
@@ -216,12 +216,12 @@ function Move-CsvFiles {
     )
     
     if (-not (Test-Path $SourcePath)) {
-        Write-Log "ƒ\[ƒXƒpƒX‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ: $SourcePath" "ERROR" $ProcessIndex
+        Write-Log "ï¿½\ï¿½[ï¿½Xï¿½pï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $SourcePath" "ERROR" $ProcessIndex
         return $false
     }
     
     if (-not (Test-Path $DestinationPath)) {
-        Write-Log "ˆÚ“®æƒfƒBƒŒƒNƒgƒŠ‚ğì¬‚µ‚Ü‚·: $DestinationPath" "INFO" $ProcessIndex
+        Write-Log "ï¿½Ú“ï¿½ï¿½ï¿½fï¿½Bï¿½ï¿½ï¿½Nï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ì¬ï¿½ï¿½ï¿½Ü‚ï¿½: $DestinationPath" "INFO" $ProcessIndex
         New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
     }
     
@@ -229,31 +229,31 @@ function Move-CsvFiles {
         $csvFiles = Get-ChildItem -Path $SourcePath -Filter "*.csv" -File
         
         if ($csvFiles.Count -eq 0) {
-            Write-Log "CSVƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ: $SourcePath" "WARN" $ProcessIndex
+            Write-Log "CSVï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $SourcePath" "WARN" $ProcessIndex
             return $false
         }
         
         foreach ($file in $csvFiles) {
             $destFile = Join-Path $DestinationPath $file.Name
             Move-Item -Path $file.FullName -Destination $destFile -Force
-            Write-Log "CSVƒtƒ@ƒCƒ‹‚ğˆÚ“®‚µ‚Ü‚µ‚½: $($file.Name) -> $DestinationPath" "INFO" $ProcessIndex
+            Write-Log "CSVï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $($file.Name) -> $DestinationPath" "INFO" $ProcessIndex
         }
         
-        Write-Log "CSVƒtƒ@ƒCƒ‹‚ÌˆÚ“®‚ªŠ®—¹‚µ‚Ü‚µ‚½ (ˆÚ“®”: $($csvFiles.Count))" "INFO" $ProcessIndex
+        Write-Log "CSVï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ÌˆÚ“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½ (ï¿½Ú“ï¿½ï¿½ï¿½: $($csvFiles.Count))" "INFO" $ProcessIndex
         return $true
     } catch {
-        Write-Log "CSVƒtƒ@ƒCƒ‹‚ÌˆÚ“®’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        Write-Log "CSVï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ÌˆÚ“ï¿½ï¿½ï¿½ï¿½ÉƒGï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $($_.Exception.Message)" "ERROR" $ProcessIndex
         return $false
     }
 }
 
-# ƒoƒbƒ`ƒtƒ@ƒCƒ‹ƒpƒX•Û‘¶ŠÖ”
+# ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½pï¿½Xï¿½Û‘ï¿½ï¿½Öï¿½
 function Save-BatchFilePath {
     param([int]$ProcessIndex, [string]$BatchFilePath, [int]$BatchIndex = 0)
     
     $pageConfig = $script:pages[$script:currentPage]
     if (-not $pageConfig.JsonPath) {
-        Write-Log "‚±‚Ìƒy[ƒW‚ÍJSONƒtƒ@ƒCƒ‹‚ğg—p‚µ‚Ä‚¢‚Ü‚¹‚ñ" "WARN" $ProcessIndex
+        Write-Log "ï¿½ï¿½ï¿½Ìƒyï¿½[ï¿½Wï¿½ï¿½JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½gï¿½pï¿½ï¿½ï¿½Ä‚ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½" "WARN" $ProcessIndex
         return $false
     }
     
@@ -264,14 +264,14 @@ function Save-BatchFilePath {
     }
     
     if (-not (Test-Path $jsonPath)) {
-        Write-Log "JSONƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ: $jsonPath" "ERROR" $ProcessIndex
+        Write-Log "JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $jsonPath" "ERROR" $ProcessIndex
         return $false
     }
     
     try {
         $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
         if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
-            Write-Log "ƒvƒƒZƒXƒCƒ“ƒfƒbƒNƒX‚ª”ÍˆÍŠO‚Å‚·" "ERROR" $ProcessIndex
+            Write-Log "ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½Cï¿½ï¿½ï¿½fï¿½bï¿½Nï¿½Xï¿½ï¿½ï¿½ÍˆÍŠOï¿½Å‚ï¿½" "ERROR" $ProcessIndex
             return $false
         }
         
@@ -281,17 +281,17 @@ function Save-BatchFilePath {
         }
         
         if ($BatchIndex -ge $process.BatchFiles.Count) {
-            # V‚µ‚¢ƒoƒbƒ`ƒtƒ@ƒCƒ‹ƒGƒ“ƒgƒŠ‚ğ’Ç‰Á
+            # ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½Ç‰ï¿½
             $process.BatchFiles += @{
-                Name = "ƒoƒbƒ`ƒtƒ@ƒCƒ‹"
+                Name = "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½"
                 Path = $BatchFilePath
             }
         } else {
-            # Šù‘¶‚Ìƒoƒbƒ`ƒtƒ@ƒCƒ‹ƒGƒ“ƒgƒŠ‚ğXV
+            # ï¿½ï¿½ï¿½ï¿½ï¿½Ìƒoï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
             $process.BatchFiles[$BatchIndex].Path = $BatchFilePath
         }
         
-        # ‘Š‘ÎƒpƒX‚É•ÏŠ·i‰Â”\‚Èê‡j
+        # ï¿½ï¿½ï¿½Îƒpï¿½Xï¿½É•ÏŠï¿½ï¿½iï¿½Â”\ï¿½Èê‡ï¿½j
         $relativePath = try {
             $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
             $targetPath = [System.IO.Path]::GetFullPath($BatchFilePath).TrimEnd('\', '/')
@@ -311,23 +311,23 @@ function Save-BatchFilePath {
         
         $process.BatchFiles[$BatchIndex].Path = $relativePath
         
-        # JSONƒtƒ@ƒCƒ‹‚É•Û‘¶
+        # JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½É•Û‘ï¿½
         $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
-        Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹ƒpƒX‚ğ•Û‘¶‚µ‚Ü‚µ‚½: $relativePath" "INFO" $ProcessIndex
+        Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½pï¿½Xï¿½ï¿½Û‘ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $relativePath" "INFO" $ProcessIndex
         return $true
     } catch {
-        Write-Log "JSONƒtƒ@ƒCƒ‹‚Ì•Û‘¶‚É¸”s‚µ‚Ü‚µ‚½: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        Write-Log "JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ì•Û‘ï¿½ï¿½Éï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $($_.Exception.Message)" "ERROR" $ProcessIndex
         return $false
     }
 }
 
-# ƒƒOo—ÍƒtƒHƒ‹ƒ_ƒpƒX•Û‘¶ŠÖ”
+# ï¿½ï¿½ï¿½Oï¿½oï¿½Íƒtï¿½Hï¿½ï¿½ï¿½_ï¿½pï¿½Xï¿½Û‘ï¿½ï¿½Öï¿½
 function Save-ProcessLogOutputDir {
     param([int]$ProcessIndex, [string]$LogOutputDir)
     
     $pageConfig = $script:pages[$script:currentPage]
     if (-not $pageConfig.JsonPath) {
-        Write-Log "‚±‚Ìƒy[ƒW‚ÍJSONƒtƒ@ƒCƒ‹‚ğg—p‚µ‚Ä‚¢‚Ü‚¹‚ñ" "WARN" $ProcessIndex
+        Write-Log "ï¿½ï¿½ï¿½Ìƒyï¿½[ï¿½Wï¿½ï¿½JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½gï¿½pï¿½ï¿½ï¿½Ä‚ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½" "WARN" $ProcessIndex
         return $false
     }
     
@@ -338,41 +338,118 @@ function Save-ProcessLogOutputDir {
     }
     
     if (-not (Test-Path $jsonPath)) {
-        Write-Log "JSONƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ: $jsonPath" "ERROR" $ProcessIndex
+        Write-Log "JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $jsonPath" "ERROR" $ProcessIndex
         return $false
     }
     
     try {
         $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
         if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
-            Write-Log "ƒvƒƒZƒXƒCƒ“ƒfƒbƒNƒX‚ª”ÍˆÍŠO‚Å‚·" "ERROR" $ProcessIndex
+            Write-Log "ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½Cï¿½ï¿½ï¿½fï¿½bï¿½Nï¿½Xï¿½ï¿½ï¿½ÍˆÍŠOï¿½Å‚ï¿½" "ERROR" $ProcessIndex
             return $false
         }
         
         $process = $jsonContent.Processes[$ProcessIndex]
         $process.LogOutputDir = $LogOutputDir
         
-        # JSONƒtƒ@ƒCƒ‹‚É•Û‘¶
+        # JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½É•Û‘ï¿½
         $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
-        Write-Log "ƒƒOo—ÍƒtƒHƒ‹ƒ_ƒpƒX‚ğ•Û‘¶‚µ‚Ü‚µ‚½: $LogOutputDir" "INFO" $ProcessIndex
+        Write-Log "ï¿½ï¿½ï¿½Oï¿½oï¿½Íƒtï¿½Hï¿½ï¿½ï¿½_ï¿½pï¿½Xï¿½ï¿½Û‘ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $LogOutputDir" "INFO" $ProcessIndex
         return $true
     } catch {
-        Write-Log "JSONƒtƒ@ƒCƒ‹‚Ì•Û‘¶‚É¸”s‚µ‚Ü‚µ‚½: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        Write-Log "JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ì•Û‘ï¿½ï¿½Éï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $($_.Exception.Message)" "ERROR" $ProcessIndex
         return $false
     }
 }
 
-# ƒvƒƒZƒXÀsŠÖ”
+# config.jsonï¿½Û‘ï¿½ï¿½Öï¿½
+function Save-ConfigFile {
+    try {
+        $configPath = Join-Path $PSScriptRoot "config.json"
+        # $script:pagesï¿½Ì•ÏXï¿½ï¿½$configï¿½É”ï¿½ï¿½f
+        $config.Pages = $script:pages
+        $config | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
+        return $true
+    } catch {
+        Write-Log "config.jsonï¿½Ì•Û‘ï¿½ï¿½Éï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+# ï¿½yï¿½[ï¿½Wï¿½pï¿½Xï¿½Û‘ï¿½ï¿½Öï¿½
+function Save-PagePath {
+    param(
+        [string]$PathType,
+        [string]$Path
+    )
+    
+    if ($script:currentPage -ge $script:pages.Count) {
+        Write-Log "ï¿½yï¿½[ï¿½Wï¿½Cï¿½ï¿½ï¿½fï¿½bï¿½Nï¿½Xï¿½ï¿½ï¿½ÍˆÍŠOï¿½Å‚ï¿½" "ERROR"
+        return $false
+    }
+    
+    try {
+        $pageConfig = $script:pages[$script:currentPage]
+        
+        # ï¿½ï¿½ï¿½Îƒpï¿½Xï¿½É•ÏŠï¿½ï¿½iï¿½Â”\ï¿½Èê‡ï¿½j
+        $relativePath = try {
+            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $targetPath = [System.IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+            
+            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                if ([string]::IsNullOrEmpty($relative)) {
+                    $relative = Split-Path $targetPath -Leaf
+                }
+                $relative
+            } else {
+                $Path
+            }
+        } catch {
+            $Path
+        }
+        
+        # ï¿½pï¿½Xï¿½ï¿½İ’ï¿½
+        switch ($PathType) {
+            "MigrationSource" {
+                $pageConfig.MigrationSourcePath = $relativePath
+            }
+            "MigrationDest" {
+                $pageConfig.MigrationDestPath = $relativePath
+            }
+            "LogStorage" {
+                $pageConfig.LogStoragePath = $relativePath
+            }
+            default {
+                Write-Log "ï¿½sï¿½ï¿½ï¿½Èƒpï¿½Xï¿½^ï¿½Cï¿½vï¿½Å‚ï¿½: $PathType" "ERROR"
+                return $false
+            }
+        }
+        
+        # config.jsonï¿½É•Û‘ï¿½
+        if (Save-ConfigFile) {
+            Write-Log "$PathType ï¿½pï¿½Xï¿½ï¿½Û‘ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $relativePath" "INFO"
+            return $true
+        } else {
+            return $false
+        }
+    } catch {
+        Write-Log "ï¿½yï¿½[ï¿½Wï¿½pï¿½Xï¿½Ì•Û‘ï¿½ï¿½Éï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+# ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½ï¿½ï¿½sï¿½Öï¿½
 function Start-ProcessFlow {
     param([int]$ProcessIndex)
     
-    # •ÒWƒ‚[ƒh’†‚Íƒtƒ@ƒCƒ‹‘I‘ğƒ_ƒCƒAƒƒO‚ğ•\¦
+    # ï¿½ÒWï¿½ï¿½ï¿½[ï¿½hï¿½ï¿½ï¿½Íƒtï¿½@ï¿½Cï¿½ï¿½ï¿½Iï¿½ï¿½ï¿½_ï¿½Cï¿½Aï¿½ï¿½ï¿½Oï¿½ï¿½\ï¿½ï¿½
     if ($script:editMode) {
         $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-        $fileDialog.Filter = "ƒoƒbƒ`ƒtƒ@ƒCƒ‹ (*.bat)|*.bat|‚·‚×‚Ä‚Ìƒtƒ@ƒCƒ‹ (*.*)|*.*"
-        $fileDialog.Title = "ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢"
+        $fileDialog.Filter = "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ (*.bat)|*.bat|ï¿½ï¿½ï¿½×‚Ä‚Ìƒtï¿½@ï¿½Cï¿½ï¿½ (*.*)|*.*"
+        $fileDialog.Title = "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
         
-        # Œ»İ‚Ìƒoƒbƒ`ƒtƒ@ƒCƒ‹ƒpƒX‚ğ‰Šú’l‚Æ‚µ‚Äİ’è
+        # ï¿½ï¿½ï¿½İ‚Ìƒoï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½pï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½lï¿½Æ‚ï¿½ï¿½Äİ’ï¿½
         $currentProcesses = Get-CurrentPageProcesses
         $processConfig = $currentProcesses[$ProcessIndex]
         if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
@@ -391,10 +468,10 @@ function Start-ProcessFlow {
         if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             $selectedFile = $fileDialog.FileName
             Save-BatchFilePath -ProcessIndex $ProcessIndex -BatchFilePath $selectedFile -BatchIndex 0
-            Write-Log "ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ğİ’è‚µ‚Ü‚µ‚½: $selectedFile" "INFO" $ProcessIndex
-            [System.Windows.Forms.MessageBox]::Show("ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ğİ’è‚µ‚Ü‚µ‚½B`n$selectedFile", "İ’èŠ®—¹", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            Write-Log "ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½İ’è‚µï¿½Ü‚ï¿½ï¿½ï¿½: $selectedFile" "INFO" $ProcessIndex
+            [System.Windows.Forms.MessageBox]::Show("ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½İ’è‚µï¿½Ü‚ï¿½ï¿½ï¿½ï¿½B`n$selectedFile", "ï¿½İ’èŠ®ï¿½ï¿½", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
             
-            # ƒRƒ“ƒgƒ[ƒ‹‚ğXV‚µ‚ÄV‚µ‚¢İ’è‚ğ”½‰f
+            # ï¿½Rï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½Vï¿½ï¿½ï¿½ÄVï¿½ï¿½ï¿½ï¿½ï¿½İ’ï¿½ğ”½‰f
             Update-ProcessControls
         }
         $fileDialog.Dispose()
@@ -411,11 +488,11 @@ function Start-ProcessFlow {
     $executeButton.Enabled = $false
     $script:logTextBox.Clear()
     
-    Write-Log "ƒvƒƒZƒX‚ğŠJn‚µ‚Ü‚·: $($processConfig.Name)" "INFO" $ProcessIndex
+    Write-Log "ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½ï¿½ï¿½Jï¿½nï¿½ï¿½ï¿½Ü‚ï¿½: $($processConfig.Name)" "INFO" $ProcessIndex
     
     $allSuccess = $true
     
-    # ƒoƒbƒ`ƒtƒ@ƒCƒ‹‚ÌÀs
+    # ï¿½oï¿½bï¿½`ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ìï¿½ï¿½s
     if ($processConfig.BatchFiles) {
         foreach ($batch in $processConfig.BatchFiles) {
             $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
@@ -429,14 +506,14 @@ function Start-ProcessFlow {
                 $allSuccess = $false
             }
             
-            # ÀsŠÔŠuiİ’è‚³‚ê‚Ä‚¢‚éê‡j
+            # ï¿½ï¿½ï¿½sï¿½ÔŠuï¿½iï¿½İ’è‚³ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ê‡ï¿½j
             if ($processConfig.ExecutionDelay -and $processConfig.ExecutionDelay -gt 0) {
                 Start-Sleep -Seconds $processConfig.ExecutionDelay
             }
         }
     }
     
-    # CSVƒtƒ@ƒCƒ‹‚ÌˆÚ“®
+    # CSVï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ÌˆÚ“ï¿½
     if ($processConfig.CsvMoveOperations) {
         foreach ($csvOp in $processConfig.CsvMoveOperations) {
             $sourcePath = if ([System.IO.Path]::IsPathRooted($csvOp.Source)) {
@@ -459,25 +536,25 @@ function Start-ProcessFlow {
     }
     
     if ($allSuccess) {
-        Write-Log "ƒvƒƒZƒX‚ª³í‚ÉŠ®—¹‚µ‚Ü‚µ‚½: $($processConfig.Name)" "INFO" $ProcessIndex
+        Write-Log "ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÉŠï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $($processConfig.Name)" "INFO" $ProcessIndex
     } else {
-        Write-Log "ƒvƒƒZƒX‚ÅƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½: $($processConfig.Name)" "ERROR" $ProcessIndex
+        Write-Log "ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½ÅƒGï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½: $($processConfig.Name)" "ERROR" $ProcessIndex
     }
     
     $executeButton.Enabled = $true
 }
 
-# ƒƒOŠm”FŠÖ”
+# ï¿½ï¿½ï¿½Oï¿½mï¿½Fï¿½Öï¿½
 function Show-ProcessLog {
     param([int]$ProcessIndex)
     
-    # •ÒWƒ‚[ƒh’†‚ÍƒtƒHƒ‹ƒ_‘I‘ğƒ_ƒCƒAƒƒO‚ğ•\¦
+    # ï¿½ÒWï¿½ï¿½ï¿½[ï¿½hï¿½ï¿½ï¿½Íƒtï¿½Hï¿½ï¿½ï¿½_ï¿½Iï¿½ï¿½ï¿½_ï¿½Cï¿½Aï¿½ï¿½ï¿½Oï¿½ï¿½\ï¿½ï¿½
     if ($script:editMode) {
         $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $folderDialog.Description = "ƒƒOo—ÍƒtƒHƒ‹ƒ_‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢"
+        $folderDialog.Description = "ï¿½ï¿½ï¿½Oï¿½oï¿½Íƒtï¿½Hï¿½ï¿½ï¿½_ï¿½ï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
         $folderDialog.ShowNewFolderButton = $true
         
-        # Œ»İ‚ÌƒƒOƒtƒHƒ‹ƒ_‚ğ‰Šú’l‚Æ‚µ‚Äİ’è
+        # ï¿½ï¿½ï¿½İ‚Ìƒï¿½ï¿½Oï¿½tï¿½Hï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½lï¿½Æ‚ï¿½ï¿½Äİ’ï¿½
         $currentProcesses = Get-CurrentPageProcesses
         $processConfig = $currentProcesses[$ProcessIndex]
         if ($processConfig.LogOutputDir) {
@@ -497,7 +574,7 @@ function Show-ProcessLog {
         
         if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             $selectedPath = $folderDialog.SelectedPath
-            # ‘Š‘ÎƒpƒX‚É•ÏŠ·i‰Â”\‚Èê‡j
+            # ï¿½ï¿½ï¿½Îƒpï¿½Xï¿½É•ÏŠï¿½ï¿½iï¿½Â”\ï¿½Èê‡ï¿½j
             $relativePath = try {
                 $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
                 $targetPath = [System.IO.Path]::GetFullPath($selectedPath).TrimEnd('\', '/')
@@ -515,16 +592,16 @@ function Show-ProcessLog {
                 $selectedPath
             }
             
-            # JSONƒtƒ@ƒCƒ‹‚ğXV
+            # JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
             Save-ProcessLogOutputDir -ProcessIndex $ProcessIndex -LogOutputDir $relativePath
-            Write-Log "ƒƒOo—ÍƒtƒHƒ‹ƒ_‚ğİ’è‚µ‚Ü‚µ‚½: $relativePath" "INFO" $ProcessIndex
-            [System.Windows.Forms.MessageBox]::Show("ƒƒOo—ÍƒtƒHƒ‹ƒ_‚ğİ’è‚µ‚Ü‚µ‚½B`n$relativePath", "İ’èŠ®—¹", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            Write-Log "ï¿½ï¿½ï¿½Oï¿½oï¿½Íƒtï¿½Hï¿½ï¿½ï¿½_ï¿½ï¿½İ’è‚µï¿½Ü‚ï¿½ï¿½ï¿½: $relativePath" "INFO" $ProcessIndex
+            [System.Windows.Forms.MessageBox]::Show("ï¿½ï¿½ï¿½Oï¿½oï¿½Íƒtï¿½Hï¿½ï¿½ï¿½_ï¿½ï¿½İ’è‚µï¿½Ü‚ï¿½ï¿½ï¿½ï¿½B`n$relativePath", "ï¿½İ’èŠ®ï¿½ï¿½", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
         }
         $folderDialog.Dispose()
         return
     }
     
-    # ’Êíƒ‚[ƒh‚Å‚ÍƒƒOƒtƒ@ƒCƒ‹‚ğŠJ‚­
+    # ï¿½Êíƒ‚ï¿½[ï¿½hï¿½Å‚Íƒï¿½ï¿½Oï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½Jï¿½ï¿½
     $currentProcesses = Get-CurrentPageProcesses
     $processConfig = $currentProcesses[$ProcessIndex]
     $processLogDir = $logDir
@@ -544,20 +621,20 @@ function Show-ProcessLog {
         if (Test-Path $processLogFile) {
             Start-Process notepad.exe -ArgumentList $processLogFile
         } else {
-            [System.Windows.Forms.MessageBox]::Show("ƒƒOƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñB", "ƒGƒ‰[", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+            [System.Windows.Forms.MessageBox]::Show("ï¿½ï¿½ï¿½Oï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½B", "ï¿½Gï¿½ï¿½ï¿½[", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
         }
     }
 }
 
-# ƒvƒƒZƒXƒRƒ“ƒgƒ[ƒ‹‚ÌXV
+# ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½Rï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ÌXï¿½V
 function Update-ProcessControls {
-    # ƒy[ƒW‘JˆÚ‚ÉJSONƒtƒ@ƒCƒ‹‚ğ“Ç‚İ‚Ş
+    # ï¿½yï¿½[ï¿½Wï¿½Jï¿½Úï¿½ï¿½ï¿½JSONï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½Ç‚İï¿½ï¿½ï¿½
     $currentProcesses = Get-CurrentPageProcesses
     $totalPages = $script:pages.Count
     
-    Write-Log "ƒy[ƒW $($script:currentPage + 1) ‚ÌƒvƒƒZƒX‚ğ“Ç‚İ‚İ‚Ü‚µ‚½ (ƒvƒƒZƒX”: $($currentProcesses.Count))" "INFO"
+    Write-Log "ï¿½yï¿½[ï¿½W $($script:currentPage + 1) ï¿½Ìƒvï¿½ï¿½ï¿½Zï¿½Xï¿½ï¿½Ç‚İï¿½ï¿½İ‚Ü‚ï¿½ï¿½ï¿½ (ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½ï¿½: $($currentProcesses.Count))" "INFO"
     
-    # Šù‘¶‚ÌƒRƒ“ƒgƒ[ƒ‹‚ğƒNƒŠƒA
+    # ï¿½ï¿½ï¿½ï¿½ï¿½ÌƒRï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½ï¿½ï¿½A
     foreach ($ctrlGroup in $script:processControls) {
         if ($ctrlGroup) {
             $script:processPanel.Controls.Remove($ctrlGroup.NameTextBox)
@@ -567,18 +644,18 @@ function Update-ProcessControls {
     }
     $script:processControls = @()
     
-    # V‚µ‚¢ƒRƒ“ƒgƒ[ƒ‹‚ğì¬
+    # ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Rï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ì¬
     for ($i = 0; $i -lt $script:processesPerPage; $i++) {
         if ($i -lt $currentProcesses.Count) {
             $processConfig = $currentProcesses[$i]
             $row = [Math]::Floor($i / 2)
             $col = $i % 2
             
-            # ƒRƒ“ƒgƒ[ƒ‹‚ÌˆÊ’uŒvZ
+            # ï¿½Rï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ÌˆÊ’uï¿½vï¿½Z
             $x = [int](10 + $col * 390)
             $y = [int](10 + $row * 60)
             
-            # ƒeƒLƒXƒgƒ{ƒbƒNƒXiƒ^ƒXƒN–¼•\¦—pj
+            # ï¿½eï¿½Lï¿½Xï¿½gï¿½{ï¿½bï¿½Nï¿½Xï¿½iï¿½^ï¿½Xï¿½Nï¿½ï¿½ï¿½\ï¿½ï¿½ï¿½pï¿½j
             $nameTextBox = New-Object System.Windows.Forms.TextBox
             $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
             $nameTextBox.Size = New-Object System.Drawing.Size(200, 40)
@@ -586,47 +663,47 @@ function Update-ProcessControls {
             $nameTextBox.ReadOnly = $true
             $nameTextBox.BackColor = [System.Drawing.Color]::White
             $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-            $nameTextBox.Font = New-Object System.Drawing.Font("ƒƒCƒŠƒI", 9)
+            $nameTextBox.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
             $nameTextBox.Multiline = $true
             $nameTextBox.Height = 40
             $script:processPanel.Controls.Add($nameTextBox)
             
-            # Àsƒ{ƒ^ƒ“iƒIƒŒƒ“ƒWj
+            # ï¿½ï¿½ï¿½sï¿½{ï¿½^ï¿½ï¿½ï¿½iï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½j
             $executeButton = New-Object System.Windows.Forms.Button
             $executeX = [int]($x + 210)
             $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
             $executeButton.Size = New-Object System.Drawing.Size(80, 40)
             if ($script:editMode) {
-                $executeButton.Text = "QÆ"
+                $executeButton.Text = "ï¿½Qï¿½ï¿½"
             } else {
-                $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "Às" }
+                $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "ï¿½ï¿½ï¿½s" }
             }
             $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
             $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
             $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
             $executeButton.FlatAppearance.BorderSize = 1
-            $executeButton.Font = New-Object System.Drawing.Font("ƒƒCƒŠƒI", 9)
+            $executeButton.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
             $processIdx = $i
             $executeButton.Add_Click({
                 Start-ProcessFlow -ProcessIndex $processIdx
             })
             $script:processPanel.Controls.Add($executeButton)
             
-            # ƒƒOŠm”Fƒ{ƒ^ƒ“i—Îj
+            # ï¿½ï¿½ï¿½Oï¿½mï¿½Fï¿½{ï¿½^ï¿½ï¿½ï¿½iï¿½Îj
             $logButton = New-Object System.Windows.Forms.Button
             $logX = [int]($x + 300)
             $logButton.Location = New-Object System.Drawing.Point($logX, $y)
             $logButton.Size = New-Object System.Drawing.Size(80, 40)
             if ($script:editMode) {
-                $logButton.Text = "QÆ"
+                $logButton.Text = "ï¿½Qï¿½ï¿½"
             } else {
-                $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ƒƒOŠm”F" }
+                $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ï¿½ï¿½ï¿½Oï¿½mï¿½F" }
             }
             $logButton.BackColor = [System.Drawing.Color]::FromArgb(200, 255, 200)
             $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
             $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
             $logButton.FlatAppearance.BorderSize = 1
-            $logButton.Font = New-Object System.Drawing.Font("ƒƒCƒŠƒI", 9)
+            $logButton.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
             $logButton.Add_Click({
                 Show-ProcessLog -ProcessIndex $processIdx
             })
@@ -640,40 +717,91 @@ function Update-ProcessControls {
         }
     }
     
-    # ƒy[ƒWî•ñ‚ÌXV
-    $script:pageLabel.Text = "ƒy[ƒW $($script:currentPage + 1) / $totalPages"
+    # ï¿½yï¿½[ï¿½Wï¿½ï¿½ï¿½ÌXï¿½V
+    $script:pageLabel.Text = "ï¿½yï¿½[ï¿½W $($script:currentPage + 1) / $totalPages"
     
-    # ƒ^ƒCƒgƒ‹‚ÌXV
-    $pageTitle = if ($script:pages[$script:currentPage].Title) { $script:pages[$script:currentPage].Title } else { if ($config.Title) { $config.Title } else { "1.V1 ˆÚsƒc[ƒ‹“K—p" } }
+    # ï¿½^ï¿½Cï¿½gï¿½ï¿½ï¿½ÌXï¿½V
+    $pageTitle = if ($script:pages[$script:currentPage].Title) { $script:pages[$script:currentPage].Title } else { if ($config.Title) { $config.Title } else { "1.V1 ï¿½Úsï¿½cï¿½[ï¿½ï¿½ï¿½Kï¿½p" } }
     $script:titleLabel.Text = $pageTitle
+    
+    # ï¿½yï¿½[ï¿½Wï¿½ï¿½ï¿½Æ‚Ìƒpï¿½Xï¿½ï¿½ï¿½ï¿½Ç‚İï¿½ï¿½ï¿½Å•\ï¿½ï¿½
+    $pageConfig = $script:pages[$script:currentPage]
+    
+    # ï¿½Úsï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½
+    if ($pageConfig.MigrationSourcePath) {
+        $sourcePath = if ([System.IO.Path]::IsPathRooted($pageConfig.MigrationSourcePath)) {
+            $pageConfig.MigrationSourcePath
+        } else {
+            Join-Path $PSScriptRoot $pageConfig.MigrationSourcePath
+        }
+        if (Test-Path $sourcePath) {
+            $script:sourceTextBox.Text = $sourcePath
+        } else {
+            $script:sourceTextBox.Text = $pageConfig.MigrationSourcePath
+        }
+    } else {
+        $script:sourceTextBox.Text = ""
+    }
+    
+    # ï¿½Úsï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½
+    if ($pageConfig.MigrationDestPath) {
+        $destPath = if ([System.IO.Path]::IsPathRooted($pageConfig.MigrationDestPath)) {
+            $pageConfig.MigrationDestPath
+        } else {
+            Join-Path $PSScriptRoot $pageConfig.MigrationDestPath
+        }
+        if (Test-Path $destPath) {
+            $script:destTextBox.Text = $destPath
+        } else {
+            $script:destTextBox.Text = $pageConfig.MigrationDestPath
+        }
+    } else {
+        $script:destTextBox.Text = ""
+    }
+    
+    # ï¿½ï¿½ï¿½Oï¿½iï¿½[ï¿½ï¿½
+    if ($pageConfig.LogStoragePath) {
+        $logPath = if ([System.IO.Path]::IsPathRooted($pageConfig.LogStoragePath)) {
+            $pageConfig.LogStoragePath
+        } else {
+            Join-Path $PSScriptRoot $pageConfig.LogStoragePath
+        }
+        if (Test-Path $logPath) {
+            $script:logStorageTextBox.Text = $logPath
+        } else {
+            $script:logStorageTextBox.Text = $pageConfig.LogStoragePath
+        }
+    } else {
+        $script:logStorageTextBox.Text = ""
+    }
 }
 
-# GUIƒtƒH[ƒ€‚Ìì¬
+# GUIï¿½tï¿½Hï¿½[ï¿½ï¿½ï¿½Ìì¬
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "ƒvƒƒZƒXÀsGUI"
-$form.Size = New-Object System.Drawing.Size(800, 600)
+$form.Text = "ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½ï¿½ï¿½sGUI"
+$form.Size = New-Object System.Drawing.Size(800, 1000)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
 $form.BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
 
-# ƒwƒbƒ_[•”•ªi…F”wŒij
+# ï¿½wï¿½bï¿½_ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½iï¿½ï¿½ï¿½Fï¿½wï¿½iï¿½j
 $headerPanel = New-Object System.Windows.Forms.Panel
 $headerPanel.Location = New-Object System.Drawing.Point(0, 0)
 $headerPanel.Size = New-Object System.Drawing.Size(800, 50)
 $headerPanel.BackColor = [System.Drawing.Color]::FromArgb(173, 216, 230)
 $form.Controls.Add($headerPanel)
 
-# ƒ^ƒCƒgƒ‹ƒ‰ƒxƒ‹
+# ï¿½^ï¿½Cï¿½gï¿½ï¿½ï¿½ï¿½ï¿½xï¿½ï¿½
 $titleLabel = New-Object System.Windows.Forms.Label
 $titleLabel.Location = New-Object System.Drawing.Point(10, 10)
 $titleLabel.Size = New-Object System.Drawing.Size(400, 30)
-$titleLabel.Text = if ($script:pages.Count -gt 0 -and $script:pages[0].Title) { $script:pages[0].Title } else { if ($config.Title) { $config.Title } else { "1.V1 ˆÚsƒc[ƒ‹“K—p" } }
-$titleLabel.Font = New-Object System.Drawing.Font("ƒƒCƒŠƒI", 12, [System.Drawing.FontStyle]::Bold)
+$titleLabel.Text = if ($script:pages.Count -gt 0 -and $script:pages[0].Title) { $script:pages[0].Title } else { if ($config.Title) { $config.Title } else { "1.V1 ï¿½Úsï¿½cï¿½[ï¿½ï¿½ï¿½Kï¿½p" } }
+$titleLabel.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 12, [System.Drawing.FontStyle]::Bold)
 $headerPanel.Controls.Add($titleLabel)
 $script:titleLabel = $titleLabel
 
-    # ¶–îˆóƒ{ƒ^ƒ“
+    # ï¿½ï¿½ï¿½ï¿½ï¿½{ï¿½^ï¿½ï¿½
 $leftArrowButton = New-Object System.Windows.Forms.Button
 $leftArrowButton.Location = New-Object System.Drawing.Point(690, 10)
 $leftArrowButton.Size = New-Object System.Drawing.Size(40, 30)
@@ -681,7 +809,7 @@ $leftArrowButton.Text = "<"
 $leftArrowButton.BackColor = [System.Drawing.Color]::Black
 $leftArrowButton.ForeColor = [System.Drawing.Color]::White
 $leftArrowButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$leftArrowButton.Font = New-Object System.Drawing.Font("ƒƒCƒŠƒI", 12, [System.Drawing.FontStyle]::Bold)
+$leftArrowButton.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 12, [System.Drawing.FontStyle]::Bold)
 $leftArrowButton.Add_Click({
     if ($script:currentPage -gt 0) {
         $script:currentPage--
@@ -690,7 +818,7 @@ $leftArrowButton.Add_Click({
 })
 $headerPanel.Controls.Add($leftArrowButton)
 
-# ‰E–îˆóƒ{ƒ^ƒ“
+# ï¿½Eï¿½ï¿½ï¿½{ï¿½^ï¿½ï¿½
 $rightArrowButton = New-Object System.Windows.Forms.Button
 $rightArrowButton.Location = New-Object System.Drawing.Point(740, 10)
 $rightArrowButton.Size = New-Object System.Drawing.Size(40, 30)
@@ -698,7 +826,7 @@ $rightArrowButton.Text = ">"
 $rightArrowButton.BackColor = [System.Drawing.Color]::Black
 $rightArrowButton.ForeColor = [System.Drawing.Color]::White
 $rightArrowButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$rightArrowButton.Font = New-Object System.Drawing.Font("ƒƒCƒŠƒI", 12, [System.Drawing.FontStyle]::Bold)
+$rightArrowButton.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 12, [System.Drawing.FontStyle]::Bold)
 $rightArrowButton.Add_Click({
     if ($script:currentPage -lt ($script:pages.Count - 1)) {
         $script:currentPage++
@@ -707,44 +835,44 @@ $rightArrowButton.Add_Click({
 })
 $headerPanel.Controls.Add($rightArrowButton)
 
-# ƒy[ƒWƒ‰ƒxƒ‹
+# ï¿½yï¿½[ï¿½Wï¿½ï¿½ï¿½xï¿½ï¿½
 $pageLabel = New-Object System.Windows.Forms.Label
 $pageLabel.Location = New-Object System.Drawing.Point(420, 10)
 $pageLabel.Size = New-Object System.Drawing.Size(150, 30)
-$pageLabel.Text = "ƒy[ƒW 1 / $($script:pages.Count)"
-$pageLabel.Font = New-Object System.Drawing.Font("ƒƒCƒŠƒI", 10)
+$pageLabel.Text = "ï¿½yï¿½[ï¿½W 1 / $($script:pages.Count)"
+$pageLabel.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 10)
 $pageLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $headerPanel.Controls.Add($pageLabel)
 $script:pageLabel = $pageLabel
 
-# •ÒWƒ‚[ƒhØ‚è‘Ö‚¦ƒ{ƒ^ƒ“
+# ï¿½ÒWï¿½ï¿½ï¿½[ï¿½hï¿½Ø‚ï¿½Ö‚ï¿½ï¿½{ï¿½^ï¿½ï¿½
 $editModeButton = New-Object System.Windows.Forms.Button
 $editModeButton.Location = New-Object System.Drawing.Point(580, 10)
 $editModeButton.Size = New-Object System.Drawing.Size(100, 30)
-$editModeButton.Text = "•ÒWƒ‚[ƒh OFF"
+$editModeButton.Text = "ï¿½ÒWï¿½ï¿½ï¿½[ï¿½h OFF"
 $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
 $editModeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $editModeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
 $editModeButton.FlatAppearance.BorderSize = 1
-$editModeButton.Font = New-Object System.Drawing.Font("ƒƒCƒŠƒI", 9)
+$editModeButton.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
 $editModeButton.Add_Click({
     $script:editMode = -not $script:editMode
     if ($script:editMode) {
-        $editModeButton.Text = "•ÒWƒ‚[ƒh ON"
+        $editModeButton.Text = "ï¿½ÒWï¿½ï¿½ï¿½[ï¿½h ON"
         $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
-        Write-Log "•ÒWƒ‚[ƒh‚ğ—LŒø‚É‚µ‚Ü‚µ‚½" "INFO"
+        Write-Log "ï¿½ÒWï¿½ï¿½ï¿½[ï¿½hï¿½ï¿½Lï¿½ï¿½ï¿½É‚ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½" "INFO"
     } else {
-        $editModeButton.Text = "•ÒWƒ‚[ƒh OFF"
+        $editModeButton.Text = "ï¿½ÒWï¿½ï¿½ï¿½[ï¿½h OFF"
         $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
-        Write-Log "•ÒWƒ‚[ƒh‚ğ–³Œø‚É‚µ‚Ü‚µ‚½" "INFO"
+        Write-Log "ï¿½ÒWï¿½ï¿½ï¿½[ï¿½hï¿½ğ–³Œï¿½ï¿½É‚ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½" "INFO"
     }
-    # ƒ{ƒ^ƒ“‚ÌƒeƒLƒXƒg‚ğXV
+    # ï¿½{ï¿½^ï¿½ï¿½ï¿½Ìƒeï¿½Lï¿½Xï¿½gï¿½ï¿½ï¿½Xï¿½V
     Update-ProcessControls
 })
 $headerPanel.Controls.Add($editModeButton)
 $script:editModeButton = $editModeButton
 
-# ƒvƒƒZƒX§ŒäƒGƒŠƒAi‰©F/ƒx[ƒWƒ…”wŒij
+# ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½ï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½Aï¿½iï¿½ï¿½ï¿½F/ï¿½xï¿½[ï¿½Wï¿½ï¿½ï¿½wï¿½iï¿½j
 $processPanel = New-Object System.Windows.Forms.Panel
 $processPanel.Location = New-Object System.Drawing.Point(0, 50)
 $processPanel.Size = New-Object System.Drawing.Size(800, 280)
@@ -752,10 +880,157 @@ $processPanel.BackColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
 $form.Controls.Add($processPanel)
 $script:processPanel = $processPanel
 
-# ƒƒO•\¦ƒGƒŠƒA
+# ï¿½ï¿½ï¿½Oï¿½\ï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½Aï¿½ÍŒï¿½Åì¬ï¿½iï¿½ï¿½ï¿½Oï¿½iï¿½[ï¿½ï¿½Ì‰ï¿½ï¿½É”zï¿½uï¿½j
+
+# ï¿½Úsï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½
+$sourceLabel = New-Object System.Windows.Forms.Label
+$sourceLabel.Location = New-Object System.Drawing.Point(10, 570)
+$sourceLabel.Size = New-Object System.Drawing.Size(200, 20)
+$sourceLabel.Text = "ï¿½Úsï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½"
+$sourceLabel.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
+$form.Controls.Add($sourceLabel)
+
+$sourceTextBox = New-Object System.Windows.Forms.TextBox
+$sourceTextBox.Location = New-Object System.Drawing.Point(10, 590)
+$sourceTextBox.Size = New-Object System.Drawing.Size(500, 25)
+$sourceTextBox.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
+$sourceTextBox.PlaceholderText = "ï¿½pï¿½X"
+$sourceTextBox.ReadOnly = $true
+$sourceTextBox.Add_Click({
+    if ($script:editMode) {
+        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $folderDialog.Description = "ï¿½Úsï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½ï¿½tï¿½Hï¿½ï¿½ï¿½_ï¿½ï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
+        $folderDialog.ShowNewFolderButton = $true
+        
+        # ï¿½ï¿½ï¿½İ‚Ìƒpï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½lï¿½Æ‚ï¿½ï¿½Äİ’ï¿½
+        if ($sourceTextBox.Text -and (Test-Path $sourceTextBox.Text)) {
+            $folderDialog.SelectedPath = $sourceTextBox.Text
+        } elseif (Test-Path $PSScriptRoot) {
+            $folderDialog.SelectedPath = $PSScriptRoot
+        }
+        
+        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $sourceTextBox.Text = $folderDialog.SelectedPath
+            Save-PagePath -PathType "MigrationSource" -Path $folderDialog.SelectedPath
+        }
+        $folderDialog.Dispose()
+    }
+})
+$form.Controls.Add($sourceTextBox)
+$script:sourceTextBox = $sourceTextBox
+
+# ï¿½Úsï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½
+$destLabel = New-Object System.Windows.Forms.Label
+$destLabel.Location = New-Object System.Drawing.Point(10, 625)
+$destLabel.Size = New-Object System.Drawing.Size(200, 20)
+$destLabel.Text = "ï¿½Úsï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½"
+$destLabel.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
+$form.Controls.Add($destLabel)
+
+$destTextBox = New-Object System.Windows.Forms.TextBox
+$destTextBox.Location = New-Object System.Drawing.Point(10, 645)
+$destTextBox.Size = New-Object System.Drawing.Size(500, 25)
+$destTextBox.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
+$destTextBox.PlaceholderText = "ï¿½pï¿½X"
+$destTextBox.ReadOnly = $true
+$destTextBox.Add_Click({
+    if ($script:editMode) {
+        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $folderDialog.Description = "ï¿½Úsï¿½fï¿½[ï¿½^ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½tï¿½Hï¿½ï¿½ï¿½_ï¿½ï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
+        $folderDialog.ShowNewFolderButton = $true
+        
+        # ï¿½ï¿½ï¿½İ‚Ìƒpï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½lï¿½Æ‚ï¿½ï¿½Äİ’ï¿½
+        if ($destTextBox.Text -and (Test-Path $destTextBox.Text)) {
+            $folderDialog.SelectedPath = $destTextBox.Text
+        } elseif (Test-Path $PSScriptRoot) {
+            $folderDialog.SelectedPath = $PSScriptRoot
+        }
+        
+        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $destTextBox.Text = $folderDialog.SelectedPath
+            Save-PagePath -PathType "MigrationDest" -Path $folderDialog.SelectedPath
+        }
+        $folderDialog.Dispose()
+    }
+})
+$form.Controls.Add($destTextBox)
+$script:destTextBox = $destTextBox
+
+$fileMoveButton = New-Object System.Windows.Forms.Button
+$fileMoveButton.Location = New-Object System.Drawing.Point(520, 645)
+$fileMoveButton.Size = New-Object System.Drawing.Size(90, 25)
+$fileMoveButton.Text = "ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½"
+$fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(173, 216, 230)
+$fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+$fileMoveButton.FlatAppearance.BorderSize = 1
+$fileMoveButton.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
+$fileMoveButton.Add_Click({
+    # ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Éï¿½ï¿½ï¿½
+    Write-Log "ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ú“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½" "INFO"
+})
+$form.Controls.Add($fileMoveButton)
+$script:fileMoveButton = $fileMoveButton
+
+# ï¿½ï¿½ï¿½Oï¿½iï¿½[ï¿½ï¿½
+$logStorageLabel = New-Object System.Windows.Forms.Label
+$logStorageLabel.Location = New-Object System.Drawing.Point(10, 680)
+$logStorageLabel.Size = New-Object System.Drawing.Size(200, 20)
+$logStorageLabel.Text = "ï¿½ï¿½ï¿½Oï¿½iï¿½[ï¿½ï¿½"
+$logStorageLabel.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
+$form.Controls.Add($logStorageLabel)
+
+$logStorageTextBox = New-Object System.Windows.Forms.TextBox
+$logStorageTextBox.Location = New-Object System.Drawing.Point(10, 700)
+$logStorageTextBox.Size = New-Object System.Drawing.Size(500, 25)
+$logStorageTextBox.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
+$logStorageTextBox.PlaceholderText = "ï¿½pï¿½X"
+$logStorageTextBox.ReadOnly = $true
+$logStorageTextBox.Add_Click({
+    if ($script:editMode) {
+        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $folderDialog.Description = "ï¿½ï¿½ï¿½Oï¿½iï¿½[ï¿½ï¿½tï¿½Hï¿½ï¿½ï¿½_ï¿½ï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
+        $folderDialog.ShowNewFolderButton = $true
+        
+        # ï¿½ï¿½ï¿½İ‚Ìƒpï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½lï¿½Æ‚ï¿½ï¿½Äİ’ï¿½
+        if ($logStorageTextBox.Text -and (Test-Path $logStorageTextBox.Text)) {
+            $folderDialog.SelectedPath = $logStorageTextBox.Text
+        } elseif (Test-Path $logDir) {
+            $folderDialog.SelectedPath = $logDir
+        } elseif (Test-Path $PSScriptRoot) {
+            $folderDialog.SelectedPath = $PSScriptRoot
+        }
+        
+        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $logStorageTextBox.Text = $folderDialog.SelectedPath
+            Save-PagePath -PathType "LogStorage" -Path $folderDialog.SelectedPath
+        }
+        $folderDialog.Dispose()
+    }
+})
+$form.Controls.Add($logStorageTextBox)
+$script:logStorageTextBox = $logStorageTextBox
+
+$logStoreButton = New-Object System.Windows.Forms.Button
+$logStoreButton.Location = New-Object System.Drawing.Point(520, 700)
+$logStoreButton.Size = New-Object System.Drawing.Size(90, 25)
+$logStoreButton.Text = "ï¿½ï¿½ï¿½Oï¿½iï¿½["
+$logStoreButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
+$logStoreButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$logStoreButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+$logStoreButton.FlatAppearance.BorderSize = 1
+$logStoreButton.Font = New-Object System.Drawing.Font("ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½I", 9)
+$logStoreButton.Add_Click({
+    # ï¿½ï¿½ï¿½Oï¿½iï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Éï¿½ï¿½ï¿½
+    Write-Log "ï¿½ï¿½ï¿½Oï¿½iï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½sï¿½ï¿½ï¿½Ü‚ï¿½" "INFO"
+})
+$form.Controls.Add($logStoreButton)
+$script:logStoreButton = $logStoreButton
+
+# ï¿½ï¿½ï¿½Oï¿½\ï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½Aï¿½iï¿½ï¿½ï¿½ï¿½ï¿½ÌƒRï¿½ï¿½ï¿½|ï¿½[ï¿½lï¿½ï¿½ï¿½gï¿½ï¿½ï¿½Ú“ï¿½ï¿½j
 $logTextBox = New-Object System.Windows.Forms.TextBox
-$logTextBox.Location = New-Object System.Drawing.Point(10, 340)
-$logTextBox.Size = New-Object System.Drawing.Size(780, 220)
+$logTextBox.Location = New-Object System.Drawing.Point(10, 755)
+$logTextBox.Size = New-Object System.Drawing.Size(780, 200)
 $logTextBox.Multiline = $true
 $logTextBox.ScrollBars = "Vertical"
 $logTextBox.ReadOnly = $true
@@ -764,15 +1039,15 @@ $logTextBox.BackColor = [System.Drawing.Color]::White
 $form.Controls.Add($logTextBox)
 $script:logTextBox = $logTextBox
 
-# ƒvƒƒZƒXƒRƒ“ƒgƒ[ƒ‹‚Ì‰Šú‰»
+# ï¿½vï¿½ï¿½ï¿½Zï¿½Xï¿½Rï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½Ìï¿½ï¿½ï¿½ï¿½ï¿½
 Update-ProcessControls
 
-# ‰ŠúƒƒbƒZ[ƒW
-Write-Log "ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ğ‹N“®‚µ‚Ü‚µ‚½" "INFO"
-Write-Log "İ’èƒtƒ@ƒCƒ‹: $configPath" "INFO"
-Write-Log "ƒy[ƒW”: $($script:pages.Count)" "INFO"
+# ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½bï¿½Zï¿½[ï¿½W
+Write-Log "ï¿½Aï¿½vï¿½ï¿½ï¿½Pï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½" "INFO"
+Write-Log "ï¿½İ’ï¿½tï¿½@ï¿½Cï¿½ï¿½: $configPath" "INFO"
+Write-Log "ï¿½yï¿½[ï¿½Wï¿½ï¿½: $($script:pages.Count)" "INFO"
 
-# ƒtƒH[ƒ€‚ğ•\¦
+# ï¿½tï¿½Hï¿½[ï¿½ï¿½ï¿½ï¿½\ï¿½ï¿½
 [System.Windows.Forms.Application]::EnableVisualStyles()
 $form.Add_Shown({$form.Activate()})
 [System.Windows.Forms.Application]::Run($form)
