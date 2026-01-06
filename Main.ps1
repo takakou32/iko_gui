@@ -755,6 +755,7 @@ function Update-ProcessControls {
     foreach ($ctrlGroup in $script:processControls) {
         if ($ctrlGroup) {
             $script:processPanel.Controls.Remove($ctrlGroup.NameTextBox)
+            $script:processPanel.Controls.Remove($ctrlGroup.FileMoveButton)
             $script:processPanel.Controls.Remove($ctrlGroup.ExecuteButton)
             $script:processPanel.Controls.Remove($ctrlGroup.LogButton)
         }
@@ -768,14 +769,14 @@ function Update-ProcessControls {
             $row = [Math]::Floor($i / 2)
             $col = $i % 2
             
-            # コントロールの位置計算
-            $x = [int](10 + $col * 390)
+            # コントロールの位置計算（列幅を440に拡大）
+            $x = [int](10 + $col * 440)
             $y = [int](10 + $row * 60)
             
             # テキストボックス（タスク名表示用）
             $nameTextBox = New-Object System.Windows.Forms.TextBox
             $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
-            $nameTextBox.Size = New-Object System.Drawing.Size(200, 40)
+            $nameTextBox.Size = New-Object System.Drawing.Size(140, 40)
             $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
             $nameTextBox.ReadOnly = $true
             $nameTextBox.BackColor = [System.Drawing.Color]::White
@@ -785,9 +786,28 @@ function Update-ProcessControls {
             $nameTextBox.Height = 40
             $script:processPanel.Controls.Add($nameTextBox)
             
+            # ファイル移動設定ボタン（水色）- 編集モードONの時のみ表示
+            $fileMoveButton = New-Object System.Windows.Forms.Button
+            $fileMoveX = [int]($x + 150)
+            $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
+            $fileMoveButton.Size = New-Object System.Drawing.Size(80, 40)
+            $fileMoveButton.Text = "移動設定"
+            $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(173, 216, 230)
+            $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+            $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+            $fileMoveButton.FlatAppearance.BorderSize = 1
+            $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+            $fileMoveButton.Visible = $script:editMode
+            $processIdx = $i
+            # ガワだけ作成（クリックイベントは空）
+            $fileMoveButton.Add_Click({
+                # TODO: ファイル移動設定の処理を実装
+            })
+            $script:processPanel.Controls.Add($fileMoveButton)
+            
             # 実行ボタン（オレンジ）
             $executeButton = New-Object System.Windows.Forms.Button
-            $executeX = [int]($x + 210)
+            $executeX = [int]($x + 240)
             $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
             $executeButton.Size = New-Object System.Drawing.Size(80, 40)
             if ($script:editMode) {
@@ -800,7 +820,6 @@ function Update-ProcessControls {
             $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
             $executeButton.FlatAppearance.BorderSize = 1
             $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-            $processIdx = $i
             $executeButton.Add_Click({
                 Start-ProcessFlow -ProcessIndex $processIdx
             })
@@ -808,7 +827,7 @@ function Update-ProcessControls {
             
             # ログ確認ボタン（緑）
             $logButton = New-Object System.Windows.Forms.Button
-            $logX = [int]($x + 300)
+            $logX = [int]($x + 330)
             $logButton.Location = New-Object System.Drawing.Point($logX, $y)
             $logButton.Size = New-Object System.Drawing.Size(80, 40)
             if ($script:editMode) {
@@ -828,6 +847,7 @@ function Update-ProcessControls {
             
             $script:processControls += @{
                 NameTextBox = $nameTextBox
+                FileMoveButton = $fileMoveButton
                 ExecuteButton = $executeButton
                 LogButton = $logButton
             }
@@ -841,6 +861,13 @@ function Update-ProcessControls {
     $pageTitle = if ($script:pages[$script:currentPage].Title) { $script:pages[$script:currentPage].Title } else { if ($config.Title) { $config.Title } else { "1.V1 移行ツール適用" } }
     $script:titleLabel.Text = $pageTitle
     
+    # 移動設定ボタンの表示/非表示を編集モードに応じて更新
+    foreach ($ctrlGroup in $script:processControls) {
+        if ($ctrlGroup -and $ctrlGroup.FileMoveButton) {
+            $ctrlGroup.FileMoveButton.Visible = $script:editMode
+        }
+    }
+    
     # ページパスの読み込み
     Load-PagePaths
 }
@@ -848,7 +875,7 @@ function Update-ProcessControls {
 # GUIフォームの作成
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "プロセス実行GUI"
-$form.Size = New-Object System.Drawing.Size(800, 900)
+$form.Size = New-Object System.Drawing.Size(900, 1000)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
@@ -857,7 +884,7 @@ $form.BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
 # ヘッダー部分（水色背景）
 $headerPanel = New-Object System.Windows.Forms.Panel
 $headerPanel.Location = New-Object System.Drawing.Point(0, 0)
-$headerPanel.Size = New-Object System.Drawing.Size(800, 50)
+$headerPanel.Size = New-Object System.Drawing.Size(900, 50)
 $headerPanel.BackColor = [System.Drawing.Color]::FromArgb(173, 216, 230)
 $form.Controls.Add($headerPanel)
 
@@ -944,15 +971,15 @@ $script:editModeButton = $editModeButton
 # プロセス制御エリア（黄色/ベージュ背景）
 $processPanel = New-Object System.Windows.Forms.Panel
 $processPanel.Location = New-Object System.Drawing.Point(0, 50)
-$processPanel.Size = New-Object System.Drawing.Size(800, 280)
+$processPanel.Size = New-Object System.Drawing.Size(900, 320)
 $processPanel.BackColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
 $form.Controls.Add($processPanel)
 $script:processPanel = $processPanel
 
 # ファイル移動セクション（黄色/ベージュ背景）
 $fileMovePanel = New-Object System.Windows.Forms.Panel
-$fileMovePanel.Location = New-Object System.Drawing.Point(0, 330)
-$fileMovePanel.Size = New-Object System.Drawing.Size(800, 120)
+$fileMovePanel.Location = New-Object System.Drawing.Point(0, 370)
+$fileMovePanel.Size = New-Object System.Drawing.Size(900, 120)
 $fileMovePanel.BackColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
 $form.Controls.Add($fileMovePanel)
 
@@ -1053,8 +1080,8 @@ $fileMovePanel.Controls.Add($fileMoveButton)
 
 # ログ格納セクション（黄色/ベージュ背景）
 $logStoragePanel = New-Object System.Windows.Forms.Panel
-$logStoragePanel.Location = New-Object System.Drawing.Point(0, 450)
-$logStoragePanel.Size = New-Object System.Drawing.Size(800, 80)
+$logStoragePanel.Location = New-Object System.Drawing.Point(0, 490)
+$logStoragePanel.Size = New-Object System.Drawing.Size(900, 80)
 $logStoragePanel.BackColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
 $form.Controls.Add($logStoragePanel)
 
@@ -1116,7 +1143,7 @@ $logStoragePanel.Controls.Add($logStorageButton)
 
 # ログ出力(全ファイル)ラベル
 $logOutputLabel = New-Object System.Windows.Forms.Label
-$logOutputLabel.Location = New-Object System.Drawing.Point(10, 540)
+$logOutputLabel.Location = New-Object System.Drawing.Point(10, 580)
 $logOutputLabel.Size = New-Object System.Drawing.Size(200, 20)
 $logOutputLabel.Text = "ログ出力(全ファイル)"
 $logOutputLabel.Font = New-Object System.Drawing.Font("メイリオ", 9)
@@ -1124,8 +1151,8 @@ $form.Controls.Add($logOutputLabel)
 
 # ログ表示エリア
 $logTextBox = New-Object System.Windows.Forms.TextBox
-$logTextBox.Location = New-Object System.Drawing.Point(10, 565)
-$logTextBox.Size = New-Object System.Drawing.Size(780, 220)
+$logTextBox.Location = New-Object System.Drawing.Point(10, 605)
+$logTextBox.Size = New-Object System.Drawing.Size(880, 220)
 $logTextBox.Multiline = $true
 $logTextBox.ScrollBars = "Vertical"
 $logTextBox.ReadOnly = $true
