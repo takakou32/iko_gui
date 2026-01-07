@@ -1,4 +1,8 @@
 ﻿{
+    "Title":  "3.java移行ツール実行",
+    "SourcePath":  "",
+    "DestinationPath":  "",
+    "LogStoragePath":  "",
     "Processes":  [
                       {
                           "Name":  "1.EB移行ツール適用（ページ2）",

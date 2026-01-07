@@ -1,4 +1,8 @@
 ﻿{
+    "Title":  "2.V2 移行ツール適用",
+    "SourcePath":  "",
+    "DestinationPath":  "",
+    "LogStoragePath":  "",
     "Processes":  [
                       {
                           "Name":  "1.EB移行ツール（ページ2）",

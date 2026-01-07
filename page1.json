@@ -1,4 +1,8 @@
 ﻿{
+    "Title":  "1.V1 移行ツール適用",
+    "SourcePath":  "C:\\work\\SpringSample",
+    "DestinationPath":  "C:\\work\\新しいフォルダー",
+    "LogStoragePath":  "C:\\work\\test",
     "Processes":  [
                       {
                           "Name":  "1.EB移行ツール適用",

@@ -335,8 +335,33 @@ function Load-PagePaths {
     
     $pageConfig = $script:pages[$script:currentPage]
     
+    # ページJSONファイルから設定を読み込む
+    $pageJsonPath = $null
+    if ($pageConfig.JsonPath) {
+        $pageJsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+            $pageConfig.JsonPath
+        } else {
+            Join-Path $PSScriptRoot $pageConfig.JsonPath
+        }
+    }
+    
+    $sourcePath = ""
+    $destPath = ""
+    $logStoragePath = ""
+    
+    # ページJSONファイルが存在する場合はそこから読み込む
+    if ($pageJsonPath -and (Test-Path $pageJsonPath)) {
+        try {
+            $pageJson = Get-Content $pageJsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+            $sourcePath = if ($pageJson.SourcePath) { $pageJson.SourcePath } else { "" }
+            $destPath = if ($pageJson.DestinationPath) { $pageJson.DestinationPath } else { "" }
+            $logStoragePath = if ($pageJson.LogStoragePath) { $pageJson.LogStoragePath } else { "" }
+        } catch {
+            Write-Log "ページJSONファイルの読み込みに失敗しました: $pageJsonPath - $($_.Exception.Message)" "ERROR"
+        }
+    }
+    
     # 移行データファイル移動元
-    $sourcePath = if ($pageConfig.SourcePath) { $pageConfig.SourcePath } else { "" }
     if ($sourcePath -and $sourcePath -ne "パス" -and $sourcePath -ne "") {
         # 相対パスの場合は絶対パスに変換
         try {
@@ -346,14 +371,13 @@ function Load-PagePaths {
             $sourcePath = [System.IO.Path]::GetFullPath($sourcePath)
             $script:sourcePathTextBox.Text = $sourcePath
         } catch {
-            $script:sourcePathTextBox.Text = if ($pageConfig.SourcePath) { $pageConfig.SourcePath } else { "パス" }
+            $script:sourcePathTextBox.Text = "パス"
         }
     } else {
         $script:sourcePathTextBox.Text = "パス"
     }
     
     # 移行データファイル移動先
-    $destPath = if ($pageConfig.DestinationPath) { $pageConfig.DestinationPath } else { "" }
     if ($destPath -and $destPath -ne "パス" -and $destPath -ne "") {
         # 相対パスの場合は絶対パスに変換
         try {
@@ -363,14 +387,13 @@ function Load-PagePaths {
             $destPath = [System.IO.Path]::GetFullPath($destPath)
             $script:destPathTextBox.Text = $destPath
         } catch {
-            $script:destPathTextBox.Text = if ($pageConfig.DestinationPath) { $pageConfig.DestinationPath } else { "パス" }
+            $script:destPathTextBox.Text = "パス"
         }
     } else {
         $script:destPathTextBox.Text = "パス"
     }
     
     # ログ格納先
-    $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
     if ($logStoragePath -and $logStoragePath -ne "パス" -and $logStoragePath -ne "") {
         # 相対パスの場合は絶対パスに変換
         try {
@@ -380,7 +403,7 @@ function Load-PagePaths {
             $logStoragePath = [System.IO.Path]::GetFullPath($logStoragePath)
             $script:logStoragePathTextBox.Text = $logStoragePath
         } catch {
-            $script:logStoragePathTextBox.Text = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "パス" }
+            $script:logStoragePathTextBox.Text = "パス"
         }
     } else {
         $script:logStoragePathTextBox.Text = "パス"
@@ -400,21 +423,28 @@ function Save-PagePaths {
         return $false
     }
     
-    # config.jsonを再読み込み
-    if (-not (Test-Path $configPath)) {
-        Write-Log "設定ファイルが見つかりません: $configPath" "ERROR"
+    $pageConfig = $script:pages[$script:currentPage]
+    
+    # ページJSONファイルのパスを取得
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN"
+        return $false
+    }
+    
+    $pageJsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $pageJsonPath)) {
+        Write-Log "ページJSONファイルが見つかりません: $pageJsonPath" "ERROR"
         return $false
     }
     
     try {
-        $configContent = Get-Content $configPath -Encoding UTF8 -Raw | ConvertFrom-Json
-        
-        if (-not $configContent.Pages -or $script:currentPage -ge $configContent.Pages.Count) {
-            Write-Log "ページインデックスが範囲外です" "ERROR"
-            return $false
-        }
-        
-        $pageConfig = $configContent.Pages[$script:currentPage]
+        # ページJSONファイルを読み込む
+        $pageJson = Get-Content $pageJsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
         
         # 相対パスに変換（可能な場合）
         if ($SourcePath) {
@@ -434,7 +464,7 @@ function Save-PagePaths {
             } catch {
                 $SourcePath
             }
-            $pageConfig.SourcePath = $relativeSourcePath
+            $pageJson.SourcePath = $relativeSourcePath
         }
         
         if ($DestinationPath) {
@@ -454,7 +484,7 @@ function Save-PagePaths {
             } catch {
                 $DestinationPath
             }
-            $pageConfig.DestinationPath = $relativeDestPath
+            $pageJson.DestinationPath = $relativeDestPath
         }
         
         if ($LogStoragePath) {
@@ -474,21 +504,16 @@ function Save-PagePaths {
             } catch {
                 $LogStoragePath
             }
-            $pageConfig.LogStoragePath = $relativeLogPath
+            $pageJson.LogStoragePath = $relativeLogPath
         }
         
-        # config.jsonに保存
-        $configContent | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
+        # ページJSONファイルに保存
+        $pageJson | ConvertTo-Json -Depth 10 | Set-Content $pageJsonPath -Encoding UTF8
         
-        # メモリ上のpagesも更新
-        $script:pages[$script:currentPage].SourcePath = if ($SourcePath) { $pageConfig.SourcePath } else { $script:pages[$script:currentPage].SourcePath }
-        $script:pages[$script:currentPage].DestinationPath = if ($DestinationPath) { $pageConfig.DestinationPath } else { $script:pages[$script:currentPage].DestinationPath }
-        $script:pages[$script:currentPage].LogStoragePath = if ($LogStoragePath) { $pageConfig.LogStoragePath } else { $script:pages[$script:currentPage].LogStoragePath }
-        
-        Write-Log "ページパスを保存しました" "INFO"
+        Write-Log "ページパスを保存しました: $pageJsonPath" "INFO"
         return $true
     } catch {
-        Write-Log "設定ファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR"
+        Write-Log "ページJSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR"
         return $false
     }
 }
@@ -923,8 +948,30 @@ function Update-ProcessControls {
     # ページ情報の更新
     $script:pageLabel.Text = "ページ $($script:currentPage + 1) / $totalPages"
     
-    # タイトルの更新
-    $pageTitle = if ($script:pages[$script:currentPage].Title) { $script:pages[$script:currentPage].Title } else { if ($config.Title) { $config.Title } else { "1.V1 移行ツール適用" } }
+    # タイトルの更新（ページJSONから読み込む）
+    $pageTitle = ""
+    $pageConfig = $script:pages[$script:currentPage]
+    if ($pageConfig.JsonPath) {
+        $pageJsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+            $pageConfig.JsonPath
+        } else {
+            Join-Path $PSScriptRoot $pageConfig.JsonPath
+        }
+        if (Test-Path $pageJsonPath) {
+            try {
+                $pageJson = Get-Content $pageJsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+                if ($pageJson.Title) {
+                    $pageTitle = $pageJson.Title
+                }
+            } catch {
+                # エラー時は後続のフォールバック処理に任せる
+            }
+        }
+    }
+    # フォールバック: ページJSONにTitleがない場合は、config.jsonまたはデフォルト値を使用
+    if (-not $pageTitle) {
+        $pageTitle = if ($pageConfig.Title) { $pageConfig.Title } else { if ($config.Title) { $config.Title } else { "1.V1 移行ツール適用" } }
+    }
     $script:titleLabel.Text = $pageTitle
     
     # 移動設定ボタンの表示/非表示を編集モードに応じて更新
@@ -958,7 +1005,35 @@ $form.Controls.Add($headerPanel)
 $titleLabel = New-Object System.Windows.Forms.Label
 $titleLabel.Location = New-Object System.Drawing.Point(10, 10)
 $titleLabel.Size = New-Object System.Drawing.Size(400, 30)
-$titleLabel.Text = if ($script:pages.Count -gt 0 -and $script:pages[0].Title) { $script:pages[0].Title } else { if ($config.Title) { $config.Title } else { "1.V1 移行ツール適用" } }
+# 初期タイトルの設定（ページJSONから読み込む）
+$initialPageTitle = ""
+if ($script:pages.Count -gt 0) {
+    $initialPageConfig = $script:pages[0]
+    if ($initialPageConfig.JsonPath) {
+        $initialPageJsonPath = if ([System.IO.Path]::IsPathRooted($initialPageConfig.JsonPath)) {
+            $initialPageConfig.JsonPath
+        } else {
+            Join-Path $PSScriptRoot $initialPageConfig.JsonPath
+        }
+        if (Test-Path $initialPageJsonPath) {
+            try {
+                $initialPageJson = Get-Content $initialPageJsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+                if ($initialPageJson.Title) {
+                    $initialPageTitle = $initialPageJson.Title
+                }
+            } catch {
+                # エラー時は後続のフォールバック処理に任せる
+            }
+        }
+    }
+    # フォールバック
+    if (-not $initialPageTitle) {
+        $initialPageTitle = if ($initialPageConfig.Title) { $initialPageConfig.Title } else { if ($config.Title) { $config.Title } else { "1.V1 移行ツール適用" } }
+    }
+} else {
+    $initialPageTitle = if ($config.Title) { $config.Title } else { "1.V1 移行ツール適用" }
+}
+$titleLabel.Text = $initialPageTitle
 $titleLabel.Font = New-Object System.Drawing.Font("メイリオ", 12, [System.Drawing.FontStyle]::Bold)
 $headerPanel.Controls.Add($titleLabel)
 $script:titleLabel = $titleLabel
