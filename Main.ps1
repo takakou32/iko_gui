@@ -206,46 +206,6 @@ function Invoke-BatchFile {
     }
 }
 
-# CSVファイル移動関数
-function Move-CsvFiles {
-    param(
-        [string]$SourcePath,
-        [string]$DestinationPath,
-        [int]$ProcessIndex
-    )
-    
-    if (-not (Test-Path $SourcePath)) {
-        Write-Log "ソースパスが見つかりません: $SourcePath" "ERROR" $ProcessIndex
-        return $false
-    }
-    
-    if (-not (Test-Path $DestinationPath)) {
-        Write-Log "移動先ディレクトリを作成します: $DestinationPath" "INFO" $ProcessIndex
-        New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
-    }
-    
-    try {
-        $csvFiles = Get-ChildItem -Path $SourcePath -Filter "*.csv" -File
-        
-        if ($csvFiles.Count -eq 0) {
-            Write-Log "CSVファイルが見つかりません: $SourcePath" "WARN" $ProcessIndex
-            return $false
-        }
-        
-        foreach ($file in $csvFiles) {
-            $destFile = Join-Path $DestinationPath $file.Name
-            Move-Item -Path $file.FullName -Destination $destFile -Force
-            Write-Log "CSVファイルを移動しました: $($file.Name) -> $DestinationPath" "INFO" $ProcessIndex
-        }
-        
-        Write-Log "CSVファイルの移動が完了しました (移動数: $($csvFiles.Count))" "INFO" $ProcessIndex
-        return $true
-    } catch {
-        Write-Log "CSVファイルの移動中にエラーが発生しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
-        return $false
-    }
-}
-
 # バッチファイルパス保存関数
 function Save-BatchFilePath {
     param([int]$ProcessIndex, [string]$BatchFilePath, [int]$BatchIndex = 0)
@@ -607,27 +567,6 @@ function Start-ProcessFlow {
         }
     }
     
-    # CSVファイルの移動
-    if ($processConfig.CsvMoveOperations) {
-        foreach ($csvOp in $processConfig.CsvMoveOperations) {
-            $sourcePath = if ([System.IO.Path]::IsPathRooted($csvOp.Source)) {
-                $csvOp.Source
-            } else {
-                Join-Path $PSScriptRoot $csvOp.Source
-            }
-            
-            $destPath = if ([System.IO.Path]::IsPathRooted($csvOp.Destination)) {
-                $csvOp.Destination
-            } else {
-                Join-Path $PSScriptRoot $csvOp.Destination
-            }
-            
-            $result = Move-CsvFiles -SourcePath $sourcePath -DestinationPath $destPath -ProcessIndex $ProcessIndex
-            if (-not $result) {
-                $allSuccess = $false
-            }
-        }
-    }
     
     if ($allSuccess) {
         Write-Log "プロセスが正常に完了しました: $($processConfig.Name)" "INFO" $ProcessIndex
@@ -650,18 +589,10 @@ function Show-FileMoveSettingsDialog {
     }
     
     $processConfig = $currentProcesses[$ProcessIndex]
-    
-    # 既存のCsvMoveOperationsをテキスト形式に変換（デフォルト）
+    [System.Windows.Forms.MessageBox]::Show("デバッグProcessName: $ProcessName")
+    # movefiles フォルダのファイルを読み込み
     $initialText = ""
-    if ($processConfig.CsvMoveOperations -and $processConfig.CsvMoveOperations.Count -gt 0) {
-        $lines = @()
-        foreach ($csvOp in $processConfig.CsvMoveOperations) {
-            $lines += "$($csvOp.Source)|$($csvOp.Destination)"
-        }
-        $initialText = $lines -join "`r`n"
-    }
-    # movefiles フォルダのファイルがあればそれを優先して読み込み
-    $fileNameRaw = if ($processConfig.Name) { $processConfig.Name } elseif ($ProcessName) { $ProcessName } else { "" }
+    $fileNameRaw = if ($processConfig.Name) { $processConfig.Name } elseif ($ProcessName) { $ProcessName } else { "" }   
     $fileNameRaw = $fileNameRaw.Trim()
     if (-not $fileNameRaw) {
         $fileNameRaw = "process_${script:currentPage + 1}_${ProcessIndex + 1}"
@@ -674,7 +605,7 @@ function Show-FileMoveSettingsDialog {
             try {
                 $initialText = Get-Content -Path $candidatePath -Encoding UTF8 -Raw
             } catch {
-                Write-Log "移動設定ファイルの読み込みに失敗しました: $candidatePath - $($_.Exception.Message)" "WARN" $ProcessIndex
+                # ファイル読み込みエラーは無視
             }
         }
     }
@@ -742,7 +673,8 @@ function Show-FileMoveSettingsDialog {
     
     if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
         # テキストをファイルに保存（movefiles フォルダ）
-        $fileNameRaw = if ($processConfig.Name) { $processConfig.Name } elseif ($ProcessName) { $ProcessName } else { "" }
+        # ボタン左隣のテキストボックス内の文字列（ProcessName）をファイル名として使用
+        $fileNameRaw = if ($ProcessName) { $ProcessName } else { "" }
         $fileNameRaw = $fileNameRaw.Trim()
         if (-not $fileNameRaw) {
             # 空の場合はページ・インデックスで代替
@@ -756,52 +688,7 @@ function Show-FileMoveSettingsDialog {
         }
         $moveFilePath = Join-Path $moveFilesDir ($safeFileName + ".txt")
         Set-Content -Path $moveFilePath -Value $textBox.Text -Encoding UTF8
-        
-        # テキストを解析してCsvMoveOperationsに変換
-        $csvMoveOperations = @()
-        $lines = $textBox.Text -split "`r`n|`n" | Where-Object { $_.Trim() -ne "" }
-        
-        foreach ($line in $lines) {
-            $line = $line.Trim()
-            if ($line -match '^(.+?)\|(.+)$') {
-                $source = $matches[1].Trim()
-                $destination = $matches[2].Trim()
-                if ($source -and $destination) {
-                    $csvMoveOperations += @{
-                        Source = $source
-                        Destination = $destination
-                    }
-                }
-            }
-        }
-        
-        # JSONファイルに保存
-        $pageConfig = $script:pages[$script:currentPage]
-        if ($pageConfig.JsonPath) {
-            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
-                $pageConfig.JsonPath
-            } else {
-                Join-Path $PSScriptRoot $pageConfig.JsonPath
-            }
-            
-            if (Test-Path $jsonPath) {
-                try {
-                    $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
-                    if ($jsonContent.Processes -and $ProcessIndex -lt $jsonContent.Processes.Count) {
-                        $process = $jsonContent.Processes[$ProcessIndex]
-                        $process.CsvMoveOperations = $csvMoveOperations
-                        
-                        # JSONファイルに保存
-                        $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
-                        Write-Log "ファイル移動設定を保存しました: $($processConfig.Name)" "INFO" $ProcessIndex
-                        [System.Windows.Forms.MessageBox]::Show("ファイル移動設定を保存しました。", "保存完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                    }
-                } catch {
-                    Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
-                    [System.Windows.Forms.MessageBox]::Show("保存に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-                }
-            }
-        }
+        [System.Windows.Forms.MessageBox]::Show("ファイル移動設定を保存しました。", "保存完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
     }
     
     $dialogForm.Dispose()
@@ -967,10 +854,20 @@ function Update-ProcessControls {
             $fileMoveButton.FlatAppearance.BorderSize = 1
             $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
             $fileMoveButton.Visible = $script:editMode
-            $processIdx = $i
-            $processNameText = $nameTextBox.Text
+            # ボタンのTagプロパティにインデックスを保存（クロージャーの問題を回避）
+            $fileMoveButton.Tag = $i
             $fileMoveButton.Add_Click({
-                Show-FileMoveSettingsDialog -ProcessIndex $processIdx -ProcessName $processNameText
+                # クリック時にボタンのTagからインデックスを取得
+                $clickedProcessIdx = $this.Tag
+                # processControls配列から該当するNameTextBoxを取得
+                $currentProcessName = ""
+                if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                    $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                    if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                        $currentProcessName = $ctrlGroup.NameTextBox.Text
+                    }
+                }
+                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
             })
             $script:processPanel.Controls.Add($fileMoveButton)
             
