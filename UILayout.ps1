@@ -12,12 +12,13 @@ $form.MaximizeBox = $false
 $form.BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
 $script:form = $form
 
-# ヘッダー部分（水色背景）
+# ヘッダー部分（水色背景、3ページ目は緑色）
 $headerPanel = New-Object System.Windows.Forms.Panel
 $headerPanel.Location = New-Object System.Drawing.Point(0, 0)
 $headerPanel.Size = New-Object System.Drawing.Size(900, 50)
 $headerPanel.BackColor = [System.Drawing.Color]::FromArgb(173, 216, 230)
 $form.Controls.Add($headerPanel)
+$script:headerPanel = $headerPanel
 
 # タイトルラベル
 $titleLabel = New-Object System.Windows.Forms.Label

@@ -789,20 +789,83 @@ function Update-ProcessControls {
     
     Write-Log "ページ $($script:currentPage + 1) のプロセスを読み込みました (プロセス数: $($currentProcesses.Count))" "INFO"
     
-    # 既存のコントロールをクリア
+    # 既存のコントロールをすべてクリア（processPanel内のすべてのコントロールを削除）
+    # まず、processControls配列に保存されているコントロールを削除
     foreach ($ctrlGroup in $script:processControls) {
         if ($ctrlGroup) {
-            $script:processPanel.Controls.Remove($ctrlGroup.NameTextBox)
-            $script:processPanel.Controls.Remove($ctrlGroup.FileMoveButton)
-            $script:processPanel.Controls.Remove($ctrlGroup.ExecuteButton)
-            $script:processPanel.Controls.Remove($ctrlGroup.LogButton)
+            if ($ctrlGroup.NameTextBox) { $script:processPanel.Controls.Remove($ctrlGroup.NameTextBox) }
+            if ($ctrlGroup.PathTextBox) { $script:processPanel.Controls.Remove($ctrlGroup.PathTextBox) }
+            if ($ctrlGroup.KdlSourceTextBox) { $script:processPanel.Controls.Remove($ctrlGroup.KdlSourceTextBox) }
+            if ($ctrlGroup.KdlSourceMoveButton) { $script:processPanel.Controls.Remove($ctrlGroup.KdlSourceMoveButton) }
+            if ($ctrlGroup.KdlDestTextBox) { $script:processPanel.Controls.Remove($ctrlGroup.KdlDestTextBox) }
+            if ($ctrlGroup.KdlDestMoveButton) { $script:processPanel.Controls.Remove($ctrlGroup.KdlDestMoveButton) }
+            if ($ctrlGroup.V1CsvDestTextBox) { $script:processPanel.Controls.Remove($ctrlGroup.V1CsvDestTextBox) }
+            if ($ctrlGroup.V1CsvDestMoveButton) { $script:processPanel.Controls.Remove($ctrlGroup.V1CsvDestMoveButton) }
+            if ($ctrlGroup.KdlImportButton) { $script:processPanel.Controls.Remove($ctrlGroup.KdlImportButton) }
+            if ($ctrlGroup.DirectImportButton) { $script:processPanel.Controls.Remove($ctrlGroup.DirectImportButton) }
+            if ($ctrlGroup.AfterImportButton) { $script:processPanel.Controls.Remove($ctrlGroup.AfterImportButton) }
+            if ($ctrlGroup.FileMoveButton) { $script:processPanel.Controls.Remove($ctrlGroup.FileMoveButton) }
+            if ($ctrlGroup.CsvConvertButton) { $script:processPanel.Controls.Remove($ctrlGroup.CsvConvertButton) }
+            if ($ctrlGroup.ExecuteButton) { $script:processPanel.Controls.Remove($ctrlGroup.ExecuteButton) }
+            if ($ctrlGroup.LogButton) { $script:processPanel.Controls.Remove($ctrlGroup.LogButton) }
         }
     }
     $script:processControls = @()
     
-    # 1ページ目または2ページ目かどうかを判定（drawioのレイアウトを適用）
+    # 3ページ目・4ページ目の場合、V1抽出CSV格納元・格納先セクションをクリア
+    if ($script:currentPage -eq 2 -or $script:currentPage -eq 3) {
+        if ($script:v1CsvSourceLabel) { 
+            $script:processPanel.Controls.Remove($script:v1CsvSourceLabel)
+            $script:v1CsvSourceLabel = $null
+        }
+        if ($script:v1CsvSourceTextBox) { 
+            $script:processPanel.Controls.Remove($script:v1CsvSourceTextBox)
+            $script:v1CsvSourceTextBox = $null
+        }
+        if ($script:v1CsvDestLabel) { 
+            $script:processPanel.Controls.Remove($script:v1CsvDestLabel)
+            $script:v1CsvDestLabel = $null
+        }
+    }
+    
+    # 4ページ目の場合、V1抽出CSV格納元セクションをクリア（既に処理済みの場合はスキップ）
+    if ($script:currentPage -eq 3) {
+        if ($script:v1CsvSourceLabel) { 
+            $script:processPanel.Controls.Remove($script:v1CsvSourceLabel)
+            $script:v1CsvSourceLabel = $null
+        }
+        if ($script:v1CsvSourceTextBox) { 
+            $script:processPanel.Controls.Remove($script:v1CsvSourceTextBox)
+            $script:v1CsvSourceTextBox = $null
+        }
+    }
+    
+    # processPanel内の残っているすべてのコントロールを削除
+    # コレクションを反復処理しながら削除すると問題が起きるため、一度配列にコピーしてから削除
+    $controlsToRemove = @()
+    foreach ($control in $script:processPanel.Controls) {
+        $controlsToRemove += $control
+    }
+    foreach ($control in $controlsToRemove) {
+        try {
+            $script:processPanel.Controls.Remove($control)
+            if ($control -is [System.IDisposable]) {
+                $control.Dispose()
+            }
+        } catch {
+            # エラーは無視（既に削除されている可能性がある）
+        }
+    }
+    
+    # 念のため、processPanel.Controlsをクリア（すべてのコントロールを削除）
+    # これにより、前のページのコントロールが確実に削除される
+    $script:processPanel.Controls.Clear()
+    
+    # ページ番号を判定（drawioのレイアウトを適用）
     $isPage1 = ($script:currentPage -eq 0)
     $isPage2 = ($script:currentPage -eq 1)
+    $isPage3 = ($script:currentPage -eq 2)
+    $isPage4 = ($script:currentPage -eq 3)
     $useDrawioLayout = ($isPage1 -or $isPage2)
     
     # 新しいコントロールを作成
@@ -900,8 +963,619 @@ function Update-ProcessControls {
                     Show-ProcessLog -ProcessIndex $processIdx
                 })
                 $script:processPanel.Controls.Add($logButton)
+                
+                # 1ページ目・2ページ目用のコントロール情報を保存
+                $script:processControls += @{
+                    NameTextBox = $nameTextBox
+                    FileMoveButton = $fileMoveButton
+                    ExecuteButton = $executeButton
+                    LogButton = $logButton
+                }
+            } elseif ($isPage3) {
+                # 3ページ目：JAVA移行ツール実行のレイアウト
+                # 最初の行の場合のみ、V1抽出CSV格納元・格納先セクションを表示
+                if ($i -eq 0) {
+                    # V1抽出CSV格納元ラベル
+                    $v1CsvSourceLabel = New-Object System.Windows.Forms.Label
+                    $v1CsvSourceLabel.Location = New-Object System.Drawing.Point(60, 60)
+                    $v1CsvSourceLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $v1CsvSourceLabel.Text = "V1抽出CSV格納元"
+                    $v1CsvSourceLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($v1CsvSourceLabel)
+                    $script:v1CsvSourceLabel = $v1CsvSourceLabel
+                    
+                    # V1抽出CSV格納元パス入力
+                    $v1CsvSourceTextBox = New-Object System.Windows.Forms.TextBox
+                    $v1CsvSourceTextBox.Location = New-Object System.Drawing.Point(60, 85)
+                    $v1CsvSourceTextBox.Size = New-Object System.Drawing.Size(350, 30)
+                    $v1CsvSourceTextBox.Text = "パス"
+                    $v1CsvSourceTextBox.ReadOnly = $true
+                    $v1CsvSourceTextBox.BackColor = [System.Drawing.Color]::White
+                    $v1CsvSourceTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $v1CsvSourceTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $v1CsvSourceTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $v1CsvSourceTextBox.Add_Click({
+                        if ($script:editMode) {
+                            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                            $folderDialog.Description = "V1抽出CSV格納元フォルダを選択してください"
+                            $folderDialog.ShowNewFolderButton = $true
+                            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $v1CsvSourceTextBox.Text = $folderDialog.SelectedPath
+                            }
+                            $folderDialog.Dispose()
+                        }
+                    })
+                    $script:processPanel.Controls.Add($v1CsvSourceTextBox)
+                    $script:v1CsvSourceTextBox = $v1CsvSourceTextBox
+                    
+                    # V1抽出CSV格納先ラベル
+                    $v1CsvDestLabel = New-Object System.Windows.Forms.Label
+                    $v1CsvDestLabel.Location = New-Object System.Drawing.Point(210, 135)
+                    $v1CsvDestLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $v1CsvDestLabel.Text = "V1抽出CSV格納先"
+                    $v1CsvDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($v1CsvDestLabel)
+                    $script:v1CsvDestLabel = $v1CsvDestLabel
+                }
+                
+                # drawioの座標: タスク名(60, 210+), パス(210, 210+), 移動設定(440, 210+), CSV名変換(520, 210+), 実行(610, 210+), ログ確認(680, 210+)
+                # プロセスパネルのy座標は50なので、実際のy座標は160から（210-50=160）
+                $x = 60
+                $y = 160 + $row * 40
+                
+                # テキストボックス（タスク名表示用）
+                $nameTextBox = New-Object System.Windows.Forms.TextBox
+                $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
+                $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
+                $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
+                $nameTextBox.ReadOnly = $true
+                $nameTextBox.BackColor = [System.Drawing.Color]::White
+                $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $nameTextBox.Multiline = $false
+                $nameTextBox.Height = 30
+                $script:processPanel.Controls.Add($nameTextBox)
+                
+                # パス入力テキストボックス（V1抽出CSV格納先）
+                $pathTextBox = New-Object System.Windows.Forms.TextBox
+                $pathX = 210
+                $pathTextBox.Location = New-Object System.Drawing.Point($pathX, $y)
+                $pathTextBox.Size = New-Object System.Drawing.Size(220, 30)
+                $pathTextBox.Text = "パス"
+                $pathTextBox.ReadOnly = $true
+                $pathTextBox.BackColor = [System.Drawing.Color]::White
+                $pathTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                $pathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $pathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                $pathTextBox.Add_Click({
+                    if ($script:editMode) {
+                        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                        $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
+                        $folderDialog.ShowNewFolderButton = $true
+                        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                            $pathTextBox.Text = $folderDialog.SelectedPath
+                        }
+                        $folderDialog.Dispose()
+                    }
+                })
+                $script:processPanel.Controls.Add($pathTextBox)
+                
+                # 移動設定ボタン（水色）
+                $fileMoveButton = New-Object System.Windows.Forms.Button
+                $fileMoveX = 440
+                $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
+                $fileMoveButton.Size = New-Object System.Drawing.Size(70, 30)
+                $fileMoveButton.Text = "移動設定"
+                $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                $fileMoveButton.FlatAppearance.BorderSize = 1
+                $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $fileMoveButton.Visible = $script:editMode
+                $fileMoveButton.Tag = $i
+                $fileMoveButton.Add_Click({
+                    $clickedProcessIdx = $this.Tag
+                    $currentProcessName = ""
+                    if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                        $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                        if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                            $currentProcessName = $ctrlGroup.NameTextBox.Text
+                        }
+                    }
+                    Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                })
+                $script:processPanel.Controls.Add($fileMoveButton)
+                
+                # CSV名変換ボタン（赤色）- 機能は未実装のため、見た目のみ
+                $csvConvertButton = New-Object System.Windows.Forms.Button
+                $csvConvertX = 520
+                $csvConvertButton.Location = New-Object System.Drawing.Point($csvConvertX, $y)
+                $csvConvertButton.Size = New-Object System.Drawing.Size(80, 30)
+                $csvConvertButton.Text = "CSV名変換"
+                $csvConvertButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
+                $csvConvertButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                $csvConvertButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
+                $csvConvertButton.FlatAppearance.BorderSize = 1
+                $csvConvertButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $csvConvertButton.Enabled = $false  # 機能未実装
+                $script:processPanel.Controls.Add($csvConvertButton)
+                
+                # 実行ボタン（オレンジ）
+                $executeButton = New-Object System.Windows.Forms.Button
+                $executeX = 610
+                $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
+                $executeButton.Size = New-Object System.Drawing.Size(60, 30)
+                if ($script:editMode) {
+                    $executeButton.Text = "参照"
+                } else {
+                    $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
+                }
+                $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
+                $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
+                $executeButton.FlatAppearance.BorderSize = 1
+                $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $processIdx = $i
+                $executeButton.Add_Click({
+                    Start-ProcessFlow -ProcessIndex $processIdx
+                })
+                $script:processPanel.Controls.Add($executeButton)
+                
+                # ログ確認ボタン（緑）
+                $logButton = New-Object System.Windows.Forms.Button
+                $logX = 680
+                $logButton.Location = New-Object System.Drawing.Point($logX, $y)
+                $logButton.Size = New-Object System.Drawing.Size(70, 30)
+                if ($script:editMode) {
+                    $logButton.Text = "参照"
+                } else {
+                    $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
+                }
+                $logButton.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
+                $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
+                $logButton.FlatAppearance.BorderSize = 1
+                $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $processIdx = $i
+                $logButton.Add_Click({
+                    Show-ProcessLog -ProcessIndex $processIdx
+                })
+                $script:processPanel.Controls.Add($logButton)
+                
+                # 3ページ目用のコントロール情報を保存
+                $script:processControls += @{
+                    NameTextBox = $nameTextBox
+                    PathTextBox = $pathTextBox
+                    FileMoveButton = $fileMoveButton
+                    CsvConvertButton = $csvConvertButton
+                    ExecuteButton = $executeButton
+                    LogButton = $logButton
+                }
+            } elseif ($isPage4) {
+                # 4ページ目：SQLLOADER実行のレイアウト
+                # drawioの座標を参考に、プロセスパネルのy座標50を考慮
+                # 1行目: タスク名(30, 190)、KDL変換CSV格納元(170, 190)、KDL変換CSV格納先(510, 190)、V1抽出CSV格納先(510, 245)
+                # ボタン: KDL取込(430, 290)、直接取込(530, 290)、取込後(630, 290)、ログ確認(730, 290)
+                # プロセスパネルのy座標は50なので、実際のy座標は140から（190-50=140）
+                
+                if ($i -eq 0) {
+                    # 最初の行の場合のみ、V1抽出CSV格納元セクションを表示
+                    # V1抽出CSV格納元ラベル
+                    $v1CsvSourceLabel = New-Object System.Windows.Forms.Label
+                    $v1CsvSourceLabel.Location = New-Object System.Drawing.Point(10, 30)
+                    $v1CsvSourceLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $v1CsvSourceLabel.Text = "V1抽出CSV格納元"
+                    $v1CsvSourceLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($v1CsvSourceLabel)
+                    $script:v1CsvSourceLabel = $v1CsvSourceLabel
+                    
+                    # V1抽出CSV格納元パス入力
+                    $v1CsvSourceTextBox = New-Object System.Windows.Forms.TextBox
+                    $v1CsvSourceTextBox.Location = New-Object System.Drawing.Point(10, 50)
+                    $v1CsvSourceTextBox.Size = New-Object System.Drawing.Size(360, 30)
+                    $v1CsvSourceTextBox.Text = "パス"
+                    $v1CsvSourceTextBox.ReadOnly = $true
+                    $v1CsvSourceTextBox.BackColor = [System.Drawing.Color]::White
+                    $v1CsvSourceTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $v1CsvSourceTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $v1CsvSourceTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $v1CsvSourceTextBox.Add_Click({
+                        if ($script:editMode) {
+                            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                            $folderDialog.Description = "V1抽出CSV格納元フォルダを選択してください"
+                            $folderDialog.ShowNewFolderButton = $true
+                            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $v1CsvSourceTextBox.Text = $folderDialog.SelectedPath
+                            }
+                            $folderDialog.Dispose()
+                        }
+                    })
+                    $script:processPanel.Controls.Add($v1CsvSourceTextBox)
+                    $script:v1CsvSourceTextBox = $v1CsvSourceTextBox
+                }
+                
+                # プロセス行のレイアウト（行ごとに異なる）
+                $x = 10
+                $y = [int](140 + $row * 180)  # 行間隔を180pxに設定
+                
+                # タスク名
+                $nameTextBox = New-Object System.Windows.Forms.TextBox
+                $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
+                $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
+                $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
+                $nameTextBox.ReadOnly = $true
+                $nameTextBox.BackColor = [System.Drawing.Color]::White
+                $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $nameTextBox.Multiline = $false
+                $nameTextBox.Height = 30
+                $script:processPanel.Controls.Add($nameTextBox)
+                
+                # 1行目と2行目はKDL変換CSV格納元・格納先、V1抽出CSV格納先がある
+                if ($i -lt 2) {
+                    # KDL変換CSV格納元ラベル
+                    $kdlSourceLabel = New-Object System.Windows.Forms.Label
+                    $kdlSourceLabel.Location = New-Object System.Drawing.Point(150, [int]($y - 20))
+                    $kdlSourceLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $kdlSourceLabel.Text = "KDL変換CSV格納元"
+                    $kdlSourceLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($kdlSourceLabel)
+                    
+                    # KDL変換CSV格納元パス入力
+                    $kdlSourceTextBox = New-Object System.Windows.Forms.TextBox
+                    $kdlSourceTextBox.Location = New-Object System.Drawing.Point(150, $y)
+                    $kdlSourceTextBox.Size = New-Object System.Drawing.Size(260, 30)
+                    $kdlSourceTextBox.Text = "パス"
+                    $kdlSourceTextBox.ReadOnly = $true
+                    $kdlSourceTextBox.BackColor = [System.Drawing.Color]::White
+                    $kdlSourceTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $kdlSourceTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $kdlSourceTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $kdlSourceTextBox.Add_Click({
+                        if ($script:editMode) {
+                            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                            $folderDialog.Description = "KDL変換CSV格納元フォルダを選択してください"
+                            $folderDialog.ShowNewFolderButton = $true
+                            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $kdlSourceTextBox.Text = $folderDialog.SelectedPath
+                            }
+                            $folderDialog.Dispose()
+                        }
+                    })
+                    $script:processPanel.Controls.Add($kdlSourceTextBox)
+                    
+                    # KDL変換CSV格納元の移動設定ボタン
+                    $kdlSourceMoveButton = New-Object System.Windows.Forms.Button
+                    $kdlSourceMoveButton.Location = New-Object System.Drawing.Point(415, $y)
+                    $kdlSourceMoveButton.Size = New-Object System.Drawing.Size(60, 30)
+                    $kdlSourceMoveButton.Text = "移動設定"
+                    $kdlSourceMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                    $kdlSourceMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $kdlSourceMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                    $kdlSourceMoveButton.FlatAppearance.BorderSize = 1
+                    $kdlSourceMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
+                    $kdlSourceMoveButton.Visible = $script:editMode
+                    $kdlSourceMoveButton.Tag = $i
+                    $kdlSourceMoveButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        $currentProcessName = ""
+                        if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                            $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                            if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                                $currentProcessName = $ctrlGroup.NameTextBox.Text
+                            }
+                        }
+                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                    })
+                    $script:processPanel.Controls.Add($kdlSourceMoveButton)
+                    
+                    # KDL変換CSV格納先ラベル
+                    $kdlDestLabel = New-Object System.Windows.Forms.Label
+                    $kdlDestLabel.Location = New-Object System.Drawing.Point(490, [int]($y - 20))
+                    $kdlDestLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $kdlDestLabel.Text = "KDL変換CSV格納先"
+                    $kdlDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($kdlDestLabel)
+                    
+                    # KDL変換CSV格納先パス入力
+                    $kdlDestTextBox = New-Object System.Windows.Forms.TextBox
+                    $kdlDestTextBox.Location = New-Object System.Drawing.Point(490, $y)
+                    $kdlDestTextBox.Size = New-Object System.Drawing.Size(230, 30)
+                    $kdlDestTextBox.Text = "パス"
+                    $kdlDestTextBox.ReadOnly = $true
+                    $kdlDestTextBox.BackColor = [System.Drawing.Color]::White
+                    $kdlDestTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $kdlDestTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $kdlDestTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $kdlDestTextBox.Add_Click({
+                        if ($script:editMode) {
+                            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                            $folderDialog.Description = "KDL変換CSV格納先フォルダを選択してください"
+                            $folderDialog.ShowNewFolderButton = $true
+                            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $kdlDestTextBox.Text = $folderDialog.SelectedPath
+                            }
+                            $folderDialog.Dispose()
+                        }
+                    })
+                    $script:processPanel.Controls.Add($kdlDestTextBox)
+                    
+                    # KDL変換CSV格納先の移動設定ボタン
+                    $kdlDestMoveButton = New-Object System.Windows.Forms.Button
+                    $kdlDestMoveButton.Location = New-Object System.Drawing.Point(725, $y)
+                    $kdlDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
+                    $kdlDestMoveButton.Text = "移動設定"
+                    $kdlDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                    $kdlDestMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $kdlDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                    $kdlDestMoveButton.FlatAppearance.BorderSize = 1
+                    $kdlDestMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
+                    $kdlDestMoveButton.Visible = $script:editMode
+                    $kdlDestMoveButton.Tag = $i
+                    $kdlDestMoveButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        $currentProcessName = ""
+                        if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                            $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                            if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                                $currentProcessName = $ctrlGroup.NameTextBox.Text
+                            }
+                        }
+                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                    })
+                    $script:processPanel.Controls.Add($kdlDestMoveButton)
+                    
+                    # V1抽出CSV格納先ラベル
+                    $v1CsvDestLabel = New-Object System.Windows.Forms.Label
+                    $v1CsvDestLabel.Location = New-Object System.Drawing.Point(490, [int]($y + 55))
+                    $v1CsvDestLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $v1CsvDestLabel.Text = "V1抽出CSV格納先"
+                    $v1CsvDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($v1CsvDestLabel)
+                    
+                    # V1抽出CSV格納先パス入力
+                    $v1CsvDestTextBox = New-Object System.Windows.Forms.TextBox
+                    $v1CsvDestTextBox.Location = New-Object System.Drawing.Point(490, [int]($y + 75))
+                    $v1CsvDestTextBox.Size = New-Object System.Drawing.Size(230, 30)
+                    $v1CsvDestTextBox.Text = "パス"
+                    $v1CsvDestTextBox.ReadOnly = $true
+                    $v1CsvDestTextBox.BackColor = [System.Drawing.Color]::White
+                    $v1CsvDestTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $v1CsvDestTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $v1CsvDestTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $v1CsvDestTextBox.Add_Click({
+                        if ($script:editMode) {
+                            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                            $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
+                            $folderDialog.ShowNewFolderButton = $true
+                            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $v1CsvDestTextBox.Text = $folderDialog.SelectedPath
+                            }
+                            $folderDialog.Dispose()
+                        }
+                    })
+                    $script:processPanel.Controls.Add($v1CsvDestTextBox)
+                    
+                    # V1抽出CSV格納先の移動設定ボタン
+                    $v1CsvDestMoveButton = New-Object System.Windows.Forms.Button
+                    $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(725, [int]($y + 75))
+                    $v1CsvDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
+                    $v1CsvDestMoveButton.Text = "移動設定"
+                    $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                    $v1CsvDestMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                    $v1CsvDestMoveButton.FlatAppearance.BorderSize = 1
+                    $v1CsvDestMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
+                    $v1CsvDestMoveButton.Visible = $script:editMode
+                    $v1CsvDestMoveButton.Tag = $i
+                    $v1CsvDestMoveButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        $currentProcessName = ""
+                        if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                            $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                            if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                                $currentProcessName = $ctrlGroup.NameTextBox.Text
+                            }
+                        }
+                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                    })
+                    $script:processPanel.Controls.Add($v1CsvDestMoveButton)
+                    
+                    # ボタン行（KDL取込、直接取込、取込後、ログ確認）
+                    $buttonY = [int]($y + 100)
+                    
+                    # KDL取込ボタン（赤色）
+                    $kdlImportButton = New-Object System.Windows.Forms.Button
+                    $kdlImportButton.Location = New-Object System.Drawing.Point(410, $buttonY)
+                    $kdlImportButton.Size = New-Object System.Drawing.Size(90, 30)
+                    $kdlImportButton.Text = "KDL取込"
+                    $kdlImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
+                    $kdlImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $kdlImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
+                    $kdlImportButton.FlatAppearance.BorderSize = 1
+                    $kdlImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $kdlImportButton.Enabled = $false  # 機能未実装
+                    $script:processPanel.Controls.Add($kdlImportButton)
+                    
+                    # 直接取込ボタン（オレンジ）
+                    $directImportButton = New-Object System.Windows.Forms.Button
+                    $directImportButton.Location = New-Object System.Drawing.Point(510, $buttonY)
+                    $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
+                    $directImportButton.Text = "直接取込"
+                    $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)  # #ffe6cc
+                    $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)  # #d79b00
+                    $directImportButton.FlatAppearance.BorderSize = 1
+                    $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $directImportButton.Enabled = $false  # 機能未実装
+                    $script:processPanel.Controls.Add($directImportButton)
+                    
+                    # 取込後ボタン（オレンジ）
+                    $afterImportButton = New-Object System.Windows.Forms.Button
+                    $afterImportButton.Location = New-Object System.Drawing.Point(610, $buttonY)
+                    $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
+                    $afterImportButton.Text = "取込後"
+                    $afterImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
+                    $afterImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $afterImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
+                    $afterImportButton.FlatAppearance.BorderSize = 1
+                    $afterImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $afterImportButton.Enabled = $false  # 機能未実装
+                    $script:processPanel.Controls.Add($afterImportButton)
+                    
+                    # ログ確認ボタン（緑）
+                    $logButton = New-Object System.Windows.Forms.Button
+                    $logButton.Location = New-Object System.Drawing.Point(710, $buttonY)
+                    $logButton.Size = New-Object System.Drawing.Size(80, 30)
+                    if ($script:editMode) {
+                        $logButton.Text = "参照"
+                    } else {
+                        $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
+                    }
+                    $logButton.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
+                    $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
+                    $logButton.FlatAppearance.BorderSize = 1
+                    $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $processIdx = $i
+                    $logButton.Add_Click({
+                        Show-ProcessLog -ProcessIndex $processIdx
+                    })
+                    $script:processPanel.Controls.Add($logButton)
+                    
+                    # 4ページ目用のコントロール情報を保存（1行目・2行目）
+                    $script:processControls += @{
+                        NameTextBox = $nameTextBox
+                        KdlSourceTextBox = $kdlSourceTextBox
+                        KdlSourceMoveButton = $kdlSourceMoveButton
+                        KdlDestTextBox = $kdlDestTextBox
+                        KdlDestMoveButton = $kdlDestMoveButton
+                        V1CsvDestTextBox = $v1CsvDestTextBox
+                        V1CsvDestMoveButton = $v1CsvDestMoveButton
+                        KdlImportButton = $kdlImportButton
+                        DirectImportButton = $directImportButton
+                        AfterImportButton = $afterImportButton
+                        LogButton = $logButton
+                    }
+                } else {
+                    # 3行目以降：V1抽出CSV格納先のみ
+                    # V1抽出CSV格納先ラベル
+                    $v1CsvDestLabel = New-Object System.Windows.Forms.Label
+                    $v1CsvDestLabel.Location = New-Object System.Drawing.Point(150, [int]($y - 20))
+                    $v1CsvDestLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $v1CsvDestLabel.Text = "V1抽出CSV格納先"
+                    $v1CsvDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($v1CsvDestLabel)
+                    
+                    # V1抽出CSV格納先パス入力
+                    $v1CsvDestTextBox = New-Object System.Windows.Forms.TextBox
+                    $v1CsvDestTextBox.Location = New-Object System.Drawing.Point(150, $y)
+                    $v1CsvDestTextBox.Size = New-Object System.Drawing.Size(260, 30)
+                    $v1CsvDestTextBox.Text = "パス"
+                    $v1CsvDestTextBox.ReadOnly = $true
+                    $v1CsvDestTextBox.BackColor = [System.Drawing.Color]::White
+                    $v1CsvDestTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $v1CsvDestTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $v1CsvDestTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $v1CsvDestTextBox.Add_Click({
+                        if ($script:editMode) {
+                            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                            $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
+                            $folderDialog.ShowNewFolderButton = $true
+                            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $v1CsvDestTextBox.Text = $folderDialog.SelectedPath
+                            }
+                            $folderDialog.Dispose()
+                        }
+                    })
+                    $script:processPanel.Controls.Add($v1CsvDestTextBox)
+                    
+                    # V1抽出CSV格納先の移動設定ボタン
+                    $v1CsvDestMoveButton = New-Object System.Windows.Forms.Button
+                    $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(415, $y)
+                    $v1CsvDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
+                    $v1CsvDestMoveButton.Text = "移動設定"
+                    $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                    $v1CsvDestMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                    $v1CsvDestMoveButton.FlatAppearance.BorderSize = 1
+                    $v1CsvDestMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
+                    $v1CsvDestMoveButton.Visible = $script:editMode
+                    $v1CsvDestMoveButton.Tag = $i
+                    $v1CsvDestMoveButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        $currentProcessName = ""
+                        if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                            $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                            if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                                $currentProcessName = $ctrlGroup.NameTextBox.Text
+                            }
+                        }
+                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                    })
+                    $script:processPanel.Controls.Add($v1CsvDestMoveButton)
+                    
+                    # ボタン行（直接取込、取込後、ログ確認）
+                    $buttonY = [int]($y + 40)
+                    
+                    # 直接取込ボタン（オレンジ）
+                    $directImportButton = New-Object System.Windows.Forms.Button
+                    $directImportButton.Location = New-Object System.Drawing.Point(510, $buttonY)
+                    $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
+                    $directImportButton.Text = "直接取込"
+                    $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)  # #ffe6cc
+                    $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)  # #d79b00
+                    $directImportButton.FlatAppearance.BorderSize = 1
+                    $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $directImportButton.Enabled = $false  # 機能未実装
+                    $script:processPanel.Controls.Add($directImportButton)
+                    
+                    # 取込後ボタン（オレンジ）
+                    $afterImportButton = New-Object System.Windows.Forms.Button
+                    $afterImportButton.Location = New-Object System.Drawing.Point(610, $buttonY)
+                    $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
+                    $afterImportButton.Text = "取込後"
+                    $afterImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
+                    $afterImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $afterImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
+                    $afterImportButton.FlatAppearance.BorderSize = 1
+                    $afterImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $afterImportButton.Enabled = $false  # 機能未実装
+                    $script:processPanel.Controls.Add($afterImportButton)
+                    
+                    # ログ確認ボタン（緑）
+                    $logButton = New-Object System.Windows.Forms.Button
+                    $logButton.Location = New-Object System.Drawing.Point(710, $buttonY)
+                    $logButton.Size = New-Object System.Drawing.Size(80, 30)
+                    if ($script:editMode) {
+                        $logButton.Text = "参照"
+                    } else {
+                        $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
+                    }
+                    $logButton.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
+                    $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
+                    $logButton.FlatAppearance.BorderSize = 1
+                    $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $processIdx = $i
+                    $logButton.Add_Click({
+                        Show-ProcessLog -ProcessIndex $processIdx
+                    })
+                    $script:processPanel.Controls.Add($logButton)
+                    
+                    # 4ページ目用のコントロール情報を保存（3行目以降）
+                    $script:processControls += @{
+                        NameTextBox = $nameTextBox
+                        V1CsvDestTextBox = $v1CsvDestTextBox
+                        V1CsvDestMoveButton = $v1CsvDestMoveButton
+                        DirectImportButton = $directImportButton
+                        AfterImportButton = $afterImportButton
+                        LogButton = $logButton
+                    }
+                }
             } else {
-                # 2ページ目以降：従来のレイアウト
+                # 5ページ目以降：従来のレイアウト
                 $x = [int](10 + $col * 440)
                 $y = [int](10 + $row * 60)
                 
@@ -985,13 +1659,14 @@ function Update-ProcessControls {
                     Show-ProcessLog -ProcessIndex $processIdx
                 })
                 $script:processPanel.Controls.Add($logButton)
-            }
-            
-            $script:processControls += @{
-                NameTextBox = $nameTextBox
-                FileMoveButton = $fileMoveButton
-                ExecuteButton = $executeButton
-                LogButton = $logButton
+                
+                # 5ページ目以降用のコントロール情報を保存
+                $script:processControls += @{
+                    NameTextBox = $nameTextBox
+                    FileMoveButton = $fileMoveButton
+                    ExecuteButton = $executeButton
+                    LogButton = $logButton
+                }
             }
         }
     }
@@ -1035,9 +1710,9 @@ function Update-ProcessControls {
     # ページパスの読み込み
     Load-PagePaths
     
-    # 1ページ目または2ページ目の場合、レイアウトを調整
+    # ページに応じてレイアウトを調整
     if ($useDrawioLayout) {
-        # ファイル移動セクションを非表示
+        # 1ページ目・2ページ目：ファイル移動セクションを非表示
         if ($script:fileMovePanel) {
             $script:fileMovePanel.Visible = $false
         }
@@ -1068,11 +1743,95 @@ function Update-ProcessControls {
         if ($script:form) {
             $script:form.Size = New-Object System.Drawing.Size(900, 600)
         }
+        
+        # プロセスパネルの高さを調整（320px）
+        if ($script:processPanel) {
+            $script:processPanel.Size = New-Object System.Drawing.Size(900, 320)
+        }
+    } elseif ($isPage3) {
+        # 3ページ目：JAVA移行ツール実行のレイアウト
+        # ヘッダーの背景色を緑色に変更
+        if ($script:headerPanel) {
+            $script:headerPanel.BackColor = [System.Drawing.Color]::FromArgb(147, 196, 125)  # #93C47D
+        }
+        
+        # ファイル移動セクションを非表示
+        if ($script:fileMovePanel) {
+            $script:fileMovePanel.Visible = $false
+        }
+        
+        # ログ格納セクションの位置を調整（370px y座標）
+        if ($script:logStoragePanel) {
+            $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 370)
+        }
+        
+        # ログ格納ボタンの位置を調整（400px x座標）
+        if ($script:logStorageButton) {
+            $script:logStorageButton.Location = New-Object System.Drawing.Point(390, 35)
+        }
+        
+        # ログ出力エリアの位置を調整（430px y座標、740px幅、130px高さ）
+        if ($script:logTextBox) {
+            $script:logTextBox.Location = New-Object System.Drawing.Point(10, 430)
+            $script:logTextBox.Size = New-Object System.Drawing.Size(740, 130)
+        }
+        
+        # フォームの高さを調整（600px）
+        if ($script:form) {
+            $script:form.Size = New-Object System.Drawing.Size(900, 600)
+        }
+        
+        # プロセスパネルの高さを調整（370px）
+        if ($script:processPanel) {
+            $script:processPanel.Size = New-Object System.Drawing.Size(900, 370)
+        }
+    } elseif ($isPage4) {
+        # 4ページ目：SQLLOADER実行のレイアウト
+        # ヘッダーの背景色を青色に変更
+        if ($script:headerPanel) {
+            $script:headerPanel.BackColor = [System.Drawing.Color]::FromArgb(27, 161, 226)  # #1ba1e2
+        }
+        
+        # ファイル移動セクションを非表示
+        if ($script:fileMovePanel) {
+            $script:fileMovePanel.Visible = $false
+        }
+        
+        # ログ格納セクションを非表示（4ページ目にはログ格納セクションがない）
+        if ($script:logStoragePanel) {
+            $script:logStoragePanel.Visible = $false
+        }
+        
+        # ログ出力エリアの位置を調整（690px y座標、790px幅、150px高さ）
+        if ($script:logTextBox) {
+            $script:logTextBox.Location = New-Object System.Drawing.Point(10, 690)
+            $script:logTextBox.Size = New-Object System.Drawing.Size(790, 150)
+        }
+        
+        # フォームの高さを調整（860px）
+        if ($script:form) {
+            $script:form.Size = New-Object System.Drawing.Size(900, 860)
+        }
+        
+        # プロセスパネルの高さを調整（680px）
+        if ($script:processPanel) {
+            $script:processPanel.Size = New-Object System.Drawing.Size(900, 680)
+        }
     } else {
-        # 2ページ目以降：従来のレイアウト
+        # 5ページ目以降：従来のレイアウト
+        # ヘッダーの背景色を水色に戻す
+        if ($script:headerPanel) {
+            $script:headerPanel.BackColor = [System.Drawing.Color]::FromArgb(173, 216, 230)
+        }
+        
         # ファイル移動セクションを表示
         if ($script:fileMovePanel) {
             $script:fileMovePanel.Visible = $true
+        }
+        
+        # ログ格納セクションを表示
+        if ($script:logStoragePanel) {
+            $script:logStoragePanel.Visible = $true
         }
         
         # ログ格納セクションの位置を元に戻す（490px y座標）
@@ -1089,6 +1848,11 @@ function Update-ProcessControls {
         # フォームの高さを元に戻す（1000px）
         if ($script:form) {
             $script:form.Size = New-Object System.Drawing.Size(900, 1000)
+        }
+        
+        # プロセスパネルの高さを元に戻す（320px）
+        if ($script:processPanel) {
+            $script:processPanel.Size = New-Object System.Drawing.Size(900, 320)
         }
     }
 }

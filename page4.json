@@ -1,0 +1,53 @@
+﻿{
+    "Title":  "4.SQLLOADER 実行",
+    "SourcePath":  "",
+    "DestinationPath":  "",
+    "LogStoragePath":  "",
+    "Processes":  [
+                      {
+                          "Name":  "1.EB移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル1",
+                                                 "Path":  "sample.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "1.EE移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル2",
+                                                 "Path":  "sample2.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "1.EE移行ツール適用",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル3",
+                                                 "Path":  "sample3.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      }
+                  ]
+}

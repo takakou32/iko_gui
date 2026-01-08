@@ -12,6 +12,10 @@
                   {
                       "Title":  "3.java移行ツール実行",
                       "JsonPath":  "page3.json"
+                  },
+                  {
+                      "Title":  "4.SQLLOADER 実行",
+                      "JsonPath":  "page4.json"
                   }
               ]
 }
