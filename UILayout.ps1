@@ -4,11 +4,13 @@
 # GUIフォームの作成
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "プロセス実行GUI"
-$form.Size = New-Object System.Drawing.Size(900, 1000)
+# 初期状態は1ページ目なので、drawioのレイアウトに合わせて高さを調整（drawioのレイアウト: 580px + マージン）
+$form.Size = New-Object System.Drawing.Size(900, 600)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
 $form.BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
+$script:form = $form
 
 # ヘッダー部分（水色背景）
 $headerPanel = New-Object System.Windows.Forms.Panel
@@ -133,12 +135,14 @@ $processPanel.BackColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
 $form.Controls.Add($processPanel)
 $script:processPanel = $processPanel
 
-# ファイル移動セクション（黄色/ベージュ背景）
+# ファイル移動セクション（1ページ目以外で表示）- 初期状態は非表示（1ページ目）
 $fileMovePanel = New-Object System.Windows.Forms.Panel
 $fileMovePanel.Location = New-Object System.Drawing.Point(0, 370)
 $fileMovePanel.Size = New-Object System.Drawing.Size(900, 120)
 $fileMovePanel.BackColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
+$fileMovePanel.Visible = $false
 $form.Controls.Add($fileMovePanel)
+$script:fileMovePanel = $fileMovePanel
 
 # 移行データファイル移動元ラベル
 $sourceLabel = New-Object System.Windows.Forms.Label
@@ -237,23 +241,24 @@ $fileMovePanel.Controls.Add($fileMoveButton)
 
 # ログ格納セクション（黄色/ベージュ背景）
 $logStoragePanel = New-Object System.Windows.Forms.Panel
-$logStoragePanel.Location = New-Object System.Drawing.Point(0, 490)
-$logStoragePanel.Size = New-Object System.Drawing.Size(900, 80)
+$logStoragePanel.Location = New-Object System.Drawing.Point(0, 370)
+$logStoragePanel.Size = New-Object System.Drawing.Size(900, 60)
 $logStoragePanel.BackColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
 $form.Controls.Add($logStoragePanel)
+$script:logStoragePanel = $logStoragePanel
 
 # ログ格納先ラベル
 $logStorageLabel = New-Object System.Windows.Forms.Label
 $logStorageLabel.Location = New-Object System.Drawing.Point(10, 10)
-$logStorageLabel.Size = New-Object System.Drawing.Size(150, 20)
+$logStorageLabel.Size = New-Object System.Drawing.Size(100, 20)
 $logStorageLabel.Text = "ログ格納先"
-$logStorageLabel.Font = New-Object System.Drawing.Font("メイリオ", 9)
+$logStorageLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
 $logStoragePanel.Controls.Add($logStorageLabel)
 
 # ログ格納先パス入力
 $logStoragePathTextBox = New-Object System.Windows.Forms.TextBox
 $logStoragePathTextBox.Location = New-Object System.Drawing.Point(10, 35)
-$logStoragePathTextBox.Size = New-Object System.Drawing.Size(600, 25)
+$logStoragePathTextBox.Size = New-Object System.Drawing.Size(320, 30)
 $logStoragePathTextBox.Text = "パス"
 $logStoragePathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $logStoragePathTextBox.ReadOnly = $true
@@ -267,8 +272,8 @@ $logStoragePathTextBox.Add_Click({
         # 現在のパスを初期値として設定
         if ($logStoragePathTextBox.Text -and $logStoragePathTextBox.Text -ne "パス" -and (Test-Path $logStoragePathTextBox.Text)) {
             $folderDialog.SelectedPath = $logStoragePathTextBox.Text
-        } elseif (Test-Path $logDir) {
-            $folderDialog.SelectedPath = $logDir
+        } elseif (Test-Path $script:logDir) {
+            $folderDialog.SelectedPath = $script:logDir
         } elseif (Test-Path $PSScriptRoot) {
             $folderDialog.SelectedPath = $PSScriptRoot
         }
@@ -287,10 +292,10 @@ $script:logStoragePathTextBox = $logStoragePathTextBox
 
 # ログ格納ボタン
 $logStorageButton = New-Object System.Windows.Forms.Button
-$logStorageButton.Location = New-Object System.Drawing.Point(620, 35)
-$logStorageButton.Size = New-Object System.Drawing.Size(100, 25)
+$logStorageButton.Location = New-Object System.Drawing.Point(340, 35)
+$logStorageButton.Size = New-Object System.Drawing.Size(80, 30)
 $logStorageButton.Text = "ログ格納"
-$logStorageButton.BackColor = [System.Drawing.Color]::FromArgb(255, 255, 150)
+$logStorageButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 0)
 $logStorageButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $logStorageButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
 $logStorageButton.FlatAppearance.BorderSize = 1
@@ -298,18 +303,19 @@ $logStorageButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $logStorageButton.Enabled = $false
 $logStoragePanel.Controls.Add($logStorageButton)
 
-# ログ出力(全ファイル)ラベル
+# ログ出力(全ファイル)ラベル（非表示）
 $logOutputLabel = New-Object System.Windows.Forms.Label
-$logOutputLabel.Location = New-Object System.Drawing.Point(10, 580)
+$logOutputLabel.Location = New-Object System.Drawing.Point(10, 430)
 $logOutputLabel.Size = New-Object System.Drawing.Size(200, 20)
 $logOutputLabel.Text = "ログ出力(全ファイル)"
+$logOutputLabel.Visible = $false
 $logOutputLabel.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $form.Controls.Add($logOutputLabel)
 
-# ログ表示エリア
+# ログ表示エリア（1ページ目の初期位置）
 $logTextBox = New-Object System.Windows.Forms.TextBox
-$logTextBox.Location = New-Object System.Drawing.Point(10, 605)
-$logTextBox.Size = New-Object System.Drawing.Size(880, 220)
+$logTextBox.Location = New-Object System.Drawing.Point(10, 430)
+$logTextBox.Size = New-Object System.Drawing.Size(740, 130)
 $logTextBox.Multiline = $true
 $logTextBox.ScrollBars = "Vertical"
 $logTextBox.ReadOnly = $true
