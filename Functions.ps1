@@ -800,8 +800,10 @@ function Update-ProcessControls {
     }
     $script:processControls = @()
     
-    # 1ページ目かどうかを判定（drawioのレイアウトを適用）
+    # 1ページ目または2ページ目かどうかを判定（drawioのレイアウトを適用）
     $isPage1 = ($script:currentPage -eq 0)
+    $isPage2 = ($script:currentPage -eq 1)
+    $useDrawioLayout = ($isPage1 -or $isPage2)
     
     # 新しいコントロールを作成
     for ($i = 0; $i -lt $script:processesPerPage; $i++) {
@@ -810,12 +812,12 @@ function Update-ProcessControls {
             $row = [Math]::Floor($i / 2)
             $col = $i % 2
             
-            if ($isPage1) {
-                # 1ページ目：drawioのレイアウトに合わせる
-                # drawioの座標: タスク名(60, 110+), チェック(200, 110+), 実行(280, 110+), ログ確認(350, 110+)
-                # プロセスパネルのy座標は50なので、実際のy座標は60から（110-50=60）
+            if ($useDrawioLayout) {
+                # 1ページ目・2ページ目：drawioのレイアウトに合わせる
+                # drawioの座標: タスク名(60, 100+), セット/チェック(200, 100+), 実行(280, 100+), ログ確認(350, 100+)
+                # プロセスパネルのy座標は50なので、実際のy座標は50から（100-50=50）
                 $x = if ($col -eq 0) { 60 } else { 440 }
-                $y = 60 + $row * 40
+                $y = 50 + $row * 40
                 
                 # テキストボックス（タスク名表示用）
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
@@ -830,12 +832,13 @@ function Update-ProcessControls {
                 $nameTextBox.Height = 30
                 $script:processPanel.Controls.Add($nameTextBox)
                 
-                # ファイル移動設定ボタン（チェックボタン、赤色）- 編集モードONの時のみ表示
+                # ファイル移動設定ボタン（セット/チェックボタン、赤色）- 編集モードONの時のみ表示
                 $fileMoveButton = New-Object System.Windows.Forms.Button
                 $fileMoveX = $x + 140
                 $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
                 $fileMoveButton.Size = New-Object System.Drawing.Size(70, 30)
-                $fileMoveButton.Text = "チェック"
+                # 1ページ目は「チェック」、2ページ目は「セット」
+                $fileMoveButton.Text = if ($isPage1) { "チェック" } else { "セット" }
                 $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
                 $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                 $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
@@ -1032,8 +1035,8 @@ function Update-ProcessControls {
     # ページパスの読み込み
     Load-PagePaths
     
-    # 1ページ目の場合、レイアウトを調整
-    if ($isPage1) {
+    # 1ページ目または2ページ目の場合、レイアウトを調整
+    if ($useDrawioLayout) {
         # ファイル移動セクションを非表示
         if ($script:fileMovePanel) {
             $script:fileMovePanel.Visible = $false
@@ -1042,6 +1045,17 @@ function Update-ProcessControls {
         # ログ格納セクションの位置を調整（370px y座標）
         if ($script:logStoragePanel) {
             $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 370)
+        }
+        
+        # ログ格納ボタンの位置を調整（2ページ目は右側に配置）
+        if ($script:logStorageButton) {
+            if ($isPage2) {
+                # 2ページ目：右側に配置（700px x座標）
+                $script:logStorageButton.Location = New-Object System.Drawing.Point(690, 35)
+            } else {
+                # 1ページ目：左側に配置（340px x座標）
+                $script:logStorageButton.Location = New-Object System.Drawing.Point(340, 35)
+            }
         }
         
         # ログ出力エリアの位置を調整（430px y座標、740px幅、130px高さ）

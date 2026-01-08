@@ -302,6 +302,7 @@ $logStorageButton.FlatAppearance.BorderSize = 1
 $logStorageButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $logStorageButton.Enabled = $false
 $logStoragePanel.Controls.Add($logStorageButton)
+$script:logStorageButton = $logStorageButton
 
 # ログ出力(全ファイル)ラベル（非表示）
 $logOutputLabel = New-Object System.Windows.Forms.Label
