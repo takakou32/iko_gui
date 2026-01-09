@@ -6,7 +6,7 @@
                       "JsonPath":  "page1.json"
                   },
                   {
-                      "Title":  "2.V2 移行ツール適用",
+                      "Title":  "2.V2 移行ツール実行",
                       "JsonPath":  "page2.json"
                   },
                   {

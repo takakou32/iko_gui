@@ -1,17 +1,17 @@
 ﻿{
     "Title":  "3.java移行ツール実行",
-    "SourcePath":  "",
-    "DestinationPath":  "",
+    "SourcePath":  "C:\\MELSEC",
     "LogStoragePath":  "",
     "Processes":  [
                       {
                           "Name":  "1.EB移行ツール適用（ページ2）",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
+                          "DestinationPath":  "C:\\work\\iko_gui",
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル1",
-                                                 "Path":  "iko_gui\\sample.bat"
+                                                 "Path":  "新しいフォルダー\\sample.bat"
                                              }
                                          ],
                           "CsvMoveOperations":  [
@@ -23,10 +23,27 @@
                           "Name":  "2.EB移行ツール適用（ページ2）",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
+                          "DestinationPath":  "C:\\work",
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
+                                                 "Path":  "sample.bat"
+                                             }
+                                         ],
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "ExecutionDelay":  1
+                      },
+                      {
+                          "Name":  "3.EB移行ツール適用（ページ2）",
+                          "ExecuteButtonText":  "実行",
+                          "LogButtonText":  "ログ確認",
+                          "DestinationPath":  "C:\\a5m2",
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "サンプル2",
+                                                 "Path":  "新しいフォルダー\\sample.bat"
                                              }
                                          ],
                           "CsvMoveOperations":  [

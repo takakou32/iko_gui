@@ -5,7 +5,7 @@
     "LogStoragePath":  "",
     "Processes":  [
                       {
-                          "Name":  "1.EB移行ツール適用",
+                          "Name":  "1.EB SQLLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
                           "BatchFiles":  [
@@ -20,7 +20,7 @@
                           "ExecutionDelay":  1
                       },
                       {
-                          "Name":  "1.EE移行ツール適用",
+                          "Name":  "1.EE SQLLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
                           "BatchFiles":  [
@@ -35,7 +35,7 @@
                           "ExecutionDelay":  1
                       },
                       {
-                          "Name":  "1.EE移行ツール適用",
+                          "Name":  "1.EASQLLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
                           "BatchFiles":  [

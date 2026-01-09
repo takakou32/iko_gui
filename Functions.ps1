@@ -227,9 +227,80 @@ function Save-BatchFilePath {
         
         $process.BatchFiles[$BatchIndex].Path = $relativePath
         
-        # JSONファイルに保存
-        $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
         Write-Log "バッチファイルパスを保存しました: $relativePath" "INFO" $ProcessIndex
+        return $true
+    } catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
+# プロセスDestinationPath保存関数（ページ3用）
+function Save-ProcessDestinationPath {
+    param([int]$ProcessIndex, [string]$DestinationPath)
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $process = $jsonContent.Processes[$ProcessIndex]
+        
+        # DestinationPathプロパティが存在しない場合は追加
+        if (-not (Get-Member -InputObject $process -Name "DestinationPath" -MemberType NoteProperty)) {
+            Add-Member -InputObject $process -MemberType NoteProperty -Name "DestinationPath" -Value ""
+        }
+        
+        # 相対パスに変換（可能な場合）
+        $relativePath = try {
+            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $targetPath = [System.IO.Path]::GetFullPath($DestinationPath).TrimEnd('\', '/')
+            
+            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                # 相対パスが空文字列の場合（選択パスが$PSScriptRootと完全に同じ場合）は絶対パスをそのまま保存
+                if ([string]::IsNullOrEmpty($relative)) {
+                    $DestinationPath
+                } else {
+                    $relative
+                }
+            } else {
+                $DestinationPath
+            }
+        } catch {
+            $DestinationPath
+        }
+        
+        $process.DestinationPath = $relativePath
+        
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        Write-Log "プロセスDestinationPathを保存しました: $relativePath" "INFO" $ProcessIndex
         return $true
     } catch {
         Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
@@ -274,8 +345,10 @@ function Save-ProcessLogOutputDir {
             $process.LogOutputDir = $LogOutputDir
         }
         
-        # JSONファイルに保存
-        $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $jsonPath -Encoding UTF8
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
         Write-Log "ログ出力フォルダパスを保存しました: $LogOutputDir" "INFO" $ProcessIndex
         return $true
     } catch {
@@ -311,7 +384,10 @@ function Load-PagePaths {
         try {
             $pageJson = Get-Content $pageJsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
             $sourcePath = if ($pageJson.SourcePath) { $pageJson.SourcePath } else { "" }
-            $destPath = if ($pageJson.DestinationPath) { $pageJson.DestinationPath } else { "" }
+            # ページ3の場合はDestinationPathを読み込まない（各プロセスごとに読み込む）
+            if ($script:currentPage -ne 2) {
+                $destPath = if ($pageJson.DestinationPath) { $pageJson.DestinationPath } else { "" }
+            }
             $logStoragePath = if ($pageJson.LogStoragePath) { $pageJson.LogStoragePath } else { "" }
         } catch {
             Write-Log "ページJSONファイルの読み込みに失敗しました: $pageJsonPath - $($_.Exception.Message)" "ERROR"
@@ -319,35 +395,77 @@ function Load-PagePaths {
     }
     
     # 移行データファイル移動元
-    if ($sourcePath -and $sourcePath -ne "パス" -and $sourcePath -ne "") {
-        # 相対パスの場合は絶対パスに変換
-        try {
-            if (-not [System.IO.Path]::IsPathRooted($sourcePath)) {
-                $sourcePath = Join-Path $PSScriptRoot $sourcePath
+    # ページ3の場合はV1抽出CSV格納元テキストボックスに設定
+    if ($script:currentPage -eq 2) {
+        # 3ページ目：V1抽出CSV格納元
+        if ($sourcePath -and $sourcePath -ne "パス" -and $sourcePath -ne "") {
+            # 相対パスの場合は絶対パスに変換
+            try {
+                if (-not [System.IO.Path]::IsPathRooted($sourcePath)) {
+                    $sourcePath = Join-Path $PSScriptRoot $sourcePath
+                }
+                $sourcePath = [System.IO.Path]::GetFullPath($sourcePath)
+                if ($script:v1CsvSourceTextBox) {
+                    $script:v1CsvSourceTextBox.Text = $sourcePath
+                }
+            } catch {
+                if ($script:v1CsvSourceTextBox) {
+                    $script:v1CsvSourceTextBox.Text = "パス"
+                }
             }
-            $sourcePath = [System.IO.Path]::GetFullPath($sourcePath)
-            $script:sourcePathTextBox.Text = $sourcePath
-        } catch {
-            $script:sourcePathTextBox.Text = "パス"
+        } else {
+            if ($script:v1CsvSourceTextBox) {
+                $script:v1CsvSourceTextBox.Text = "パス"
+            }
         }
     } else {
-        $script:sourcePathTextBox.Text = "パス"
+        # その他のページ：従来のsourcePathTextBox
+        if ($sourcePath -and $sourcePath -ne "パス" -and $sourcePath -ne "") {
+            # 相対パスの場合は絶対パスに変換
+            try {
+                if (-not [System.IO.Path]::IsPathRooted($sourcePath)) {
+                    $sourcePath = Join-Path $PSScriptRoot $sourcePath
+                }
+                $sourcePath = [System.IO.Path]::GetFullPath($sourcePath)
+                if ($script:sourcePathTextBox) {
+                    $script:sourcePathTextBox.Text = $sourcePath
+                }
+            } catch {
+                if ($script:sourcePathTextBox) {
+                    $script:sourcePathTextBox.Text = "パス"
+                }
+            }
+        } else {
+            if ($script:sourcePathTextBox) {
+                $script:sourcePathTextBox.Text = "パス"
+            }
+        }
     }
     
     # 移行データファイル移動先
-    if ($destPath -and $destPath -ne "パス" -and $destPath -ne "") {
-        # 相対パスの場合は絶対パスに変換
-        try {
-            if (-not [System.IO.Path]::IsPathRooted($destPath)) {
-                $destPath = Join-Path $PSScriptRoot $destPath
+    # ページ3の場合は各プロセス行ごとにDestinationPathを読み込むため、ここでは処理しない
+    if ($script:currentPage -ne 2) {
+        # その他のページ：従来のdestPathTextBox
+        if ($destPath -and $destPath -ne "パス" -and $destPath -ne "") {
+            # 相対パスの場合は絶対パスに変換
+            try {
+                if (-not [System.IO.Path]::IsPathRooted($destPath)) {
+                    $destPath = Join-Path $PSScriptRoot $destPath
+                }
+                $destPath = [System.IO.Path]::GetFullPath($destPath)
+                if ($script:destPathTextBox) {
+                    $script:destPathTextBox.Text = $destPath
+                }
+            } catch {
+                if ($script:destPathTextBox) {
+                    $script:destPathTextBox.Text = "パス"
+                }
             }
-            $destPath = [System.IO.Path]::GetFullPath($destPath)
-            $script:destPathTextBox.Text = $destPath
-        } catch {
-            $script:destPathTextBox.Text = "パス"
+        } else {
+            if ($script:destPathTextBox) {
+                $script:destPathTextBox.Text = "パス"
+            }
         }
-    } else {
-        $script:destPathTextBox.Text = "パス"
     }
     
     # ログ格納先
@@ -464,8 +582,10 @@ function Save-PagePaths {
             $pageJson.LogStoragePath = $relativeLogPath
         }
         
-        # ページJSONファイルに保存
-        $pageJson | ConvertTo-Json -Depth 10 | Set-Content $pageJsonPath -Encoding UTF8
+        # ページJSONファイルに保存（UTF-8 BOM付き）
+        $jsonContent = $pageJson | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($pageJsonPath, $jsonContent, $utf8WithBom)
         
         Write-Log "ページパスを保存しました: $pageJsonPath" "INFO"
         return $true
@@ -676,6 +796,134 @@ function Show-FileMoveSettingsDialog {
     $dialogForm.Dispose()
 }
 
+# ファイルコピー共通関数（コピー元ファイル、コピー先パスを引数とする）
+function Copy-FileWithLog {
+    param(
+        [string]$SourceFilePath,
+        [string]$DestinationPath,
+        [int]$ProcessIndex = -1
+    )
+    
+    try {
+        # コピー元ファイルの存在チェック
+        if (-not (Test-Path $SourceFilePath)) {
+            Write-Log "コピー元ファイルが見つかりません: $SourceFilePath" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        # コピー先ディレクトリが存在しない場合は作成
+        if (-not (Test-Path $DestinationPath)) {
+            New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
+            Write-Log "コピー先ディレクトリを作成しました: $DestinationPath" "INFO" $ProcessIndex
+        }
+        
+        # ファイル名を取得
+        $fileName = [System.IO.Path]::GetFileName($SourceFilePath)
+        $destinationFilePath = Join-Path $DestinationPath $fileName
+        
+        # ファイルをコピー
+        Copy-Item -Path $SourceFilePath -Destination $destinationFilePath -Force
+        Write-Log "ファイルをコピーしました: $fileName -> $DestinationPath" "INFO" $ProcessIndex
+        return $true
+    }
+    catch {
+        Write-Log "ファイルコピーエラー: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
+# ファイル移動実行関数（ページ3の「移動」ボタン用）
+function Invoke-FileMoveOperation {
+    param(
+        [int]$ProcessIndex,
+        [string]$ProcessName,
+        [string]$V1CsvSourcePath,
+        [string]$V1CsvDestinationPath
+    )
+    
+    # パラメータの検証
+    if ([string]::IsNullOrWhiteSpace($ProcessName)) {
+        Write-Log "プロセス名が指定されていません。" "ERROR" $ProcessIndex
+        [System.Windows.Forms.MessageBox]::Show("プロセス名が指定されていません。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        return
+    }
+    
+    if ([string]::IsNullOrWhiteSpace($V1CsvSourcePath) -or $V1CsvSourcePath -eq "パス") {
+        Write-Log "V1抽出CSV格納元が設定されていません。" "ERROR" $ProcessIndex
+        [System.Windows.Forms.MessageBox]::Show("V1抽出CSV格納元が設定されていません。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        return
+    }
+    
+    if ([string]::IsNullOrWhiteSpace($V1CsvDestinationPath) -or $V1CsvDestinationPath -eq "パス") {
+        Write-Log "V1抽出CSV格納先が設定されていません。" "ERROR" $ProcessIndex
+        [System.Windows.Forms.MessageBox]::Show("V1抽出CSV格納先が設定されていません。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        return
+    }
+    
+    # V1抽出CSV格納元の存在チェック
+    if (-not (Test-Path $V1CsvSourcePath)) {
+        Write-Log "V1抽出CSV格納元が存在しません: $V1CsvSourcePath" "ERROR" $ProcessIndex
+        [System.Windows.Forms.MessageBox]::Show("V1抽出CSV格納元が存在しません。`n$V1CsvSourcePath", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        return
+    }
+    
+    # movefileフォルダからファイルリストを読み込み
+    $safeFileName = [regex]::Replace($ProcessName.Trim(), '[<>:"/\\|?*\r\n\t]', '_')
+    $moveFilesDir = Join-Path $PSScriptRoot "movefiles"
+    $moveFilePath = Join-Path $moveFilesDir ($safeFileName + ".txt")
+    
+    if (-not (Test-Path $moveFilePath)) {
+        Write-Log "ファイル移動リストが見つかりません: $moveFilePath" "ERROR" $ProcessIndex
+        [System.Windows.Forms.MessageBox]::Show("ファイル移動リストが見つかりません。`n先に「移動設定」でファイルリストを作成してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+        return
+    }
+    
+    Write-Log "========== ファイル移動開始 ==========" "INFO" $ProcessIndex
+    Write-Log "プロセス名: $ProcessName" "INFO" $ProcessIndex
+    Write-Log "V1抽出CSV格納元: $V1CsvSourcePath" "INFO" $ProcessIndex
+    Write-Log "V1抽出CSV格納先: $V1CsvDestinationPath" "INFO" $ProcessIndex
+    Write-Log "ファイルリスト: $moveFilePath" "INFO" $ProcessIndex
+    
+    # ファイルリストを1行ずつ読み込む
+    $fileLines = Get-Content -Path $moveFilePath -Encoding UTF8
+    $successCount = 0
+    $failCount = 0
+    $totalCount = 0
+    
+    foreach ($line in $fileLines) {
+        # 空行やコメント行をスキップ
+        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#")) {
+            continue
+        }
+        
+        $totalCount++
+        $fileName = $line.Trim()
+        
+        # V1抽出CSV格納元とファイル名を結合してコピー元のフルパスを生成
+        $sourceFilePath = Join-Path $V1CsvSourcePath $fileName
+        
+        # ファイルコピーを実行
+        $result = Copy-FileWithLog -SourceFilePath $sourceFilePath -DestinationPath $V1CsvDestinationPath -ProcessIndex $ProcessIndex
+        
+        if ($result) {
+            $successCount++
+        } else {
+            $failCount++
+        }
+    }
+    
+    Write-Log "========== ファイル移動完了 ==========" "INFO" $ProcessIndex
+    Write-Log "合計: $totalCount 件、成功: $successCount 件、失敗: $failCount 件" "INFO" $ProcessIndex
+    
+    # 完了メッセージを表示
+    $message = "ファイル移動が完了しました。`n`n合計: $totalCount 件`n成功: $successCount 件`n失敗: $failCount 件"
+    if ($failCount -gt 0) {
+        [System.Windows.Forms.MessageBox]::Show($message, "移動完了（一部エラー）", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+    } else {
+        [System.Windows.Forms.MessageBox]::Show($message, "移動完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    }
+}
+
 # ログ確認関数
 function Show-ProcessLog {
     param([int]$ProcessIndex)
@@ -872,10 +1120,11 @@ function Update-ProcessControls {
     for ($i = 0; $i -lt $script:processesPerPage; $i++) {
         if ($i -lt $currentProcesses.Count) {
             $processConfig = $currentProcesses[$i]
-            $row = [Math]::Floor($i / 2)
-            $col = $i % 2
             
             if ($useDrawioLayout) {
+                # ページ1・2：2列レイアウト
+                $row = [Math]::Floor($i / 2)
+                $col = $i % 2
                 # 1ページ目・2ページ目：drawioのレイアウトに合わせる
                 # drawioの座標: タスク名(60, 100+), セット/チェック(200, 100+), 実行(280, 100+), ログ確認(350, 100+)
                 # プロセスパネルのy座標は50なので、実際のy座標は50から（100-50=50）
@@ -912,9 +1161,10 @@ function Update-ProcessControls {
                     $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc（設計書通りの赤色）
                     $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450（設計書通りの赤色ボーダー）
                     $fileMoveButton.Visible = $true  # 常に表示
-                    $processIdx = $i
+                    $fileMoveButton.Tag = $i  # プロセスインデックスをTagに保存
                     $fileMoveButton.Add_Click({
-                        Start-ProcessFlow -ProcessIndex $processIdx
+                        $clickedProcessIdx = $this.Tag
+                        Start-ProcessFlow -ProcessIndex $clickedProcessIdx
                     })
                 } else {
                     # 2ページ目：セットボタン
@@ -993,9 +1243,10 @@ function Update-ProcessControls {
                 $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                 $executeButton.FlatAppearance.BorderSize = 1
                 $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $processIdx = $i
+                $executeButton.Tag = $i  # プロセスインデックスをTagに保存
                 $executeButton.Add_Click({
-                    Start-ProcessFlow -ProcessIndex $processIdx
+                    $clickedProcessIdx = $this.Tag
+                    Start-ProcessFlow -ProcessIndex $clickedProcessIdx
                 })
                 $script:processPanel.Controls.Add($executeButton)
                 
@@ -1014,9 +1265,10 @@ function Update-ProcessControls {
                 $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
                 $logButton.FlatAppearance.BorderSize = 1
                 $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $processIdx = $i
+                $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
-                    Show-ProcessLog -ProcessIndex $processIdx
+                    $clickedProcessIdx = $this.Tag
+                    Show-ProcessLog -ProcessIndex $clickedProcessIdx
                 })
                 $script:processPanel.Controls.Add($logButton)
                 
@@ -1028,7 +1280,9 @@ function Update-ProcessControls {
                     LogButton = $logButton
                 }
             } elseif ($isPage3) {
-                # 3ページ目：JAVA移行ツール実行のレイアウト
+                # 3ページ目：JAVA移行ツール実行のレイアウト（1列レイアウト）
+                $row = $i  # 1列レイアウトなので、行番号はインデックスそのまま
+                
                 # 最初の行の場合のみ、V1抽出CSV格納元・格納先セクションを表示
                 if ($i -eq 0) {
                     # V1抽出CSV格納元ラベル
@@ -1056,7 +1310,11 @@ function Update-ProcessControls {
                             $folderDialog.Description = "V1抽出CSV格納元フォルダを選択してください"
                             $folderDialog.ShowNewFolderButton = $true
                             if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $v1CsvSourceTextBox.Text = $folderDialog.SelectedPath
+                                $selectedPath = $folderDialog.SelectedPath
+                                $v1CsvSourceTextBox.Text = $selectedPath
+                                # page3.jsonに保存
+                                Save-PagePaths -SourcePath $selectedPath
+                                Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
                             }
                             $folderDialog.Dispose()
                         }
@@ -1097,63 +1355,117 @@ function Update-ProcessControls {
                 $pathX = 210
                 $pathTextBox.Location = New-Object System.Drawing.Point($pathX, $y)
                 $pathTextBox.Size = New-Object System.Drawing.Size(220, 30)
-                $pathTextBox.Text = "パス"
+                # 各プロセスのDestinationPathを読み込んで設定
+                $destPathValue = "パス"
+                if ($processConfig.DestinationPath -and $processConfig.DestinationPath -ne "" -and $processConfig.DestinationPath -ne "パス") {
+                    try {
+                        $destPathValue = $processConfig.DestinationPath
+                        # 相対パスの場合は絶対パスに変換
+                        if (-not [System.IO.Path]::IsPathRooted($destPathValue)) {
+                            $destPathValue = Join-Path $PSScriptRoot $destPathValue
+                        }
+                        $destPathValue = [System.IO.Path]::GetFullPath($destPathValue)
+                    } catch {
+                        # エラー時はデフォルト値を使用
+                    }
+                }
+                $pathTextBox.Text = $destPathValue
                 $pathTextBox.ReadOnly = $true
                 $pathTextBox.BackColor = [System.Drawing.Color]::White
                 $pathTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                 $pathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                 $pathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                $pathTextBox.Tag = $i  # プロセスインデックスをTagに保存
                 $pathTextBox.Add_Click({
                     if ($script:editMode) {
                         $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
                         $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
                         $folderDialog.ShowNewFolderButton = $true
                         if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                            $pathTextBox.Text = $folderDialog.SelectedPath
+                            $selectedPath = $folderDialog.SelectedPath
+                            $this.Text = $selectedPath
+                            # 各プロセスのDestinationPathをpage3.jsonに保存
+                            $clickedProcessIdx = $this.Tag
+                            Save-ProcessDestinationPath -ProcessIndex $clickedProcessIdx -DestinationPath $selectedPath
+                            Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                         }
                         $folderDialog.Dispose()
                     }
                 })
                 $script:processPanel.Controls.Add($pathTextBox)
                 
-                # 移動設定ボタン（水色）
+                # 移動設定ボタン（編集モードON時は水色、OFF時は紺色）
                 $fileMoveButton = New-Object System.Windows.Forms.Button
                 $fileMoveX = 440
                 $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
                 $fileMoveButton.Size = New-Object System.Drawing.Size(70, 30)
-                $fileMoveButton.Text = "移動設定"
-                $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                if ($script:editMode) {
+                    $fileMoveButton.Text = "移動設定"
+                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                } else {
+                    $fileMoveButton.Text = "移動"
+                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                }
                 $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
                 $fileMoveButton.FlatAppearance.BorderSize = 1
                 $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $fileMoveButton.Visible = $script:editMode
+                $fileMoveButton.Visible = $true  # 常に表示
                 $fileMoveButton.Tag = $i
                 $fileMoveButton.Add_Click({
                     $clickedProcessIdx = $this.Tag
                     $currentProcessName = ""
+                    $v1CsvSourcePath = ""
+                    $v1CsvDestPath = ""
+                    
+                    # プロセス名とパスを取得
                     if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
                         $ctrlGroup = $script:processControls[$clickedProcessIdx]
                         if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
                             $currentProcessName = $ctrlGroup.NameTextBox.Text
                         }
+                        if ($ctrlGroup -and $ctrlGroup.PathTextBox) {
+                            $v1CsvDestPath = $ctrlGroup.PathTextBox.Text
+                        }
                     }
-                    Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                    
+                    # V1抽出CSV格納元を取得
+                    if ($script:v1CsvSourceTextBox) {
+                        $v1CsvSourcePath = $script:v1CsvSourceTextBox.Text
+                    }
+                    
+                    # 編集モードと非編集モードで動作を分岐
+                    if ($script:editMode) {
+                        # 編集モード：移動設定ダイアログを表示
+                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                    } else {
+                        # 非編集モード：ファイル移動を実行
+                        Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+                    }
                 })
                 $script:processPanel.Controls.Add($fileMoveButton)
                 
-                # CSV名変換ボタン（赤色）- 機能は未実装のため、見た目のみ
+                # CSV名変換ボタン（赤色）- 実行ボタンと同じ機能
                 $csvConvertButton = New-Object System.Windows.Forms.Button
                 $csvConvertX = 520
                 $csvConvertButton.Location = New-Object System.Drawing.Point($csvConvertX, $y)
                 $csvConvertButton.Size = New-Object System.Drawing.Size(80, 30)
-                $csvConvertButton.Text = "CSV名変換"
+                if ($script:editMode) {
+                    $csvConvertButton.Text = "参照"
+                } else {
+                    $csvConvertButton.Text = "CSV名変換"
+                }
                 $csvConvertButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
                 $csvConvertButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                 $csvConvertButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
                 $csvConvertButton.FlatAppearance.BorderSize = 1
                 $csvConvertButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $csvConvertButton.Enabled = $false  # 機能未実装
+                $csvConvertButton.Tag = $i  # プロセスインデックスをTagに保存
+                $csvConvertButton.Add_Click({
+                    $clickedProcessIdx = $this.Tag
+                    Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                })
                 $script:processPanel.Controls.Add($csvConvertButton)
                 
                 # 実行ボタン（オレンジ）
@@ -1171,9 +1483,10 @@ function Update-ProcessControls {
                 $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
                 $executeButton.FlatAppearance.BorderSize = 1
                 $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $processIdx = $i
+                $executeButton.Tag = $i  # プロセスインデックスをTagに保存
                 $executeButton.Add_Click({
-                    Start-ProcessFlow -ProcessIndex $processIdx
+                    $clickedProcessIdx = $this.Tag
+                    Start-ProcessFlow -ProcessIndex $clickedProcessIdx
                 })
                 $script:processPanel.Controls.Add($executeButton)
                 
@@ -1192,9 +1505,10 @@ function Update-ProcessControls {
                 $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
                 $logButton.FlatAppearance.BorderSize = 1
                 $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $processIdx = $i
+                $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
-                    Show-ProcessLog -ProcessIndex $processIdx
+                    $clickedProcessIdx = $this.Tag
+                    Show-ProcessLog -ProcessIndex $clickedProcessIdx
                 })
                 $script:processPanel.Controls.Add($logButton)
                 
@@ -1208,7 +1522,9 @@ function Update-ProcessControls {
                     LogButton = $logButton
                 }
             } elseif ($isPage4) {
-                # 4ページ目：SQLLOADER実行のレイアウト
+                # 4ページ目：SQLLOADER実行のレイアウト（1列レイアウト）
+                $row = $i  # 1列レイアウトなので、行番号はインデックスそのまま
+                
                 # drawioの座標を参考に、プロセスパネルのy座標50を考慮
                 # 1行目: タスク名(30, 190)、KDL変換CSV格納元(170, 190)、KDL変換CSV格納先(510, 190)、V1抽出CSV格納先(510, 245)
                 # ボタン: KDL取込(430, 290)、直接取込(530, 290)、取込後(630, 290)、ログ確認(730, 290)
@@ -1631,7 +1947,9 @@ function Update-ProcessControls {
                     }
                 }
             } else {
-                # 5ページ目以降：従来のレイアウト
+                # 5ページ目以降：従来のレイアウト（2列レイアウト）
+                $row = [Math]::Floor($i / 2)
+                $col = $i % 2
                 $x = [int](10 + $col * 440)
                 $y = [int](10 + $row * 60)
                 
@@ -1689,9 +2007,10 @@ function Update-ProcessControls {
                 $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
                 $executeButton.FlatAppearance.BorderSize = 1
                 $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $processIdx = $i
+                $executeButton.Tag = $i  # プロセスインデックスをTagに保存
                 $executeButton.Add_Click({
-                    Start-ProcessFlow -ProcessIndex $processIdx
+                    $clickedProcessIdx = $this.Tag
+                    Start-ProcessFlow -ProcessIndex $clickedProcessIdx
                 })
                 $script:processPanel.Controls.Add($executeButton)
                 
@@ -1710,9 +2029,10 @@ function Update-ProcessControls {
                 $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
                 $logButton.FlatAppearance.BorderSize = 1
                 $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $processIdx = $i
+                $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
-                    Show-ProcessLog -ProcessIndex $processIdx
+                    $clickedProcessIdx = $this.Tag
+                    Show-ProcessLog -ProcessIndex $clickedProcessIdx
                 })
                 $script:processPanel.Controls.Add($logButton)
                 
@@ -1760,6 +2080,7 @@ function Update-ProcessControls {
     $currentProcesses = Get-CurrentPageProcesses
     $isPage1 = ($script:currentPage -eq 0)
     $isPage2 = ($script:currentPage -eq 1)
+    $isPage3 = ($script:currentPage -eq 2)
     for ($i = 0; $i -lt $script:processControls.Count; $i++) {
         $ctrlGroup = $script:processControls[$i]
         if ($ctrlGroup -and $ctrlGroup.FileMoveButton) {
@@ -1779,9 +2100,29 @@ function Update-ProcessControls {
                 } else {
                     $ctrlGroup.FileMoveButton.Text = "セット"
                 }
+            } elseif ($isPage3) {
+                # 3ページ目：常に表示、テキストと色を編集モードに応じて更新（ONの時は「移動設定」水色、OFFの時は「移動」紺色）
+                $ctrlGroup.FileMoveButton.Visible = $true
+                if ($script:editMode) {
+                    $ctrlGroup.FileMoveButton.Text = "移動設定"
+                    $ctrlGroup.FileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                    $ctrlGroup.FileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                } else {
+                    $ctrlGroup.FileMoveButton.Text = "移動"
+                    $ctrlGroup.FileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                    $ctrlGroup.FileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                }
             } else {
                 # その他のページ：編集モードONの時のみ表示
                 $ctrlGroup.FileMoveButton.Visible = $script:editMode
+            }
+        }
+        # 3ページ目のCSV名変換ボタンのテキストを編集モードに応じて更新
+        if ($isPage3 -and $ctrlGroup -and $ctrlGroup.CsvConvertButton) {
+            if ($script:editMode) {
+                $ctrlGroup.CsvConvertButton.Text = "参照"
+            } else {
+                $ctrlGroup.CsvConvertButton.Text = "CSV名変換"
             }
         }
     }
@@ -1839,30 +2180,30 @@ function Update-ProcessControls {
             $script:fileMovePanel.Visible = $false
         }
         
-        # ログ格納セクションの位置を調整（370px y座標）
-        if ($script:logStoragePanel) {
-            $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 370)
+        # プロセスパネルの高さを調整（300px：プロセス3つの下に余裕を持たせる）
+        if ($script:processPanel) {
+            $script:processPanel.Size = New-Object System.Drawing.Size(900, 300)
         }
         
-        # ログ格納ボタンの位置を調整（400px x座標）
+        # ログ格納セクションの位置を調整（プロセスパネルの下：50 + 300 = 350px y座標）
+        if ($script:logStoragePanel) {
+            $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 350)
+        }
+        
+        # ログ格納ボタンの位置を調整（390px x座標）
         if ($script:logStorageButton) {
             $script:logStorageButton.Location = New-Object System.Drawing.Point(390, 35)
         }
         
-        # ログ出力エリアの位置を調整（430px y座標、740px幅、130px高さ）
+        # ログ出力エリアの位置を調整（ログ格納セクションの下：350 + 60 = 410px y座標、740px幅、130px高さ）
         if ($script:logTextBox) {
-            $script:logTextBox.Location = New-Object System.Drawing.Point(10, 430)
+            $script:logTextBox.Location = New-Object System.Drawing.Point(10, 410)
             $script:logTextBox.Size = New-Object System.Drawing.Size(740, 130)
         }
         
-        # フォームの高さを調整（600px）
+        # フォームの高さを調整（ログ出力エリアの下：410 + 130 = 540px、余裕を持たせて600px）
         if ($script:form) {
             $script:form.Size = New-Object System.Drawing.Size(900, 600)
-        }
-        
-        # プロセスパネルの高さを調整（370px）
-        if ($script:processPanel) {
-            $script:processPanel.Size = New-Object System.Drawing.Size(900, 370)
         }
     } elseif ($isPage4) {
         # 4ページ目：SQLLOADER実行のレイアウト
