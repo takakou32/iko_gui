@@ -1,6 +1,6 @@
 ﻿{
     "Title":  "4.SQLLOADER 実行",
-    "SourcePath":  "",
+    "SourcePath":  "C:\\a5m2",
     "DestinationPath":  "",
     "LogStoragePath":  "",
     "Processes":  [
@@ -8,6 +8,9 @@
                           "Name":  "1.EB SQLLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
+                          "KdlSourcePath":  "C:\\work",
+                          "KdlDestPath":  "",
+                          "V1CsvDestPath":  "",
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル1",
@@ -23,6 +26,9 @@
                           "Name":  "1.EE SQLLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
+                          "KdlSourcePath":  "C:\\work\\fizz-buzz@",
+                          "KdlDestPath":  "",
+                          "V1CsvDestPath":  "",
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル2",
@@ -38,6 +44,7 @@
                           "Name":  "1.EASQLLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
+                          "V1CsvDestPath":  "C:\\Windows",
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル3",

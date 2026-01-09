@@ -308,6 +308,213 @@ function Save-ProcessDestinationPath {
     }
 }
 
+# プロセスKDL変換CSV格納元パス保存関数（ページ4用）
+function Save-ProcessKdlSourcePath {
+    param([int]$ProcessIndex, [string]$KdlSourcePath)
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $process = $jsonContent.Processes[$ProcessIndex]
+        
+        # KdlSourcePathプロパティが存在しない場合は追加
+        if (-not (Get-Member -InputObject $process -Name "KdlSourcePath" -MemberType NoteProperty)) {
+            Add-Member -InputObject $process -MemberType NoteProperty -Name "KdlSourcePath" -Value ""
+        }
+        
+        # 相対パスに変換（可能な場合）
+        $relativePath = try {
+            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $targetPath = [System.IO.Path]::GetFullPath($KdlSourcePath).TrimEnd('\', '/')
+            
+            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                # 相対パスが空文字列の場合（選択パスが$PSScriptRootと完全に同じ場合）は絶対パスをそのまま保存
+                if ([string]::IsNullOrEmpty($relative)) {
+                    $KdlSourcePath
+                } else {
+                    $relative
+                }
+            } else {
+                $KdlSourcePath
+            }
+        } catch {
+            $KdlSourcePath
+        }
+        
+        $process.KdlSourcePath = $relativePath
+        
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        Write-Log "プロセスKDL変換CSV格納元パスを保存しました: $relativePath" "INFO" $ProcessIndex
+        return $true
+    } catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
+# プロセスKDL変換CSV格納先パス保存関数（ページ4用）
+function Save-ProcessKdlDestPath {
+    param([int]$ProcessIndex, [string]$KdlDestPath)
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $process = $jsonContent.Processes[$ProcessIndex]
+        
+        # KdlDestPathプロパティが存在しない場合は追加
+        if (-not (Get-Member -InputObject $process -Name "KdlDestPath" -MemberType NoteProperty)) {
+            Add-Member -InputObject $process -MemberType NoteProperty -Name "KdlDestPath" -Value ""
+        }
+        
+        # 相対パスに変換（可能な場合）
+        $relativePath = try {
+            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $targetPath = [System.IO.Path]::GetFullPath($KdlDestPath).TrimEnd('\', '/')
+            
+            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                # 相対パスが空文字列の場合（選択パスが$PSScriptRootと完全に同じ場合）は絶対パスをそのまま保存
+                if ([string]::IsNullOrEmpty($relative)) {
+                    $KdlDestPath
+                } else {
+                    $relative
+                }
+            } else {
+                $KdlDestPath
+            }
+        } catch {
+            $KdlDestPath
+        }
+        
+        $process.KdlDestPath = $relativePath
+        
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        Write-Log "プロセスKDL変換CSV格納先パスを保存しました: $relativePath" "INFO" $ProcessIndex
+        return $true
+    } catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
+# プロセスV1抽出CSV格納先パス保存関数（ページ4用）
+function Save-ProcessV1CsvDestPath {
+    param([int]$ProcessIndex, [string]$V1CsvDestPath)
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $process = $jsonContent.Processes[$ProcessIndex]
+        
+        # V1CsvDestPathプロパティが存在しない場合は追加
+        if (-not (Get-Member -InputObject $process -Name "V1CsvDestPath" -MemberType NoteProperty)) {
+            Add-Member -InputObject $process -MemberType NoteProperty -Name "V1CsvDestPath" -Value ""
+        }
+        
+        # 相対パスに変換（可能な場合）
+        $relativePath = try {
+            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $targetPath = [System.IO.Path]::GetFullPath($V1CsvDestPath).TrimEnd('\', '/')
+            
+            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                # 相対パスが空文字列の場合（選択パスが$PSScriptRootと完全に同じ場合）は絶対パスをそのまま保存
+                if ([string]::IsNullOrEmpty($relative)) {
+                    $V1CsvDestPath
+                } else {
+                    $relative
+                }
+            } else {
+                $V1CsvDestPath
+            }
+        } catch {
+            $V1CsvDestPath
+        }
+        
+        $process.V1CsvDestPath = $relativePath
+        
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        Write-Log "プロセスV1抽出CSV格納先パスを保存しました: $relativePath" "INFO" $ProcessIndex
+        return $true
+    } catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
 # ログ出力フォルダパス保存関数
 function Save-ProcessLogOutputDir {
     param([int]$ProcessIndex, [string]$LogOutputDir)
@@ -395,9 +602,9 @@ function Load-PagePaths {
     }
     
     # 移行データファイル移動元
-    # ページ3の場合はV1抽出CSV格納元テキストボックスに設定
-    if ($script:currentPage -eq 2) {
-        # 3ページ目：V1抽出CSV格納元
+    # ページ3・ページ4の場合はV1抽出CSV格納元テキストボックスに設定
+    if ($script:currentPage -eq 2 -or $script:currentPage -eq 3) {
+        # 3ページ目・4ページ目：V1抽出CSV格納元
         if ($sourcePath -and $sourcePath -ne "パス" -and $sourcePath -ne "") {
             # 相対パスの場合は絶対パスに変換
             try {
@@ -1557,11 +1764,16 @@ function Update-ProcessControls {
                             $folderDialog.Description = "V1抽出CSV格納元フォルダを選択してください"
                             $folderDialog.ShowNewFolderButton = $true
                             if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $v1CsvSourceTextBox.Text = $folderDialog.SelectedPath
+                                $selectedPath = $folderDialog.SelectedPath
+                                $v1CsvSourceTextBox.Text = $selectedPath
+                                # page4.jsonに保存
+                                Save-PagePaths -SourcePath $selectedPath
+                                Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
                             }
                             $folderDialog.Dispose()
                         }
                     })
+                    # V1抽出CSV格納元の初期値はLoad-PagePathsで設定される（ページ4の場合も対応済み）
                     $script:processPanel.Controls.Add($v1CsvSourceTextBox)
                     $script:v1CsvSourceTextBox = $v1CsvSourceTextBox
                 }
@@ -1603,17 +1815,38 @@ function Update-ProcessControls {
                     $kdlSourceTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                     $kdlSourceTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $kdlSourceTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $kdlSourceTextBox.Tag = $i  # プロセスインデックスをTagに保存
                     $kdlSourceTextBox.Add_Click({
                         if ($script:editMode) {
                             $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
                             $folderDialog.Description = "KDL変換CSV格納元フォルダを選択してください"
                             $folderDialog.ShowNewFolderButton = $true
                             if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $kdlSourceTextBox.Text = $folderDialog.SelectedPath
+                                $selectedPath = $folderDialog.SelectedPath
+                                $this.Text = $selectedPath
+                                # 各プロセスのKdlSourcePathをpage4.jsonに保存
+                                $clickedProcessIdx = $this.Tag
+                                Save-ProcessKdlSourcePath -ProcessIndex $clickedProcessIdx -KdlSourcePath $selectedPath
+                                Write-Log "KDL変換CSV格納元を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                             }
                             $folderDialog.Dispose()
                         }
                     })
+                    # KDL変換CSV格納元の初期値を設定
+                    $kdlSourcePathValue = "パス"
+                    if ($processConfig.KdlSourcePath -and $processConfig.KdlSourcePath -ne "" -and $processConfig.KdlSourcePath -ne "パス") {
+                        try {
+                            $kdlSourcePathValue = $processConfig.KdlSourcePath
+                            # 相対パスの場合は絶対パスに変換
+                            if (-not [System.IO.Path]::IsPathRooted($kdlSourcePathValue)) {
+                                $kdlSourcePathValue = Join-Path $PSScriptRoot $kdlSourcePathValue
+                            }
+                            $kdlSourcePathValue = [System.IO.Path]::GetFullPath($kdlSourcePathValue)
+                        } catch {
+                            # エラー時はデフォルト値を使用
+                        }
+                    }
+                    $kdlSourceTextBox.Text = $kdlSourcePathValue
                     $script:processPanel.Controls.Add($kdlSourceTextBox)
                     
                     # KDL変換CSV格納元の移動設定ボタン
@@ -1659,17 +1892,38 @@ function Update-ProcessControls {
                     $kdlDestTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                     $kdlDestTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $kdlDestTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $kdlDestTextBox.Tag = $i  # プロセスインデックスをTagに保存
                     $kdlDestTextBox.Add_Click({
                         if ($script:editMode) {
                             $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
                             $folderDialog.Description = "KDL変換CSV格納先フォルダを選択してください"
                             $folderDialog.ShowNewFolderButton = $true
                             if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $kdlDestTextBox.Text = $folderDialog.SelectedPath
+                                $selectedPath = $folderDialog.SelectedPath
+                                $this.Text = $selectedPath
+                                # 各プロセスのKdlDestPathをpage4.jsonに保存
+                                $clickedProcessIdx = $this.Tag
+                                Save-ProcessKdlDestPath -ProcessIndex $clickedProcessIdx -KdlDestPath $selectedPath
+                                Write-Log "KDL変換CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                             }
                             $folderDialog.Dispose()
                         }
                     })
+                    # KDL変換CSV格納先の初期値を設定
+                    $kdlDestPathValue = "パス"
+                    if ($processConfig.KdlDestPath -and $processConfig.KdlDestPath -ne "" -and $processConfig.KdlDestPath -ne "パス") {
+                        try {
+                            $kdlDestPathValue = $processConfig.KdlDestPath
+                            # 相対パスの場合は絶対パスに変換
+                            if (-not [System.IO.Path]::IsPathRooted($kdlDestPathValue)) {
+                                $kdlDestPathValue = Join-Path $PSScriptRoot $kdlDestPathValue
+                            }
+                            $kdlDestPathValue = [System.IO.Path]::GetFullPath($kdlDestPathValue)
+                        } catch {
+                            # エラー時はデフォルト値を使用
+                        }
+                    }
+                    $kdlDestTextBox.Text = $kdlDestPathValue
                     $script:processPanel.Controls.Add($kdlDestTextBox)
                     
                     # KDL変換CSV格納先の移動設定ボタン
@@ -1715,17 +1969,38 @@ function Update-ProcessControls {
                     $v1CsvDestTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                     $v1CsvDestTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $v1CsvDestTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $v1CsvDestTextBox.Tag = $i  # プロセスインデックスをTagに保存（1行目・2行目）
                     $v1CsvDestTextBox.Add_Click({
                         if ($script:editMode) {
                             $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
                             $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
                             $folderDialog.ShowNewFolderButton = $true
                             if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $v1CsvDestTextBox.Text = $folderDialog.SelectedPath
+                                $selectedPath = $folderDialog.SelectedPath
+                                $this.Text = $selectedPath
+                                # 各プロセスのV1CsvDestPathをpage4.jsonに保存
+                                $clickedProcessIdx = $this.Tag
+                                Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
+                                Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                             }
                             $folderDialog.Dispose()
                         }
                     })
+                    # V1抽出CSV格納先の初期値を設定（1行目・2行目）
+                    $v1CsvDestPathValue = "パス"
+                    if ($processConfig.V1CsvDestPath -and $processConfig.V1CsvDestPath -ne "" -and $processConfig.V1CsvDestPath -ne "パス") {
+                        try {
+                            $v1CsvDestPathValue = $processConfig.V1CsvDestPath
+                            # 相対パスの場合は絶対パスに変換
+                            if (-not [System.IO.Path]::IsPathRooted($v1CsvDestPathValue)) {
+                                $v1CsvDestPathValue = Join-Path $PSScriptRoot $v1CsvDestPathValue
+                            }
+                            $v1CsvDestPathValue = [System.IO.Path]::GetFullPath($v1CsvDestPathValue)
+                        } catch {
+                            # エラー時はデフォルト値を使用
+                        }
+                    }
+                    $v1CsvDestTextBox.Text = $v1CsvDestPathValue
                     $script:processPanel.Controls.Add($v1CsvDestTextBox)
                     
                     # V1抽出CSV格納先の移動設定ボタン
@@ -1849,17 +2124,38 @@ function Update-ProcessControls {
                     $v1CsvDestTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                     $v1CsvDestTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $v1CsvDestTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $v1CsvDestTextBox.Tag = $i  # プロセスインデックスをTagに保存（3行目以降）
                     $v1CsvDestTextBox.Add_Click({
                         if ($script:editMode) {
                             $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
                             $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
                             $folderDialog.ShowNewFolderButton = $true
                             if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $v1CsvDestTextBox.Text = $folderDialog.SelectedPath
+                                $selectedPath = $folderDialog.SelectedPath
+                                $this.Text = $selectedPath
+                                # 各プロセスのV1CsvDestPathをpage4.jsonに保存
+                                $clickedProcessIdx = $this.Tag
+                                Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
+                                Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                             }
                             $folderDialog.Dispose()
                         }
                     })
+                    # V1抽出CSV格納先の初期値を設定（3行目以降）
+                    $v1CsvDestPathValue = "パス"
+                    if ($processConfig.V1CsvDestPath -and $processConfig.V1CsvDestPath -ne "" -and $processConfig.V1CsvDestPath -ne "パス") {
+                        try {
+                            $v1CsvDestPathValue = $processConfig.V1CsvDestPath
+                            # 相対パスの場合は絶対パスに変換
+                            if (-not [System.IO.Path]::IsPathRooted($v1CsvDestPathValue)) {
+                                $v1CsvDestPathValue = Join-Path $PSScriptRoot $v1CsvDestPathValue
+                            }
+                            $v1CsvDestPathValue = [System.IO.Path]::GetFullPath($v1CsvDestPathValue)
+                        } catch {
+                            # エラー時はデフォルト値を使用
+                        }
+                    }
+                    $v1CsvDestTextBox.Text = $v1CsvDestPathValue
                     $script:processPanel.Controls.Add($v1CsvDestTextBox)
                     
                     # V1抽出CSV格納先の移動設定ボタン
@@ -2217,25 +2513,35 @@ function Update-ProcessControls {
             $script:fileMovePanel.Visible = $false
         }
         
-        # ログ格納セクションを非表示（4ページ目にはログ格納セクションがない）
-        if ($script:logStoragePanel) {
-            $script:logStoragePanel.Visible = $false
+        # プロセスパネルの高さを調整（630px：プロセス3つの下に余裕を持たせる）
+        if ($script:processPanel) {
+            $script:processPanel.Size = New-Object System.Drawing.Size(900, 630)
         }
         
-        # ログ出力エリアの位置を調整（690px y座標、790px幅、150px高さ）
+        # ログ格納セクションを表示
+        if ($script:logStoragePanel) {
+            $script:logStoragePanel.Visible = $true
+        }
+        
+        # ログ格納セクションの位置を調整（プロセスパネルの下：50 + 630 = 680px y座標）
+        if ($script:logStoragePanel) {
+            $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 680)
+        }
+        
+        # ログ格納ボタンの位置を調整（390px x座標）
+        if ($script:logStorageButton) {
+            $script:logStorageButton.Location = New-Object System.Drawing.Point(390, 35)
+        }
+        
+        # ログ出力エリアの位置を調整（ログ格納セクションの下：680 + 60 = 740px y座標、790px幅、150px高さ）
         if ($script:logTextBox) {
-            $script:logTextBox.Location = New-Object System.Drawing.Point(10, 690)
+            $script:logTextBox.Location = New-Object System.Drawing.Point(10, 740)
             $script:logTextBox.Size = New-Object System.Drawing.Size(790, 150)
         }
         
-        # フォームの高さを調整（860px）
+        # フォームの高さを調整（ログ出力エリアの下：740 + 150 = 890px、余裕を持たせて920px）
         if ($script:form) {
-            $script:form.Size = New-Object System.Drawing.Size(900, 860)
-        }
-        
-        # プロセスパネルの高さを調整（680px）
-        if ($script:processPanel) {
-            $script:processPanel.Size = New-Object System.Drawing.Size(900, 680)
+            $script:form.Size = New-Object System.Drawing.Size(900, 920)
         }
     } else {
         # 5ページ目以降：従来のレイアウト
