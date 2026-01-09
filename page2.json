@@ -11,7 +11,7 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル1",
-                                                 "Path":  "iko_gui\\sample.bat"
+                                                 "Path":  "新しいフォルダー\\sample.bat"
                                              }
                                          ],
                           "CsvMoveOperations":  [

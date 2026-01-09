@@ -902,37 +902,75 @@ function Update-ProcessControls {
                 $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
                 $fileMoveButton.Size = New-Object System.Drawing.Size(70, 30)
                 if ($isPage1) {
-                    # 1ページ目：実行ボタンと同じ機能（編集モードONの時は「参照」、OFFの時は「実行」）
+                    # 1ページ目：実行ボタンと同じ機能だが、見た目は設計書通りの「チェック」ボタン（fillColor=#ffcccc, strokeColor=#b85450）
+                    # 編集モードONの時は「参照」、OFFの時は「チェック」と表示
                     if ($script:editMode) {
                         $fileMoveButton.Text = "参照"
                     } else {
-                        $fileMoveButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
+                        $fileMoveButton.Text = "チェック"  # 設計書通り「チェック」と表示
                     }
-                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99（実行ボタンと同じ色）
-                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656（実行ボタンと同じ色）
+                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc（設計書通りの赤色）
+                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450（設計書通りの赤色ボーダー）
                     $fileMoveButton.Visible = $true  # 常に表示
                     $processIdx = $i
                     $fileMoveButton.Add_Click({
                         Start-ProcessFlow -ProcessIndex $processIdx
                     })
                 } else {
-                    # 2ページ目：セットボタン（ファイル移動設定）
-                    $fileMoveButton.Text = "セット"
+                    # 2ページ目：セットボタン
+                    # 編集モードOFF時は「セット」と表示し、実行ボタンと同じ機能（プロセス実行）
+                    # 編集モードON時は「参照」と表示し、実行ボタンの編集モードON時と同じ機能（ファイル選択ウィザードを開き、パスをJSONに保存）
+                    if ($script:editMode) {
+                        $fileMoveButton.Text = "参照"
+                    } else {
+                        $fileMoveButton.Text = "セット"
+                    }
+                    $processIdx = $i
+                    $fileMoveButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $fileMoveButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag  # Tagからプロセスインデックスを取得
+                        # 編集モードON時は実行ボタンと同じ機能（ファイル選択ウィザードを開き、パスをJSONに保存）
+                        if ($script:editMode) {
+                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                            $fileDialog.Title = "バッチファイルを選択してください"
+                            
+                            # 現在のバッチファイルパスを初期値として設定
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    $currentBatch = $processConfig.BatchFiles[0]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                    }
+                                }
+                            }
+                            
+                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $selectedFile = $fileDialog.FileName
+                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
+                                Write-Log "バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                [System.Windows.Forms.MessageBox]::Show("バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                # コントロールを更新して新しい設定を反映
+                                Update-ProcessControls
+                            }
+                            $fileDialog.Dispose()
+                        } else {
+                            # 編集モードOFF時は実行ボタンと同じ機能（プロセス実行）
+                            Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                        }
+                    })
                     $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
                     $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
-                    $fileMoveButton.Visible = $script:editMode  # 編集モードONの時のみ表示
-                    $fileMoveButton.Tag = $i
-                    $fileMoveButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        $currentProcessName = ""
-                        if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
-                            $ctrlGroup = $script:processControls[$clickedProcessIdx]
-                            if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
-                                $currentProcessName = $ctrlGroup.NameTextBox.Text
-                            }
-                        }
-                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
-                    })
+                    $fileMoveButton.Visible = $true  # 編集モードOFF時も表示
                 }
                 $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                 $fileMoveButton.FlatAppearance.BorderSize = 1
@@ -949,9 +987,10 @@ function Update-ProcessControls {
                 } else {
                     $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
                 }
+                # 実行ボタンの見た目（設計書通り：fillColor=#ffcc99, strokeColor=#d6b656）
                 $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
-                $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                 $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
+                $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                 $executeButton.FlatAppearance.BorderSize = 1
                 $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
                 $processIdx = $i
@@ -1725,19 +1764,21 @@ function Update-ProcessControls {
         $ctrlGroup = $script:processControls[$i]
         if ($ctrlGroup -and $ctrlGroup.FileMoveButton) {
             if ($isPage1) {
-                # 1ページ目：常に表示、テキストを編集モードに応じて更新（実行ボタンと同じ）
+                # 1ページ目：常に表示、テキストを編集モードに応じて更新（ONの時は「参照」、OFFの時は「チェック」）
                 $ctrlGroup.FileMoveButton.Visible = $true
-                if ($i -lt $currentProcesses.Count) {
-                    $processConfig = $currentProcesses[$i]
-                    if ($script:editMode) {
-                        $ctrlGroup.FileMoveButton.Text = "参照"
-                    } else {
-                        $ctrlGroup.FileMoveButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
-                    }
+                if ($script:editMode) {
+                    $ctrlGroup.FileMoveButton.Text = "参照"
+                } else {
+                    $ctrlGroup.FileMoveButton.Text = "チェック"  # 設計書通り「チェック」と表示
                 }
             } elseif ($isPage2) {
-                # 2ページ目：編集モードONの時のみ表示
-                $ctrlGroup.FileMoveButton.Visible = $script:editMode
+                # 2ページ目：常に表示、テキストを編集モードに応じて更新（ONの時は「参照」、OFFの時は「セット」）
+                $ctrlGroup.FileMoveButton.Visible = $true
+                if ($script:editMode) {
+                    $ctrlGroup.FileMoveButton.Text = "参照"
+                } else {
+                    $ctrlGroup.FileMoveButton.Text = "セット"
+                }
             } else {
                 # その他のページ：編集モードONの時のみ表示
                 $ctrlGroup.FileMoveButton.Visible = $script:editMode
