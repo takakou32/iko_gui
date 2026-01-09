@@ -895,31 +895,48 @@ function Update-ProcessControls {
                 $nameTextBox.Height = 30
                 $script:processPanel.Controls.Add($nameTextBox)
                 
-                # ファイル移動設定ボタン（セット/チェックボタン、赤色）- 編集モードONの時のみ表示
+                # ファイル移動設定ボタン（セット/チェックボタン、赤色）
+                # 1ページ目は「実行」ボタンと同じ機能、2ページ目は「セット」（ファイル移動設定）
                 $fileMoveButton = New-Object System.Windows.Forms.Button
                 $fileMoveX = $x + 140
                 $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
                 $fileMoveButton.Size = New-Object System.Drawing.Size(70, 30)
-                # 1ページ目は「チェック」、2ページ目は「セット」
-                $fileMoveButton.Text = if ($isPage1) { "チェック" } else { "セット" }
-                $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
+                if ($isPage1) {
+                    # 1ページ目：実行ボタンと同じ機能（編集モードONの時は「参照」、OFFの時は「実行」）
+                    if ($script:editMode) {
+                        $fileMoveButton.Text = "参照"
+                    } else {
+                        $fileMoveButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
+                    }
+                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99（実行ボタンと同じ色）
+                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656（実行ボタンと同じ色）
+                    $fileMoveButton.Visible = $true  # 常に表示
+                    $processIdx = $i
+                    $fileMoveButton.Add_Click({
+                        Start-ProcessFlow -ProcessIndex $processIdx
+                    })
+                } else {
+                    # 2ページ目：セットボタン（ファイル移動設定）
+                    $fileMoveButton.Text = "セット"
+                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
+                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
+                    $fileMoveButton.Visible = $script:editMode  # 編集モードONの時のみ表示
+                    $fileMoveButton.Tag = $i
+                    $fileMoveButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        $currentProcessName = ""
+                        if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                            $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                            if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                                $currentProcessName = $ctrlGroup.NameTextBox.Text
+                            }
+                        }
+                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                    })
+                }
                 $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
                 $fileMoveButton.FlatAppearance.BorderSize = 1
                 $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $fileMoveButton.Visible = $script:editMode
-                $fileMoveButton.Tag = $i
-                $fileMoveButton.Add_Click({
-                    $clickedProcessIdx = $this.Tag
-                    $currentProcessName = ""
-                    if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
-                        $ctrlGroup = $script:processControls[$clickedProcessIdx]
-                        if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
-                            $currentProcessName = $ctrlGroup.NameTextBox.Text
-                        }
-                    }
-                    Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
-                })
                 $script:processPanel.Controls.Add($fileMoveButton)
                 
                 # 実行ボタン（オレンジ）
@@ -1700,10 +1717,31 @@ function Update-ProcessControls {
     }
     $script:titleLabel.Text = $pageTitle
     
-    # 移動設定ボタンの表示/非表示を編集モードに応じて更新
-    foreach ($ctrlGroup in $script:processControls) {
+    # 移動設定ボタンの表示/非表示とテキストを編集モードに応じて更新
+    $currentProcesses = Get-CurrentPageProcesses
+    $isPage1 = ($script:currentPage -eq 0)
+    $isPage2 = ($script:currentPage -eq 1)
+    for ($i = 0; $i -lt $script:processControls.Count; $i++) {
+        $ctrlGroup = $script:processControls[$i]
         if ($ctrlGroup -and $ctrlGroup.FileMoveButton) {
-            $ctrlGroup.FileMoveButton.Visible = $script:editMode
+            if ($isPage1) {
+                # 1ページ目：常に表示、テキストを編集モードに応じて更新（実行ボタンと同じ）
+                $ctrlGroup.FileMoveButton.Visible = $true
+                if ($i -lt $currentProcesses.Count) {
+                    $processConfig = $currentProcesses[$i]
+                    if ($script:editMode) {
+                        $ctrlGroup.FileMoveButton.Text = "参照"
+                    } else {
+                        $ctrlGroup.FileMoveButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
+                    }
+                }
+            } elseif ($isPage2) {
+                # 2ページ目：編集モードONの時のみ表示
+                $ctrlGroup.FileMoveButton.Visible = $script:editMode
+            } else {
+                # その他のページ：編集モードONの時のみ表示
+                $ctrlGroup.FileMoveButton.Visible = $script:editMode
+            }
         }
     }
     
