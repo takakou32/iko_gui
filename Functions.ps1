@@ -1849,28 +1849,52 @@ function Update-ProcessControls {
                     $kdlSourceTextBox.Text = $kdlSourcePathValue
                     $script:processPanel.Controls.Add($kdlSourceTextBox)
                     
-                    # KDL変換CSV格納元の移動設定ボタン
+                    # KDL変換CSV格納元の移動設定ボタン（編集モードON時は水色、OFF時は紺色）
                     $kdlSourceMoveButton = New-Object System.Windows.Forms.Button
                     $kdlSourceMoveButton.Location = New-Object System.Drawing.Point(415, $y)
                     $kdlSourceMoveButton.Size = New-Object System.Drawing.Size(60, 30)
-                    $kdlSourceMoveButton.Text = "移動設定"
-                    $kdlSourceMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                    if ($script:editMode) {
+                        $kdlSourceMoveButton.Text = "移動設定"
+                        $kdlSourceMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                        $kdlSourceMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                    } else {
+                        $kdlSourceMoveButton.Text = "移動"
+                        $kdlSourceMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                        $kdlSourceMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                    }
                     $kdlSourceMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $kdlSourceMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
                     $kdlSourceMoveButton.FlatAppearance.BorderSize = 1
                     $kdlSourceMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
-                    $kdlSourceMoveButton.Visible = $script:editMode
+                    $kdlSourceMoveButton.Visible = $true  # 常に表示
                     $kdlSourceMoveButton.Tag = $i
                     $kdlSourceMoveButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
                         $currentProcessName = ""
+                        $kdlSourcePath = ""
+                        $kdlDestPath = ""
+                        
+                        # プロセス名とパスを取得
                         if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
                             $ctrlGroup = $script:processControls[$clickedProcessIdx]
                             if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
                                 $currentProcessName = $ctrlGroup.NameTextBox.Text
                             }
+                            if ($ctrlGroup -and $ctrlGroup.KdlSourceTextBox) {
+                                $kdlSourcePath = $ctrlGroup.KdlSourceTextBox.Text
+                            }
+                            if ($ctrlGroup -and $ctrlGroup.KdlDestTextBox) {
+                                $kdlDestPath = $ctrlGroup.KdlDestTextBox.Text
+                            }
                         }
-                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        
+                        # 編集モードと非編集モードで動作を分岐
+                        if ($script:editMode) {
+                            # 編集モード：移動設定ダイアログを表示
+                            Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        } else {
+                            # 非編集モード：ファイル移動を実行（KDL変換CSV用）
+                            Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $kdlSourcePath -V1CsvDestinationPath $kdlDestPath
+                        }
                     })
                     $script:processPanel.Controls.Add($kdlSourceMoveButton)
                     
@@ -1926,28 +1950,52 @@ function Update-ProcessControls {
                     $kdlDestTextBox.Text = $kdlDestPathValue
                     $script:processPanel.Controls.Add($kdlDestTextBox)
                     
-                    # KDL変換CSV格納先の移動設定ボタン
+                    # KDL変換CSV格納先の移動設定ボタン（編集モードON時は水色、OFF時は紺色）
                     $kdlDestMoveButton = New-Object System.Windows.Forms.Button
                     $kdlDestMoveButton.Location = New-Object System.Drawing.Point(725, $y)
                     $kdlDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
-                    $kdlDestMoveButton.Text = "移動設定"
-                    $kdlDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                    if ($script:editMode) {
+                        $kdlDestMoveButton.Text = "移動設定"
+                        $kdlDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                        $kdlDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                    } else {
+                        $kdlDestMoveButton.Text = "移動"
+                        $kdlDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                        $kdlDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                    }
                     $kdlDestMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $kdlDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
                     $kdlDestMoveButton.FlatAppearance.BorderSize = 1
                     $kdlDestMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
-                    $kdlDestMoveButton.Visible = $script:editMode
+                    $kdlDestMoveButton.Visible = $true  # 常に表示
                     $kdlDestMoveButton.Tag = $i
                     $kdlDestMoveButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
                         $currentProcessName = ""
+                        $kdlSourcePath = ""
+                        $kdlDestPath = ""
+                        
+                        # プロセス名とパスを取得
                         if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
                             $ctrlGroup = $script:processControls[$clickedProcessIdx]
                             if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
                                 $currentProcessName = $ctrlGroup.NameTextBox.Text
                             }
+                            if ($ctrlGroup -and $ctrlGroup.KdlSourceTextBox) {
+                                $kdlSourcePath = $ctrlGroup.KdlSourceTextBox.Text
+                            }
+                            if ($ctrlGroup -and $ctrlGroup.KdlDestTextBox) {
+                                $kdlDestPath = $ctrlGroup.KdlDestTextBox.Text
+                            }
                         }
-                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        
+                        # 編集モードと非編集モードで動作を分岐
+                        if ($script:editMode) {
+                            # 編集モード：移動設定ダイアログを表示
+                            Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        } else {
+                            # 非編集モード：ファイル移動を実行（KDL変換CSV用）
+                            Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $kdlSourcePath -V1CsvDestinationPath $kdlDestPath
+                        }
                     })
                     $script:processPanel.Controls.Add($kdlDestMoveButton)
                     
@@ -2003,28 +2051,54 @@ function Update-ProcessControls {
                     $v1CsvDestTextBox.Text = $v1CsvDestPathValue
                     $script:processPanel.Controls.Add($v1CsvDestTextBox)
                     
-                    # V1抽出CSV格納先の移動設定ボタン
+                    # V1抽出CSV格納先の移動設定ボタン（編集モードON時は水色、OFF時は紺色）
                     $v1CsvDestMoveButton = New-Object System.Windows.Forms.Button
                     $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(725, [int]($y + 75))
                     $v1CsvDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
-                    $v1CsvDestMoveButton.Text = "移動設定"
-                    $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                    if ($script:editMode) {
+                        $v1CsvDestMoveButton.Text = "移動設定"
+                        $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                        $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                    } else {
+                        $v1CsvDestMoveButton.Text = "移動"
+                        $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                        $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                    }
                     $v1CsvDestMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
                     $v1CsvDestMoveButton.FlatAppearance.BorderSize = 1
                     $v1CsvDestMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
-                    $v1CsvDestMoveButton.Visible = $script:editMode
+                    $v1CsvDestMoveButton.Visible = $true  # 常に表示
                     $v1CsvDestMoveButton.Tag = $i
                     $v1CsvDestMoveButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
                         $currentProcessName = ""
+                        $v1CsvSourcePath = ""
+                        $v1CsvDestPath = ""
+                        
+                        # プロセス名とパスを取得
                         if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
                             $ctrlGroup = $script:processControls[$clickedProcessIdx]
                             if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
                                 $currentProcessName = $ctrlGroup.NameTextBox.Text
                             }
+                            if ($ctrlGroup -and $ctrlGroup.V1CsvDestTextBox) {
+                                $v1CsvDestPath = $ctrlGroup.V1CsvDestTextBox.Text
+                            }
                         }
-                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        
+                        # V1抽出CSV格納元を取得
+                        if ($script:v1CsvSourceTextBox) {
+                            $v1CsvSourcePath = $script:v1CsvSourceTextBox.Text
+                        }
+                        
+                        # 編集モードと非編集モードで動作を分岐
+                        if ($script:editMode) {
+                            # 編集モード：移動設定ダイアログを表示
+                            Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        } else {
+                            # 非編集モード：ファイル移動を実行
+                            Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+                        }
                     })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
                     
@@ -2035,39 +2109,247 @@ function Update-ProcessControls {
                     $kdlImportButton = New-Object System.Windows.Forms.Button
                     $kdlImportButton.Location = New-Object System.Drawing.Point(410, $buttonY)
                     $kdlImportButton.Size = New-Object System.Drawing.Size(90, 30)
-                    $kdlImportButton.Text = "KDL取込"
+                    if ($script:editMode) {
+                        $kdlImportButton.Text = "参照"
+                    } else {
+                        $kdlImportButton.Text = "KDL取込"
+                    }
                     $kdlImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
                     $kdlImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                     $kdlImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
                     $kdlImportButton.FlatAppearance.BorderSize = 1
                     $kdlImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $kdlImportButton.Enabled = $false  # 機能未実装
+                    $kdlImportButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $kdlImportButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        if ($script:editMode) {
+                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
+                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                            $fileDialog.Title = "KDL取込用バッチファイルを選択してください"
+                            
+                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 0）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    $currentBatch = $processConfig.BatchFiles[0]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                    }
+                                }
+                            }
+                            
+                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $selectedFile = $fileDialog.FileName
+                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
+                                Write-Log "KDL取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                [System.Windows.Forms.MessageBox]::Show("KDL取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                # コントロールを更新して新しい設定を反映
+                                Update-ProcessControls
+                            }
+                            $fileDialog.Dispose()
+                        } else {
+                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 0）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    $batch = $processConfig.BatchFiles[0]
+                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                        $batch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $batch.Path
+                                    }
+                                    $this.Enabled = $false
+                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    $this.Enabled = $true
+                                } else {
+                                    Write-Log "KDL取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("KDL取込用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                }
+                            }
+                        }
+                    })
                     $script:processPanel.Controls.Add($kdlImportButton)
                     
                     # 直接取込ボタン（オレンジ）
                     $directImportButton = New-Object System.Windows.Forms.Button
                     $directImportButton.Location = New-Object System.Drawing.Point(510, $buttonY)
                     $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
-                    $directImportButton.Text = "直接取込"
+                    if ($script:editMode) {
+                        $directImportButton.Text = "参照"
+                    } else {
+                        $directImportButton.Text = "直接取込"
+                    }
                     $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)  # #ffe6cc
                     $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                     $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)  # #d79b00
                     $directImportButton.FlatAppearance.BorderSize = 1
                     $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $directImportButton.Enabled = $false  # 機能未実装
+                    $directImportButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $directImportButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        if ($script:editMode) {
+                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
+                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                            $fileDialog.Title = "直接取込用バッチファイルを選択してください"
+                            
+                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                    $currentBatch = $processConfig.BatchFiles[1]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                    }
+                                } elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    # BatchFiles[1]が存在しない場合は、BatchFiles[0]を初期値として使用
+                                    $currentBatch = $processConfig.BatchFiles[0]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                    }
+                                }
+                            }
+                            
+                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $selectedFile = $fileDialog.FileName
+                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
+                                Write-Log "直接取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                # コントロールを更新して新しい設定を反映
+                                Update-ProcessControls
+                            }
+                            $fileDialog.Dispose()
+                        } else {
+                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 1）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                    $batch = $processConfig.BatchFiles[1]
+                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                        $batch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $batch.Path
+                                    }
+                                    $this.Enabled = $false
+                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    $this.Enabled = $true
+                                } else {
+                                    Write-Log "直接取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                }
+                            }
+                        }
+                    })
                     $script:processPanel.Controls.Add($directImportButton)
                     
                     # 取込後ボタン（オレンジ）
                     $afterImportButton = New-Object System.Windows.Forms.Button
                     $afterImportButton.Location = New-Object System.Drawing.Point(610, $buttonY)
                     $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
-                    $afterImportButton.Text = "取込後"
+                    if ($script:editMode) {
+                        $afterImportButton.Text = "参照"
+                    } else {
+                        $afterImportButton.Text = "取込後"
+                    }
                     $afterImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
                     $afterImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                     $afterImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
                     $afterImportButton.FlatAppearance.BorderSize = 1
                     $afterImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $afterImportButton.Enabled = $false  # 機能未実装
+                    $afterImportButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $afterImportButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        if ($script:editMode) {
+                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
+                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                            $fileDialog.Title = "取込後用バッチファイルを選択してください"
+                            
+                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 2）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
+                                    $currentBatch = $processConfig.BatchFiles[2]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                    }
+                                } elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    # BatchFiles[2]が存在しない場合は、BatchFiles[0]を初期値として使用
+                                    $currentBatch = $processConfig.BatchFiles[0]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                    }
+                                }
+                            }
+                            
+                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $selectedFile = $fileDialog.FileName
+                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 2
+                                Write-Log "取込後用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                [System.Windows.Forms.MessageBox]::Show("取込後用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                # コントロールを更新して新しい設定を反映
+                                Update-ProcessControls
+                            }
+                            $fileDialog.Dispose()
+                        } else {
+                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 2）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
+                                    $batch = $processConfig.BatchFiles[2]
+                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                        $batch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $batch.Path
+                                    }
+                                    $this.Enabled = $false
+                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    $this.Enabled = $true
+                                } else {
+                                    Write-Log "取込後用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("取込後用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                }
+                            }
+                        }
+                    })
                     $script:processPanel.Controls.Add($afterImportButton)
                     
                     # ログ確認ボタン（緑）
@@ -2158,28 +2440,54 @@ function Update-ProcessControls {
                     $v1CsvDestTextBox.Text = $v1CsvDestPathValue
                     $script:processPanel.Controls.Add($v1CsvDestTextBox)
                     
-                    # V1抽出CSV格納先の移動設定ボタン
+                    # V1抽出CSV格納先の移動設定ボタン（編集モードON時は水色、OFF時は紺色）
                     $v1CsvDestMoveButton = New-Object System.Windows.Forms.Button
                     $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(415, $y)
                     $v1CsvDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
-                    $v1CsvDestMoveButton.Text = "移動設定"
-                    $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc
+                    if ($script:editMode) {
+                        $v1CsvDestMoveButton.Text = "移動設定"
+                        $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                        $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                    } else {
+                        $v1CsvDestMoveButton.Text = "移動"
+                        $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                        $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                    }
                     $v1CsvDestMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
                     $v1CsvDestMoveButton.FlatAppearance.BorderSize = 1
                     $v1CsvDestMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
-                    $v1CsvDestMoveButton.Visible = $script:editMode
+                    $v1CsvDestMoveButton.Visible = $true  # 常に表示
                     $v1CsvDestMoveButton.Tag = $i
                     $v1CsvDestMoveButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
                         $currentProcessName = ""
+                        $v1CsvSourcePath = ""
+                        $v1CsvDestPath = ""
+                        
+                        # プロセス名とパスを取得
                         if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
                             $ctrlGroup = $script:processControls[$clickedProcessIdx]
                             if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
                                 $currentProcessName = $ctrlGroup.NameTextBox.Text
                             }
+                            if ($ctrlGroup -and $ctrlGroup.V1CsvDestTextBox) {
+                                $v1CsvDestPath = $ctrlGroup.V1CsvDestTextBox.Text
+                            }
                         }
-                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        
+                        # V1抽出CSV格納元を取得
+                        if ($script:v1CsvSourceTextBox) {
+                            $v1CsvSourcePath = $script:v1CsvSourceTextBox.Text
+                        }
+                        
+                        # 編集モードと非編集モードで動作を分岐
+                        if ($script:editMode) {
+                            # 編集モード：移動設定ダイアログを表示
+                            Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        } else {
+                            # 非編集モード：ファイル移動を実行
+                            Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+                        }
                     })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
                     
@@ -2190,26 +2498,172 @@ function Update-ProcessControls {
                     $directImportButton = New-Object System.Windows.Forms.Button
                     $directImportButton.Location = New-Object System.Drawing.Point(510, $buttonY)
                     $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
-                    $directImportButton.Text = "直接取込"
+                    if ($script:editMode) {
+                        $directImportButton.Text = "参照"
+                    } else {
+                        $directImportButton.Text = "直接取込"
+                    }
                     $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)  # #ffe6cc
                     $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                     $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)  # #d79b00
                     $directImportButton.FlatAppearance.BorderSize = 1
                     $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $directImportButton.Enabled = $false  # 機能未実装
+                    $directImportButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $directImportButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        if ($script:editMode) {
+                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
+                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                            $fileDialog.Title = "直接取込用バッチファイルを選択してください"
+                            
+                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                    $currentBatch = $processConfig.BatchFiles[1]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                    }
+                                } elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    # BatchFiles[1]が存在しない場合は、BatchFiles[0]を初期値として使用
+                                    $currentBatch = $processConfig.BatchFiles[0]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                    }
+                                }
+                            }
+                            
+                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $selectedFile = $fileDialog.FileName
+                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
+                                Write-Log "直接取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                # コントロールを更新して新しい設定を反映
+                                Update-ProcessControls
+                            }
+                            $fileDialog.Dispose()
+                        } else {
+                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 1）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                    $batch = $processConfig.BatchFiles[1]
+                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                        $batch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $batch.Path
+                                    }
+                                    $this.Enabled = $false
+                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    $this.Enabled = $true
+                                } else {
+                                    Write-Log "直接取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                }
+                            }
+                        }
+                    })
                     $script:processPanel.Controls.Add($directImportButton)
                     
                     # 取込後ボタン（オレンジ）
                     $afterImportButton = New-Object System.Windows.Forms.Button
                     $afterImportButton.Location = New-Object System.Drawing.Point(610, $buttonY)
                     $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
-                    $afterImportButton.Text = "取込後"
+                    if ($script:editMode) {
+                        $afterImportButton.Text = "参照"
+                    } else {
+                        $afterImportButton.Text = "取込後"
+                    }
                     $afterImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
                     $afterImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                     $afterImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
                     $afterImportButton.FlatAppearance.BorderSize = 1
                     $afterImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $afterImportButton.Enabled = $false  # 機能未実装
+                    $afterImportButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $afterImportButton.Add_Click({
+                        $clickedProcessIdx = $this.Tag
+                        if ($script:editMode) {
+                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
+                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                            $fileDialog.Title = "取込後用バッチファイルを選択してください"
+                            
+                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 2）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
+                                    $currentBatch = $processConfig.BatchFiles[2]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                    }
+                                } elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    # BatchFiles[2]が存在しない場合は、BatchFiles[0]を初期値として使用
+                                    $currentBatch = $processConfig.BatchFiles[0]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                    }
+                                }
+                            }
+                            
+                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $selectedFile = $fileDialog.FileName
+                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 2
+                                Write-Log "取込後用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                [System.Windows.Forms.MessageBox]::Show("取込後用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                # コントロールを更新して新しい設定を反映
+                                Update-ProcessControls
+                            }
+                            $fileDialog.Dispose()
+                        } else {
+                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 2）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
+                                    $batch = $processConfig.BatchFiles[2]
+                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                        $batch.Path
+                                    } else {
+                                        Join-Path $PSScriptRoot $batch.Path
+                                    }
+                                    $this.Enabled = $false
+                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    $this.Enabled = $true
+                                } else {
+                                    Write-Log "取込後用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("取込後用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                }
+                            }
+                        }
+                    })
                     $script:processPanel.Controls.Add($afterImportButton)
                     
                     # ログ確認ボタン（緑）
@@ -2377,6 +2831,7 @@ function Update-ProcessControls {
     $isPage1 = ($script:currentPage -eq 0)
     $isPage2 = ($script:currentPage -eq 1)
     $isPage3 = ($script:currentPage -eq 2)
+    $isPage4 = ($script:currentPage -eq 3)
     for ($i = 0; $i -lt $script:processControls.Count; $i++) {
         $ctrlGroup = $script:processControls[$i]
         if ($ctrlGroup -and $ctrlGroup.FileMoveButton) {
@@ -2419,6 +2874,78 @@ function Update-ProcessControls {
                 $ctrlGroup.CsvConvertButton.Text = "参照"
             } else {
                 $ctrlGroup.CsvConvertButton.Text = "CSV名変換"
+            }
+        }
+        
+        # 4ページ目の移動設定ボタンのテキストと色を編集モードに応じて更新
+        if ($isPage4 -and $ctrlGroup) {
+            # KDL変換CSV格納元の移動設定ボタン（1行目・2行目のみ）
+            if ($ctrlGroup.KdlSourceMoveButton) {
+                if ($script:editMode) {
+                    $ctrlGroup.KdlSourceMoveButton.Text = "移動設定"
+                    $ctrlGroup.KdlSourceMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                    $ctrlGroup.KdlSourceMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                } else {
+                    $ctrlGroup.KdlSourceMoveButton.Text = "移動"
+                    $ctrlGroup.KdlSourceMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                    $ctrlGroup.KdlSourceMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                }
+            }
+            
+            # KDL変換CSV格納先の移動設定ボタン（1行目・2行目のみ）
+            if ($ctrlGroup.KdlDestMoveButton) {
+                if ($script:editMode) {
+                    $ctrlGroup.KdlDestMoveButton.Text = "移動設定"
+                    $ctrlGroup.KdlDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                    $ctrlGroup.KdlDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                } else {
+                    $ctrlGroup.KdlDestMoveButton.Text = "移動"
+                    $ctrlGroup.KdlDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                    $ctrlGroup.KdlDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                }
+            }
+            
+            # V1抽出CSV格納先の移動設定ボタン（全行）
+            if ($ctrlGroup.V1CsvDestMoveButton) {
+                if ($script:editMode) {
+                    $ctrlGroup.V1CsvDestMoveButton.Text = "移動設定"
+                    $ctrlGroup.V1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+                    $ctrlGroup.V1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
+                } else {
+                    $ctrlGroup.V1CsvDestMoveButton.Text = "移動"
+                    $ctrlGroup.V1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+                    $ctrlGroup.V1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
+                }
+            }
+        }
+        
+        # 4ページ目のボタンのテキストを編集モードに応じて更新
+        if ($isPage4 -and $ctrlGroup) {
+            # KDL取込ボタン（1行目・2行目のみ）
+            if ($ctrlGroup.KdlImportButton) {
+                if ($script:editMode) {
+                    $ctrlGroup.KdlImportButton.Text = "参照"
+                } else {
+                    $ctrlGroup.KdlImportButton.Text = "KDL取込"
+                }
+            }
+            
+            # 直接取込ボタン（全行）
+            if ($ctrlGroup.DirectImportButton) {
+                if ($script:editMode) {
+                    $ctrlGroup.DirectImportButton.Text = "参照"
+                } else {
+                    $ctrlGroup.DirectImportButton.Text = "直接取込"
+                }
+            }
+            
+            # 取込後ボタン（全行）
+            if ($ctrlGroup.AfterImportButton) {
+                if ($script:editMode) {
+                    $ctrlGroup.AfterImportButton.Text = "参照"
+                } else {
+                    $ctrlGroup.AfterImportButton.Text = "取込後"
+                }
             }
         }
     }

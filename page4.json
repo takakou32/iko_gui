@@ -14,7 +14,15 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル1",
-                                                 "Path":  "sample.bat"
+                                                 "Path":  "sample2.bat"
+                                             },
+                                             {
+                                                 "Path":  "sample2.bat",
+                                                 "Name":  "バッチファイル"
+                                             },
+                                             {
+                                                 "Path":  "sample2.bat",
+                                                 "Name":  "バッチファイル"
                                              }
                                          ],
                           "CsvMoveOperations":  [
@@ -33,6 +41,14 @@
                                              {
                                                  "Name":  "サンプル2",
                                                  "Path":  "sample2.bat"
+                                             },
+                                             {
+                                                 "Path":  "sample2.bat",
+                                                 "Name":  "バッチファイル"
+                                             },
+                                             {
+                                                 "Path":  "sample2.bat",
+                                                 "Name":  "バッチファイル"
                                              }
                                          ],
                           "CsvMoveOperations":  [
