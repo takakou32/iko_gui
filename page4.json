@@ -9,7 +9,7 @@
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
                           "KdlSourcePath":  "C:\\work",
-                          "KdlDestPath":  "",
+                          "KdlDestPath":  "doc",
                           "V1CsvDestPath":  "",
                           "BatchFiles":  [
                                              {
