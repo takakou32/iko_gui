@@ -1248,6 +1248,7 @@ function Update-ProcessControls {
     # まず、processControls配列に保存されているコントロールを削除
     foreach ($ctrlGroup in $script:processControls) {
         if ($ctrlGroup) {
+            if ($ctrlGroup.CheckBox) { $script:processPanel.Controls.Remove($ctrlGroup.CheckBox) }
             if ($ctrlGroup.NameTextBox) { $script:processPanel.Controls.Remove($ctrlGroup.NameTextBox) }
             if ($ctrlGroup.PathTextBox) { $script:processPanel.Controls.Remove($ctrlGroup.PathTextBox) }
             if ($ctrlGroup.KdlSourceTextBox) { $script:processPanel.Controls.Remove($ctrlGroup.KdlSourceTextBox) }
@@ -1340,6 +1341,13 @@ function Update-ProcessControls {
                 
                 # テキストボックス（タスク名表示用）
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
+                # チェックボックス（編集モードON時のみ表示）
+                $checkBox = New-Object System.Windows.Forms.CheckBox
+                $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
+                $checkBox.Size = New-Object System.Drawing.Size(20, 20)
+                $checkBox.Visible = $script:editMode
+                $script:processPanel.Controls.Add($checkBox)
+                
                 $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
                 $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
@@ -1481,6 +1489,7 @@ function Update-ProcessControls {
                 
                 # 1ページ目・2ページ目用のコントロール情報を保存
                 $script:processControls += @{
+                    CheckBox = $checkBox
                     NameTextBox = $nameTextBox
                     FileMoveButton = $fileMoveButton
                     ExecuteButton = $executeButton
@@ -1543,6 +1552,13 @@ function Update-ProcessControls {
                 # プロセスパネルのy座標は50なので、実際のy座標は160から（210-50=160）
                 $x = 60
                 $y = 160 + $row * 40
+                
+                # チェックボックス（編集モードON時のみ表示）
+                $checkBox = New-Object System.Windows.Forms.CheckBox
+                $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
+                $checkBox.Size = New-Object System.Drawing.Size(20, 20)
+                $checkBox.Visible = $script:editMode
+                $script:processPanel.Controls.Add($checkBox)
                 
                 # テキストボックス（タスク名表示用）
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
@@ -1721,6 +1737,7 @@ function Update-ProcessControls {
                 
                 # 3ページ目用のコントロール情報を保存
                 $script:processControls += @{
+                    CheckBox = $checkBox
                     NameTextBox = $nameTextBox
                     PathTextBox = $pathTextBox
                     FileMoveButton = $fileMoveButton
@@ -1781,6 +1798,13 @@ function Update-ProcessControls {
                 # プロセス行のレイアウト（行ごとに異なる）
                 $x = 10
                 $y = [int](140 + $row * 180)  # 行間隔を180pxに設定
+                
+                # チェックボックス（編集モードON時のみ表示）
+                $checkBox = New-Object System.Windows.Forms.CheckBox
+                $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
+                $checkBox.Size = New-Object System.Drawing.Size(20, 20)
+                $checkBox.Visible = $script:editMode
+                $script:processPanel.Controls.Add($checkBox)
                 
                 # タスク名
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
@@ -2374,6 +2398,7 @@ function Update-ProcessControls {
                     
                     # 4ページ目用のコントロール情報を保存（1行目・2行目）
                     $script:processControls += @{
+                        CheckBox = $checkBox
                         NameTextBox = $nameTextBox
                         KdlSourceTextBox = $kdlSourceTextBox
                         KdlSourceMoveButton = $kdlSourceMoveButton
@@ -2388,6 +2413,13 @@ function Update-ProcessControls {
                     }
                 } else {
                     # 3行目以降：V1抽出CSV格納先のみ
+                    # チェックボックス（編集モードON時のみ表示）
+                    $checkBox = New-Object System.Windows.Forms.CheckBox
+                    $checkBox.Location = New-Object System.Drawing.Point($x - 25, $y + 5)
+                    $checkBox.Size = New-Object System.Drawing.Size(20, 20)
+                    $checkBox.Visible = $script:editMode
+                    $script:processPanel.Controls.Add($checkBox)
+                    
                     # V1抽出CSV格納先ラベル
                     $v1CsvDestLabel = New-Object System.Windows.Forms.Label
                     $v1CsvDestLabel.Location = New-Object System.Drawing.Point(150, [int]($y - 20))
@@ -2686,8 +2718,16 @@ function Update-ProcessControls {
                     })
                     $script:processPanel.Controls.Add($logButton)
                     
+                    # チェックボックス（編集モードON時のみ表示）
+                    $checkBox = New-Object System.Windows.Forms.CheckBox
+                    $checkBox.Location = New-Object System.Drawing.Point($x - 25, $y + 5)
+                    $checkBox.Size = New-Object System.Drawing.Size(20, 20)
+                    $checkBox.Visible = $script:editMode
+                    $script:processPanel.Controls.Add($checkBox)
+                    
                     # 4ページ目用のコントロール情報を保存（3行目以降）
                     $script:processControls += @{
+                        CheckBox = $checkBox
                         NameTextBox = $nameTextBox
                         V1CsvDestTextBox = $v1CsvDestTextBox
                         V1CsvDestMoveButton = $v1CsvDestMoveButton
@@ -2702,6 +2742,13 @@ function Update-ProcessControls {
                 $col = $i % 2
                 $x = [int](10 + $col * 440)
                 $y = [int](10 + $row * 60)
+                
+                # チェックボックス（編集モードON時のみ表示）
+                $checkBox = New-Object System.Windows.Forms.CheckBox
+                $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 10))
+                $checkBox.Size = New-Object System.Drawing.Size(20, 20)
+                $checkBox.Visible = $script:editMode
+                $script:processPanel.Controls.Add($checkBox)
                 
                 # テキストボックス（タスク名表示用）
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
@@ -2788,6 +2835,7 @@ function Update-ProcessControls {
                 
                 # 5ページ目以降用のコントロール情報を保存
                 $script:processControls += @{
+                    CheckBox = $checkBox
                     NameTextBox = $nameTextBox
                     FileMoveButton = $fileMoveButton
                     ExecuteButton = $executeButton
@@ -2799,6 +2847,14 @@ function Update-ProcessControls {
     
     # ページ情報の更新
     $script:pageLabel.Text = "ページ $($script:currentPage + 1) / $totalPages"
+    
+    # 行追加・削除ボタンの表示/非表示を編集モードに応じて更新
+    if ($script:addRowButton) {
+        $script:addRowButton.Visible = $script:editMode
+    }
+    if ($script:deleteRowButton) {
+        $script:deleteRowButton.Visible = $script:editMode
+    }
     
     # タイトルの更新（ページJSONから読み込む）
     $pageTitle = ""
@@ -2917,6 +2973,11 @@ function Update-ProcessControls {
                     $ctrlGroup.V1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
                 }
             }
+        }
+        
+        # チェックボックスの表示/非表示を編集モードに応じて更新
+        if ($ctrlGroup -and $ctrlGroup.CheckBox) {
+            $ctrlGroup.CheckBox.Visible = $script:editMode
         }
         
         # 4ページ目のボタンのテキストを編集モードに応じて更新

@@ -63,36 +63,6 @@
 
                                                 ],
                           "ExecutionDelay":  1
-                      },
-                      {
-                          "Name":  "2.EB移行ツール適用（ページ2）",
-                          "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
-                                             }
-                                         ],
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "ExecutionDelay":  1
-                      },
-                      {
-                          "Name":  "2.EB移行ツール適用（ページ2）",
-                          "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
-                                             }
-                                         ],
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "ExecutionDelay":  1
                       }
                   ]
 }

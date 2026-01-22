@@ -59,7 +59,7 @@ $script:titleLabel = $titleLabel
 
 # 左矢印ボタン
 $leftArrowButton = New-Object System.Windows.Forms.Button
-$leftArrowButton.Location = New-Object System.Drawing.Point(690, 10)
+$leftArrowButton.Location = New-Object System.Drawing.Point(640, 10)
 $leftArrowButton.Size = New-Object System.Drawing.Size(40, 30)
 $leftArrowButton.Text = "<"
 $leftArrowButton.BackColor = [System.Drawing.Color]::Black
@@ -76,7 +76,7 @@ $headerPanel.Controls.Add($leftArrowButton)
 
 # 右矢印ボタン
 $rightArrowButton = New-Object System.Windows.Forms.Button
-$rightArrowButton.Location = New-Object System.Drawing.Point(740, 10)
+$rightArrowButton.Location = New-Object System.Drawing.Point(800, 10)
 $rightArrowButton.Size = New-Object System.Drawing.Size(40, 30)
 $rightArrowButton.Text = ">"
 $rightArrowButton.BackColor = [System.Drawing.Color]::Black
@@ -90,6 +90,151 @@ $rightArrowButton.Add_Click({
     }
 })
 $headerPanel.Controls.Add($rightArrowButton)
+
+# 行追加ボタン（編集モードON時のみ表示）- 最後に追加してZ-orderを最前面に
+$addRowButton = New-Object System.Windows.Forms.Button
+$addRowButton.Location = New-Object System.Drawing.Point(690, 10)
+$addRowButton.Size = New-Object System.Drawing.Size(50, 30)
+$addRowButton.Text = "追加"
+$addRowButton.BackColor = [System.Drawing.Color]::FromArgb(100, 200, 100)
+$addRowButton.ForeColor = [System.Drawing.Color]::White
+$addRowButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$addRowButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+$addRowButton.FlatAppearance.BorderSize = 1
+$addRowButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+$addRowButton.Visible = $false  # 初期状態は非表示
+$addRowButton.Add_Click({
+    # 行追加処理
+    $pageConfig = $script:pages[$script:currentPage]
+    if ($pageConfig.JsonPath) {
+        $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+            $pageConfig.JsonPath
+        } else {
+            Join-Path $PSScriptRoot $pageConfig.JsonPath
+        }
+        
+        if (Test-Path $jsonPath) {
+            try {
+                $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                
+                # 新しいプロセス要素を作成（デフォルト値）
+                $newProcess = @{
+                    Name = "新規プロセス"
+                    ExecuteButtonText = "実行"
+                    LogButtonText = "ログ確認"
+                    BatchFiles = @(
+                        @{
+                            Name = "バッチファイル"
+                            Path = ""
+                        }
+                    )
+                    CsvMoveOperations = @()
+                    ExecutionDelay = 1
+                }
+                
+                # Processes配列に追加
+                if (-not $pageJson.Processes) {
+                    $pageJson.Processes = @()
+                }
+                $pageJson.Processes += $newProcess
+                
+                # JSONファイルに保存（UTF-8 BOM付き）
+                $jsonContentStr = $pageJson | ConvertTo-Json -Depth 10
+                $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+                [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+                
+                Write-Log "新しい行を追加しました" "INFO"
+                
+                # 画面を更新
+                Update-ProcessControls
+            } catch {
+                Write-Log "行の追加に失敗しました: $($_.Exception.Message)" "ERROR"
+                [System.Windows.Forms.MessageBox]::Show("行の追加に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            }
+        } else {
+            Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+        }
+    } else {
+        Write-Log "このページはJSONファイルを使用していません" "WARN"
+    }
+})
+$headerPanel.Controls.Add($addRowButton)
+$script:addRowButton = $addRowButton
+
+# 行削除ボタン（編集モードON時のみ表示）- 最後に追加してZ-orderを最前面に
+$deleteRowButton = New-Object System.Windows.Forms.Button
+$deleteRowButton.Location = New-Object System.Drawing.Point(745, 10)
+$deleteRowButton.Size = New-Object System.Drawing.Size(50, 30)
+$deleteRowButton.Text = "削除"
+$deleteRowButton.BackColor = [System.Drawing.Color]::FromArgb(200, 100, 100)
+$deleteRowButton.ForeColor = [System.Drawing.Color]::White
+$deleteRowButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$deleteRowButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+$deleteRowButton.FlatAppearance.BorderSize = 1
+$deleteRowButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+$deleteRowButton.Visible = $false  # 初期状態は非表示
+$deleteRowButton.Add_Click({
+    # 行削除処理
+    $pageConfig = $script:pages[$script:currentPage]
+    if ($pageConfig.JsonPath) {
+        $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+            $pageConfig.JsonPath
+        } else {
+            Join-Path $PSScriptRoot $pageConfig.JsonPath
+        }
+        
+        if (Test-Path $jsonPath) {
+            try {
+                $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                
+                # チェックされた行のインデックスを取得
+                $indicesToDelete = @()
+                for ($i = 0; $i -lt $script:processControls.Count; $i++) {
+                    $ctrlGroup = $script:processControls[$i]
+                    if ($ctrlGroup -and $ctrlGroup.CheckBox -and $ctrlGroup.CheckBox.Checked) {
+                        $indicesToDelete += $i
+                    }
+                }
+                
+                if ($indicesToDelete.Count -eq 0) {
+                    [System.Windows.Forms.MessageBox]::Show("削除する行を選択してください。", "情報", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    return
+                }
+                
+                # インデックスを降順にソート（後ろから削除することでインデックスのずれを防ぐ）
+                $indicesToDelete = $indicesToDelete | Sort-Object -Descending
+                
+                # チェックされた行を削除（降順にソート済みなので、後ろから削除）
+                $newProcesses = @()
+                for ($idx = 0; $idx -lt $pageJson.Processes.Count; $idx++) {
+                    if ($indicesToDelete -notcontains $idx) {
+                        $newProcesses += $pageJson.Processes[$idx]
+                    }
+                }
+                $pageJson.Processes = $newProcesses
+                
+                # JSONファイルに保存（UTF-8 BOM付き）
+                $jsonContentStr = $pageJson | ConvertTo-Json -Depth 10
+                $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+                [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+                
+                Write-Log "$($indicesToDelete.Count)行を削除しました" "INFO"
+                
+                # 画面を更新
+                Update-ProcessControls
+            } catch {
+                Write-Log "行の削除に失敗しました: $($_.Exception.Message)" "ERROR"
+                [System.Windows.Forms.MessageBox]::Show("行の削除に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            }
+        } else {
+            Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+        }
+    } else {
+        Write-Log "このページはJSONファイルを使用していません" "WARN"
+    }
+})
+$headerPanel.Controls.Add($deleteRowButton)
+$script:deleteRowButton = $deleteRowButton
 
 # ページラベル
 $pageLabel = New-Object System.Windows.Forms.Label
@@ -124,6 +269,14 @@ $editModeButton.Add_Click({
     }
     # ボタンのテキストを更新
     Update-ProcessControls
+    
+    # 行追加・削除ボタンの表示/非表示を切り替え
+    if ($script:addRowButton) {
+        $script:addRowButton.Visible = $script:editMode
+    }
+    if ($script:deleteRowButton) {
+        $script:deleteRowButton.Visible = $script:editMode
+    }
 })
 $headerPanel.Controls.Add($editModeButton)
 $script:editModeButton = $editModeButton
