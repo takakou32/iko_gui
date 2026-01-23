@@ -21,49 +21,19 @@
                           "LogOutputDir":  "新しいフォルダー"
                       },
                       {
-                          "Name":  "2.EB移行ツール適用",
                           "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
-                                             }
-                                         ],
+                          "Name":  "新規プロセス",
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
-                      },
-                      {
-                          "Name":  "3.EB移行ツール適用",
-                          "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
+                          "ExecutionDelay":  1,
                           "BatchFiles":  [
                                              {
-                                                 "Name":  "サンプル1",
-                                                 "Path":  "sample.bat"
+                                                 "Name":  "バッチファイル",
+                                                 "Path":  ""
                                              }
-                                         ],
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "ExecutionDelay":  1
-                      },
-                      {
-                          "Name":  "4.EB移行ツール適用",
-                          "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
-                                             }
-                                         ],
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "ExecutionDelay":  1
+                                         ]
                       }
                   ],
     "LogStorageBatchFile":  {

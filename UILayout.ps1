@@ -409,10 +409,10 @@ $logStorageLabel.Text = "ログ格納先"
 $logStorageLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
 $logStoragePanel.Controls.Add($logStorageLabel)
 
-# ログ格納先パス入力
+# ログ格納先パス入力（1つ目）
 $logStoragePathTextBox = New-Object System.Windows.Forms.TextBox
 $logStoragePathTextBox.Location = New-Object System.Drawing.Point(10, 35)
-$logStoragePathTextBox.Size = New-Object System.Drawing.Size(320, 30)
+$logStoragePathTextBox.Size = New-Object System.Drawing.Size(150, 30)
 $logStoragePathTextBox.Text = "パス"
 $logStoragePathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $logStoragePathTextBox.ReadOnly = $true
@@ -444,9 +444,44 @@ $logStoragePathTextBox.Add_Click({
 $logStoragePanel.Controls.Add($logStoragePathTextBox)
 $script:logStoragePathTextBox = $logStoragePathTextBox
 
+# ログ格納先パス入力（2つ目）
+$logStoragePath2TextBox = New-Object System.Windows.Forms.TextBox
+$logStoragePath2TextBox.Location = New-Object System.Drawing.Point(170, 35)
+$logStoragePath2TextBox.Size = New-Object System.Drawing.Size(150, 30)
+$logStoragePath2TextBox.Text = "パス"
+$logStoragePath2TextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+$logStoragePath2TextBox.ReadOnly = $true
+$logStoragePath2TextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+$logStoragePath2TextBox.Add_Click({
+    if ($script:editMode) {
+        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $folderDialog.Description = "ログ格納先フォルダを選択してください"
+        $folderDialog.ShowNewFolderButton = $true
+        
+        # 現在のパスを初期値として設定
+        if ($logStoragePath2TextBox.Text -and $logStoragePath2TextBox.Text -ne "パス" -and (Test-Path $logStoragePath2TextBox.Text)) {
+            $folderDialog.SelectedPath = $logStoragePath2TextBox.Text
+        } elseif (Test-Path $script:logDir) {
+            $folderDialog.SelectedPath = $script:logDir
+        } elseif (Test-Path $PSScriptRoot) {
+            $folderDialog.SelectedPath = $PSScriptRoot
+        }
+        
+        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $selectedPath = $folderDialog.SelectedPath
+            $logStoragePath2TextBox.Text = $selectedPath
+            Save-PagePaths -LogStoragePath2 $selectedPath
+            Write-Log "ログ格納先2を設定しました: $selectedPath" "INFO"
+        }
+        $folderDialog.Dispose()
+    }
+})
+$logStoragePanel.Controls.Add($logStoragePath2TextBox)
+$script:logStoragePath2TextBox = $logStoragePath2TextBox
+
 # ログ格納ボタン
 $logStorageButton = New-Object System.Windows.Forms.Button
-$logStorageButton.Location = New-Object System.Drawing.Point(340, 35)
+$logStorageButton.Location = New-Object System.Drawing.Point(330, 35)
 $logStorageButton.Size = New-Object System.Drawing.Size(80, 30)
 if ($script:editMode) {
     $logStorageButton.Text = "参照"
@@ -526,15 +561,29 @@ $logStorageButton.Add_Click({
                             $batchPath = Join-Path $PSScriptRoot $batchPath
                         }
                         
-                        # ログ格納先パスを引数として取得
+                        # ログ格納先パスを引数として取得（第一引数：左側、第二引数：右側）
                         $logStoragePath = ""
                         if ($script:logStoragePathTextBox -and $script:logStoragePathTextBox.Text -and $script:logStoragePathTextBox.Text -ne "パス") {
                             $logStoragePath = $script:logStoragePathTextBox.Text
                         }
                         
+                        $logStoragePath2 = ""
+                        if ($script:logStoragePath2TextBox -and $script:logStoragePath2TextBox.Text -and $script:logStoragePath2TextBox.Text -ne "パス") {
+                            $logStoragePath2 = $script:logStoragePath2TextBox.Text
+                        }
+                        
                         $logStorageButton.Enabled = $false
+                        # 第一引数と第二引数を渡す
+                        $arguments = @()
                         if ($logStoragePath) {
-                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1 -Arguments @($logStoragePath)
+                            $arguments += $logStoragePath
+                        }
+                        if ($logStoragePath2) {
+                            $arguments += $logStoragePath2
+                        }
+                        
+                        if ($arguments.Count -gt 0) {
+                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1 -Arguments $arguments
                         } else {
                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1
                         }

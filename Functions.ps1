@@ -332,6 +332,57 @@ function Save-BatchFilePath {
     }
 }
 
+# プロセス名保存関数
+function Save-ProcessName {
+    param(
+        [int]$ProcessIndex,
+        [string]$ProcessName
+    )
+    
+    if ($script:currentPage -ge $script:pages.Count) {
+        Write-Log "ページインデックスが範囲外です" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $process = $jsonContent.Processes[$ProcessIndex]
+        $process.Name = $ProcessName
+        
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        Write-Log "プロセス名を保存しました: $ProcessName" "INFO" $ProcessIndex
+        return $true
+    } catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
 # プロセスDestinationPath保存関数（ページ3用）
 function Save-ProcessDestinationPath {
     param([int]$ProcessIndex, [string]$DestinationPath)
@@ -678,6 +729,7 @@ function Load-PagePaths {
     $sourcePath = ""
     $destPath = ""
     $logStoragePath = ""
+    $logStoragePath2 = ""
     
     # ページJSONファイルが存在する場合はそこから読み込む
     if ($pageJsonPath -and (Test-Path $pageJsonPath)) {
@@ -689,6 +741,7 @@ function Load-PagePaths {
                 $destPath = if ($pageJson.DestinationPath) { $pageJson.DestinationPath } else { "" }
             }
             $logStoragePath = if ($pageJson.LogStoragePath) { $pageJson.LogStoragePath } else { "" }
+            $logStoragePath2 = if ($pageJson.LogStoragePath2) { $pageJson.LogStoragePath2 } else { "" }
         } catch {
             Write-Log "ページJSONファイルの読み込みに失敗しました: $pageJsonPath - $($_.Exception.Message)" "ERROR"
         }
@@ -768,7 +821,7 @@ function Load-PagePaths {
         }
     }
     
-    # ログ格納先
+    # ログ格納先（1つ目）
     if ($logStoragePath -and $logStoragePath -ne "パス" -and $logStoragePath -ne "") {
         # 相対パスの場合は絶対パスに変換
         try {
@@ -783,6 +836,28 @@ function Load-PagePaths {
     } else {
         $script:logStoragePathTextBox.Text = "パス"
     }
+    
+    # ログ格納先（2つ目）
+    if ($logStoragePath2 -and $logStoragePath2 -ne "パス" -and $logStoragePath2 -ne "") {
+        # 相対パスの場合は絶対パスに変換
+        try {
+            if (-not [System.IO.Path]::IsPathRooted($logStoragePath2)) {
+                $logStoragePath2 = Join-Path $PSScriptRoot $logStoragePath2
+            }
+            $logStoragePath2 = [System.IO.Path]::GetFullPath($logStoragePath2)
+            if ($script:logStoragePath2TextBox) {
+                $script:logStoragePath2TextBox.Text = $logStoragePath2
+            }
+        } catch {
+            if ($script:logStoragePath2TextBox) {
+                $script:logStoragePath2TextBox.Text = "パス"
+            }
+        }
+    } else {
+        if ($script:logStoragePath2TextBox) {
+            $script:logStoragePath2TextBox.Text = "パス"
+        }
+    }
 }
 
 # ページパス保存関数
@@ -790,7 +865,8 @@ function Save-PagePaths {
     param(
         [string]$SourcePath = $null,
         [string]$DestinationPath = $null,
-        [string]$LogStoragePath = $null
+        [string]$LogStoragePath = $null,
+        [string]$LogStoragePath2 = $null
     )
     
     if ($script:currentPage -ge $script:pages.Count) {
@@ -880,6 +956,26 @@ function Save-PagePaths {
                 $LogStoragePath
             }
             $pageJson.LogStoragePath = $relativeLogPath
+        }
+        
+        if ($LogStoragePath2) {
+            $relativeLogPath2 = try {
+                $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+                $targetPath = [System.IO.Path]::GetFullPath($LogStoragePath2).TrimEnd('\', '/')
+                
+                if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                    if ([string]::IsNullOrEmpty($relative)) {
+                        $relative = Split-Path $targetPath -Leaf
+                    }
+                    $relative
+                } else {
+                    $LogStoragePath2
+                }
+            } catch {
+                $LogStoragePath2
+            }
+            $pageJson.LogStoragePath2 = $relativeLogPath2
         }
         
         # ページJSONファイルに保存（UTF-8 BOM付き）
@@ -1444,12 +1540,20 @@ function Update-ProcessControls {
                 $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
                 $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
-                $nameTextBox.ReadOnly = $true
+                $nameTextBox.ReadOnly = -not $script:editMode
                 $nameTextBox.BackColor = [System.Drawing.Color]::White
                 $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                 $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                 $nameTextBox.Multiline = $false
                 $nameTextBox.Height = 30
+                $nameTextBox.Tag = $i
+                $nameTextBox.Add_Leave({
+                    if ($script:editMode) {
+                        $processIdx = $this.Tag
+                        $newName = $this.Text
+                        Save-ProcessName -ProcessIndex $processIdx -ProcessName $newName
+                    }
+                })
                 $script:processPanel.Controls.Add($nameTextBox)
                 
                 # ファイル移動設定ボタン（セット/チェックボタン、赤色）
@@ -1658,12 +1762,20 @@ function Update-ProcessControls {
                 $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
                 $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
-                $nameTextBox.ReadOnly = $true
+                $nameTextBox.ReadOnly = -not $script:editMode
                 $nameTextBox.BackColor = [System.Drawing.Color]::White
                 $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                 $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                 $nameTextBox.Multiline = $false
                 $nameTextBox.Height = 30
+                $nameTextBox.Tag = $i
+                $nameTextBox.Add_Leave({
+                    if ($script:editMode) {
+                        $processIdx = $this.Tag
+                        $newName = $this.Text
+                        Save-ProcessName -ProcessIndex $processIdx -ProcessName $newName
+                    }
+                })
                 $script:processPanel.Controls.Add($nameTextBox)
                 
                 # パス入力テキストボックス（V1抽出CSV格納先）
@@ -1904,12 +2016,20 @@ function Update-ProcessControls {
                 $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
                 $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
-                $nameTextBox.ReadOnly = $true
+                $nameTextBox.ReadOnly = -not $script:editMode
                 $nameTextBox.BackColor = [System.Drawing.Color]::White
                 $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                 $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                 $nameTextBox.Multiline = $false
                 $nameTextBox.Height = 30
+                $nameTextBox.Tag = $i
+                $nameTextBox.Add_Leave({
+                    if ($script:editMode) {
+                        $processIdx = $this.Tag
+                        $newName = $this.Text
+                        Save-ProcessName -ProcessIndex $processIdx -ProcessName $newName
+                    }
+                })
                 $script:processPanel.Controls.Add($nameTextBox)
                 
                 # 1行目と2行目はKDL変換CSV格納元・格納先、V1抽出CSV格納先がある
@@ -2848,12 +2968,20 @@ function Update-ProcessControls {
                 $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
                 $nameTextBox.Size = New-Object System.Drawing.Size(140, 40)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
-                $nameTextBox.ReadOnly = $true
+                $nameTextBox.ReadOnly = -not $script:editMode
                 $nameTextBox.BackColor = [System.Drawing.Color]::White
                 $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                 $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
                 $nameTextBox.Multiline = $true
                 $nameTextBox.Height = 40
+                $nameTextBox.Tag = $i
+                $nameTextBox.Add_Leave({
+                    if ($script:editMode) {
+                        $processIdx = $this.Tag
+                        $newName = $this.Text
+                        Save-ProcessName -ProcessIndex $processIdx -ProcessName $newName
+                    }
+                })
                 $script:processPanel.Controls.Add($nameTextBox)
                 
                 # ファイル移動設定ボタン（水色）- 編集モードONの時のみ表示
@@ -3073,6 +3201,11 @@ function Update-ProcessControls {
             $ctrlGroup.CheckBox.Visible = $script:editMode
         }
         
+        # プロセス名テキストボックスの編集可否を編集モードに応じて更新
+        if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+            $ctrlGroup.NameTextBox.ReadOnly = -not $script:editMode
+        }
+        
         # 4ページ目のボタンのテキストを編集モードに応じて更新
         if ($isPage4 -and $ctrlGroup) {
             # KDL取込ボタン（1行目・2行目のみ）
@@ -3134,8 +3267,8 @@ function Update-ProcessControls {
                 # 2ページ目：右側に配置（700px x座標）
                 $script:logStorageButton.Location = New-Object System.Drawing.Point(690, 35)
             } else {
-                # 1ページ目：左側に配置（340px x座標）
-                $script:logStorageButton.Location = New-Object System.Drawing.Point(340, 35)
+                # 1ページ目：左側に配置（330px x座標）
+                $script:logStorageButton.Location = New-Object System.Drawing.Point(330, 35)
             }
         }
         
@@ -3176,9 +3309,9 @@ function Update-ProcessControls {
             $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 350)
         }
         
-        # ログ格納ボタンの位置を調整（390px x座標）
+        # ログ格納ボタンの位置を調整（330px x座標）
         if ($script:logStorageButton) {
-            $script:logStorageButton.Location = New-Object System.Drawing.Point(390, 35)
+            $script:logStorageButton.Location = New-Object System.Drawing.Point(330, 35)
         }
         
         # ログ出力エリアの位置を調整（ログ格納セクションの下：350 + 60 = 410px y座標、740px幅、130px高さ）
@@ -3218,9 +3351,9 @@ function Update-ProcessControls {
             $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 680)
         }
         
-        # ログ格納ボタンの位置を調整（390px x座標）
+        # ログ格納ボタンの位置を調整（330px x座標）
         if ($script:logStorageButton) {
-            $script:logStorageButton.Location = New-Object System.Drawing.Point(390, 35)
+            $script:logStorageButton.Location = New-Object System.Drawing.Point(330, 35)
         }
         
         # ログ出力エリアの位置を調整（ログ格納セクションの下：680 + 60 = 740px y座標、790px幅、150px高さ）
