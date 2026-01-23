@@ -39,5 +39,6 @@
     "LogStorageBatchFile":  {
                                 "Path":  "log_storage.bat",
                                 "Name":  "ログ格納用バッチファイル"
-                            }
+                            },
+    "LogStoragePath2":  "C:\\"
 }

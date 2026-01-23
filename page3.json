@@ -1,7 +1,7 @@
 ﻿{
     "Title":  "3.java移行ツール実行",
     "SourcePath":  "C:\\MELSEC",
-    "LogStoragePath":  "",
+    "LogStoragePath":  "C:\\PerfLogs",
     "Processes":  [
                       {
                           "Name":  "1.EB移行ツール適用（ページ2）",
@@ -51,5 +51,6 @@
                                                 ],
                           "ExecutionDelay":  1
                       }
-                  ]
+                  ],
+    "LogStoragePath2":  "iko_gui"
 }

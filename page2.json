@@ -2,7 +2,7 @@
     "Title":  "2.V1 移行ツール実行",
     "SourcePath":  "",
     "DestinationPath":  "",
-    "LogStoragePath":  "",
+    "LogStoragePath":  "C:\\",
     "Processes":  [
                       {
                           "Name":  "1.EB移行ツール（ページ2）",
@@ -64,5 +64,6 @@
                                                 ],
                           "ExecutionDelay":  1
                       }
-                  ]
+                  ],
+    "LogStoragePath2":  "C:\\GnuWin32"
 }

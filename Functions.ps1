@@ -838,7 +838,7 @@ function Load-PagePaths {
     }
     
     # ログ格納先（2つ目）
-    if ($logStoragePath2 -and $logStoragePath2 -ne "パス" -and $logStoragePath2 -ne "") {
+    if ($logStoragePath2 -ne $null -and $logStoragePath2 -ne "" -and $logStoragePath2 -ne "パス") {
         # 相対パスの場合は絶対パスに変換
         try {
             if (-not [System.IO.Path]::IsPathRooted($logStoragePath2)) {
@@ -958,7 +958,7 @@ function Save-PagePaths {
             $pageJson.LogStoragePath = $relativeLogPath
         }
         
-        if ($LogStoragePath2) {
+        if ($LogStoragePath2 -ne $null) {
             $relativeLogPath2 = try {
                 $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
                 $targetPath = [System.IO.Path]::GetFullPath($LogStoragePath2).TrimEnd('\', '/')
@@ -975,7 +975,12 @@ function Save-PagePaths {
             } catch {
                 $LogStoragePath2
             }
-            $pageJson.LogStoragePath2 = $relativeLogPath2
+            # LogStoragePath2プロパティが存在しない場合は追加
+            if (-not (Get-Member -InputObject $pageJson -Name "LogStoragePath2" -MemberType NoteProperty)) {
+                $pageJson | Add-Member -MemberType NoteProperty -Name "LogStoragePath2" -Value $relativeLogPath2
+            } else {
+                $pageJson.LogStoragePath2 = $relativeLogPath2
+            }
         }
         
         # ページJSONファイルに保存（UTF-8 BOM付き）

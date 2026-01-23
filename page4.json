@@ -2,7 +2,7 @@
     "Title":  "4.SQLLOADER 実行",
     "SourcePath":  "C:\\a5m2",
     "DestinationPath":  "",
-    "LogStoragePath":  "",
+    "LogStoragePath":  "C:\\work",
     "Processes":  [
                       {
                           "Name":  "1.EB SQLLOADER実行",
@@ -87,5 +87,6 @@
                                              }
                                          ]
                       }
-                  ]
+                  ],
+    "LogStoragePath2":  "movefiles"
 }
