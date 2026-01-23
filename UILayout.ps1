@@ -59,7 +59,7 @@ $script:titleLabel = $titleLabel
 
 # 左矢印ボタン
 $leftArrowButton = New-Object System.Windows.Forms.Button
-$leftArrowButton.Location = New-Object System.Drawing.Point(640, 10)
+$leftArrowButton.Location = New-Object System.Drawing.Point(690, 10)
 $leftArrowButton.Size = New-Object System.Drawing.Size(40, 30)
 $leftArrowButton.Text = "<"
 $leftArrowButton.BackColor = [System.Drawing.Color]::Black
@@ -76,7 +76,7 @@ $headerPanel.Controls.Add($leftArrowButton)
 
 # 右矢印ボタン
 $rightArrowButton = New-Object System.Windows.Forms.Button
-$rightArrowButton.Location = New-Object System.Drawing.Point(800, 10)
+$rightArrowButton.Location = New-Object System.Drawing.Point(850, 10)
 $rightArrowButton.Size = New-Object System.Drawing.Size(40, 30)
 $rightArrowButton.Text = ">"
 $rightArrowButton.BackColor = [System.Drawing.Color]::Black
@@ -93,7 +93,7 @@ $headerPanel.Controls.Add($rightArrowButton)
 
 # 行追加ボタン（編集モードON時のみ表示）- 最後に追加してZ-orderを最前面に
 $addRowButton = New-Object System.Windows.Forms.Button
-$addRowButton.Location = New-Object System.Drawing.Point(690, 10)
+$addRowButton.Location = New-Object System.Drawing.Point(740, 10)
 $addRowButton.Size = New-Object System.Drawing.Size(50, 30)
 $addRowButton.Text = "追加"
 $addRowButton.BackColor = [System.Drawing.Color]::FromArgb(100, 200, 100)
@@ -163,7 +163,7 @@ $script:addRowButton = $addRowButton
 
 # 行削除ボタン（編集モードON時のみ表示）- 最後に追加してZ-orderを最前面に
 $deleteRowButton = New-Object System.Windows.Forms.Button
-$deleteRowButton.Location = New-Object System.Drawing.Point(745, 10)
+$deleteRowButton.Location = New-Object System.Drawing.Point(795, 10)
 $deleteRowButton.Size = New-Object System.Drawing.Size(50, 30)
 $deleteRowButton.Text = "削除"
 $deleteRowButton.BackColor = [System.Drawing.Color]::FromArgb(200, 100, 100)
@@ -448,13 +448,120 @@ $script:logStoragePathTextBox = $logStoragePathTextBox
 $logStorageButton = New-Object System.Windows.Forms.Button
 $logStorageButton.Location = New-Object System.Drawing.Point(340, 35)
 $logStorageButton.Size = New-Object System.Drawing.Size(80, 30)
-$logStorageButton.Text = "ログ格納"
+if ($script:editMode) {
+    $logStorageButton.Text = "参照"
+} else {
+    $logStorageButton.Text = "ログ格納"
+}
 $logStorageButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 0)
 $logStorageButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $logStorageButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
 $logStorageButton.FlatAppearance.BorderSize = 1
 $logStorageButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-$logStorageButton.Enabled = $false
+$logStorageButton.Add_Click({
+    if ($script:editMode) {
+        # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
+        $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+        $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+        $fileDialog.Title = "ログ格納用バッチファイルを選択してください"
+        
+        # 現在のログ格納用バッチファイルパスを初期値として設定
+        $pageConfig = $script:pages[$script:currentPage]
+        if ($pageConfig.JsonPath) {
+            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                $pageConfig.JsonPath
+            } else {
+                Join-Path $PSScriptRoot $pageConfig.JsonPath
+            }
+            
+            if (Test-Path $jsonPath) {
+                try {
+                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                    if ($pageJson.LogStorageBatchFile -and $pageJson.LogStorageBatchFile.Path) {
+                        $currentBatchPath = $pageJson.LogStorageBatchFile.Path
+                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatchPath)) {
+                            $currentBatchPath
+                        } else {
+                            Join-Path $PSScriptRoot $currentBatchPath
+                        }
+                        if (Test-Path $initialPath) {
+                            $fileDialog.InitialDirectory = Split-Path $initialPath
+                            $fileDialog.FileName = Split-Path $initialPath -Leaf
+                        }
+                    }
+                } catch {
+                    # エラー時は無視
+                }
+            }
+        }
+        
+        if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $selectedFile = $fileDialog.FileName
+            Save-LogStorageBatchFile -BatchFilePath $selectedFile
+            Write-Log "ログ格納用バッチファイルを設定しました: $selectedFile" "INFO"
+            [System.Windows.Forms.MessageBox]::Show("ログ格納用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            
+            # コントロールを更新して新しい設定を反映
+            Update-ProcessControls
+        }
+        $fileDialog.Dispose()
+    } else {
+        # 編集モードOFF：JSONに設定されたバッチファイルを実行してログに記録
+        $pageConfig = $script:pages[$script:currentPage]
+        if ($pageConfig.JsonPath) {
+            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                $pageConfig.JsonPath
+            } else {
+                Join-Path $PSScriptRoot $pageConfig.JsonPath
+            }
+            
+            if (Test-Path $jsonPath) {
+                try {
+                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                    if ($pageJson.LogStorageBatchFile -and $pageJson.LogStorageBatchFile.Path) {
+                        $batchPath = $pageJson.LogStorageBatchFile.Path
+                        if ([System.IO.Path]::IsPathRooted($batchPath)) {
+                            $batchPath = $batchPath
+                        } else {
+                            $batchPath = Join-Path $PSScriptRoot $batchPath
+                        }
+                        
+                        # ログ格納先パスを引数として取得
+                        $logStoragePath = ""
+                        if ($script:logStoragePathTextBox -and $script:logStoragePathTextBox.Text -and $script:logStoragePathTextBox.Text -ne "パス") {
+                            $logStoragePath = $script:logStoragePathTextBox.Text
+                        }
+                        
+                        $logStorageButton.Enabled = $false
+                        if ($logStoragePath) {
+                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1 -Arguments @($logStoragePath)
+                        } else {
+                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1
+                        }
+                        $logStorageButton.Enabled = $true
+                        
+                        if ($result) {
+                            Write-Log "ログ格納処理が正常に完了しました" "INFO"
+                        } else {
+                            Write-Log "ログ格納処理でエラーが発生しました" "ERROR"
+                        }
+                    } else {
+                        Write-Log "ログ格納用バッチファイルが設定されていません" "ERROR"
+                        [System.Windows.Forms.MessageBox]::Show("ログ格納用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                    }
+                } catch {
+                    Write-Log "ログ格納処理の実行に失敗しました: $($_.Exception.Message)" "ERROR"
+                    [System.Windows.Forms.MessageBox]::Show("ログ格納処理の実行に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                    $logStorageButton.Enabled = $true
+                }
+            } else {
+                Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+            }
+        } else {
+            Write-Log "このページはJSONファイルを使用していません" "WARN"
+        }
+    }
+})
 $logStoragePanel.Controls.Add($logStorageButton)
 $script:logStorageButton = $logStorageButton
 

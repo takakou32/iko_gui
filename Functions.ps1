@@ -95,7 +95,8 @@ function Invoke-BatchFile {
     param(
         [string]$BatchPath,
         [string]$DisplayName,
-        [int]$ProcessIndex
+        [int]$ProcessIndex,
+        [string[]]$Arguments = @()
     )
     
     # パスの正規化処理
@@ -142,23 +143,115 @@ function Invoke-BatchFile {
         }
     }
     
-    Write-Log "バッチファイルを実行中: $DisplayName ($BatchPath)" "INFO" $ProcessIndex
+    # ログメッセージの構築
+    $logMessage = "バッチファイルを実行中: $DisplayName ($BatchPath)"
+    if ($Arguments.Count -gt 0) {
+        $argumentsStr = $Arguments -join " "
+        $logMessage += " [引数: $argumentsStr]"
+    }
+    Write-Log $logMessage "INFO" $ProcessIndex
     
     try {
         $stdoutFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}_stdout.log"
         $stderrFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}_stderr.log"
         
-        $process = Start-Process -FilePath $BatchPath -WorkingDirectory (Split-Path $BatchPath) -Wait -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+        # 引数がある場合はArgumentListに設定
+        $processParams = @{
+            FilePath = $BatchPath
+            WorkingDirectory = Split-Path $BatchPath
+            Wait = $true
+            NoNewWindow = $true
+            PassThru = $true
+            RedirectStandardOutput = $stdoutFile
+            RedirectStandardError = $stderrFile
+        }
+        
+        if ($Arguments.Count -gt 0) {
+            $processParams['ArgumentList'] = $Arguments
+        }
+        
+        $process = Start-Process @processParams
+        
+        # 完了メッセージの構築
+        $completionMessage = "バッチファイルの実行が完了しました: $DisplayName (終了コード: $($process.ExitCode))"
+        if ($Arguments.Count -gt 0) {
+            $argumentsStr = $Arguments -join " "
+            $completionMessage += " [引数: $argumentsStr]"
+        }
         
         if ($process.ExitCode -eq 0) {
-            Write-Log "バッチファイルの実行が完了しました: $DisplayName (終了コード: $($process.ExitCode))" "INFO" $ProcessIndex
+            Write-Log $completionMessage "INFO" $ProcessIndex
             return $true
         } else {
-            Write-Log "バッチファイルの実行でエラーが発生しました: $DisplayName (終了コード: $($process.ExitCode))" "ERROR" $ProcessIndex
+            Write-Log $completionMessage "ERROR" $ProcessIndex
             return $false
         }
     } catch {
         Write-Log "バッチファイルの実行中に例外が発生しました: $DisplayName - $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
+# ログ格納用バッチファイルパス保存関数
+function Save-LogStorageBatchFile {
+    param([string]$BatchFilePath)
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN"
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    } else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        
+        # LogStorageBatchFile要素が存在しない場合は作成
+        if (-not $jsonContent.LogStorageBatchFile) {
+            $jsonContent | Add-Member -MemberType NoteProperty -Name "LogStorageBatchFile" -Value @{
+                Name = "ログ格納用バッチファイル"
+                Path = ""
+            }
+        }
+        
+        # 相対パスに変換（可能な場合）
+        $relativePath = try {
+            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $targetPath = [System.IO.Path]::GetFullPath($BatchFilePath).TrimEnd('\', '/')
+            
+            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                if ([string]::IsNullOrEmpty($relative)) {
+                    $relative = Split-Path $targetPath -Leaf
+                }
+                $relative
+            } else {
+                $BatchFilePath
+            }
+        } catch {
+            $BatchFilePath
+        }
+        
+        $jsonContent.LogStorageBatchFile.Path = $relativePath
+        
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        Write-Log "ログ格納用バッチファイルパスを保存しました: $relativePath" "INFO"
+        return $true
+    } catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR"
         return $false
     }
 }
@@ -3013,6 +3106,15 @@ function Update-ProcessControls {
     
     # ページパスの読み込み
     Load-PagePaths
+    
+    # ログ格納ボタンのテキストを編集モードに応じて更新
+    if ($script:logStorageButton) {
+        if ($script:editMode) {
+            $script:logStorageButton.Text = "参照"
+        } else {
+            $script:logStorageButton.Text = "ログ格納"
+        }
+    }
     
     # ページに応じてレイアウトを調整
     if ($useDrawioLayout) {

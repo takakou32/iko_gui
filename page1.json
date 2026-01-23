@@ -65,5 +65,9 @@
                                                 ],
                           "ExecutionDelay":  1
                       }
-                  ]
+                  ],
+    "LogStorageBatchFile":  {
+                                "Path":  "log_storage.bat",
+                                "Name":  "ログ格納用バッチファイル"
+                            }
 }
