@@ -5,7 +5,7 @@
     "LogStoragePath":  "C:\\",
     "Processes":  [
                       {
-                          "Name":  "1.EB移行ツール（ページ2）",
+                          "Name":  "①",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
                           "BatchFiles":  [
@@ -20,49 +20,34 @@
                           "ExecutionDelay":  1
                       },
                       {
-                          "Name":  "2.EB移行ツール適用（ページ2）",
                           "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
-                                             }
-                                         ],
+                          "Name":  "新規プロセス",
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
+                          "LogButtonText":  "ログ確認",
+                          "ExecutionDelay":  1,
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "バッチファイル",
+                                                 "Path":  ""
+                                             }
+                                         ]
                       },
                       {
-                          "Name":  "2.EB移行ツール適用（ページ2）",
                           "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
-                                             }
-                                         ],
+                          "Name":  "新規プロセス",
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
-                      },
-                      {
-                          "Name":  "2.EB移行ツール適用（ページ2）",
-                          "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
+                          "ExecutionDelay":  1,
                           "BatchFiles":  [
                                              {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
+                                                 "Name":  "バッチファイル",
+                                                 "Path":  ""
                                              }
-                                         ],
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "ExecutionDelay":  1
+                                         ]
                       }
                   ],
     "LogStoragePath2":  "C:\\GnuWin32"

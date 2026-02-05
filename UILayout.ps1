@@ -31,7 +31,8 @@ if ($script:pages.Count -gt 0) {
     if ($initialPageConfig.JsonPath) {
         $initialPageJsonPath = if ([System.IO.Path]::IsPathRooted($initialPageConfig.JsonPath)) {
             $initialPageConfig.JsonPath
-        } else {
+        }
+        else {
             Join-Path $PSScriptRoot $initialPageConfig.JsonPath
         }
         if (Test-Path $initialPageJsonPath) {
@@ -40,7 +41,8 @@ if ($script:pages.Count -gt 0) {
                 if ($initialPageJson.Title) {
                     $initialPageTitle = $initialPageJson.Title
                 }
-            } catch {
+            }
+            catch {
                 # エラー時は後続のフォールバック処理に任せる
             }
         }
@@ -49,7 +51,8 @@ if ($script:pages.Count -gt 0) {
     if (-not $initialPageTitle) {
         $initialPageTitle = if ($initialPageConfig.Title) { $initialPageConfig.Title } else { if ($script:config.Title) { $script:config.Title } else { "1.V1 移行ツール適用" } }
     }
-} else {
+}
+else {
     $initialPageTitle = if ($script:config.Title) { $script:config.Title } else { "1.V1 移行ツール適用" }
 }
 $titleLabel.Text = $initialPageTitle
@@ -67,11 +70,11 @@ $leftArrowButton.ForeColor = [System.Drawing.Color]::White
 $leftArrowButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $leftArrowButton.Font = New-Object System.Drawing.Font("メイリオ", 12, [System.Drawing.FontStyle]::Bold)
 $leftArrowButton.Add_Click({
-    if ($script:currentPage -gt 0) {
-        $script:currentPage--
-        Update-ProcessControls
-    }
-})
+        if ($script:currentPage -gt 0) {
+            $script:currentPage--
+            Update-ProcessControls
+        }
+    })
 $headerPanel.Controls.Add($leftArrowButton)
 
 # 右矢印ボタン
@@ -84,11 +87,11 @@ $rightArrowButton.ForeColor = [System.Drawing.Color]::White
 $rightArrowButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $rightArrowButton.Font = New-Object System.Drawing.Font("メイリオ", 12, [System.Drawing.FontStyle]::Bold)
 $rightArrowButton.Add_Click({
-    if ($script:currentPage -lt ($script:pages.Count - 1)) {
-        $script:currentPage++
-        Update-ProcessControls
-    }
-})
+        if ($script:currentPage -lt ($script:pages.Count - 1)) {
+            $script:currentPage++
+            Update-ProcessControls
+        }
+    })
 $headerPanel.Controls.Add($rightArrowButton)
 
 # 行追加ボタン（編集モードON時のみ表示）- 最後に追加してZ-orderを最前面に
@@ -104,60 +107,64 @@ $addRowButton.FlatAppearance.BorderSize = 1
 $addRowButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $addRowButton.Visible = $false  # 初期状態は非表示
 $addRowButton.Add_Click({
-    # 行追加処理
-    $pageConfig = $script:pages[$script:currentPage]
-    if ($pageConfig.JsonPath) {
-        $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
-            $pageConfig.JsonPath
-        } else {
-            Join-Path $PSScriptRoot $pageConfig.JsonPath
-        }
-        
-        if (Test-Path $jsonPath) {
-            try {
-                $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
-                
-                # 新しいプロセス要素を作成（デフォルト値）
-                $newProcess = @{
-                    Name = "新規プロセス"
-                    ExecuteButtonText = "実行"
-                    LogButtonText = "ログ確認"
-                    BatchFiles = @(
-                        @{
-                            Name = "バッチファイル"
-                            Path = ""
-                        }
-                    )
-                    CsvMoveOperations = @()
-                    ExecutionDelay = 1
-                }
-                
-                # Processes配列に追加
-                if (-not $pageJson.Processes) {
-                    $pageJson.Processes = @()
-                }
-                $pageJson.Processes += $newProcess
-                
-                # JSONファイルに保存（UTF-8 BOM付き）
-                $jsonContentStr = $pageJson | ConvertTo-Json -Depth 10
-                $utf8WithBom = New-Object System.Text.UTF8Encoding $true
-                [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
-                
-                Write-Log "新しい行を追加しました" "INFO"
-                
-                # 画面を更新
-                Update-ProcessControls
-            } catch {
-                Write-Log "行の追加に失敗しました: $($_.Exception.Message)" "ERROR"
-                [System.Windows.Forms.MessageBox]::Show("行の追加に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        # 行追加処理
+        $pageConfig = $script:pages[$script:currentPage]
+        if ($pageConfig.JsonPath) {
+            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                $pageConfig.JsonPath
             }
-        } else {
-            Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+            else {
+                Join-Path $PSScriptRoot $pageConfig.JsonPath
+            }
+        
+            if (Test-Path $jsonPath) {
+                try {
+                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                
+                    # 新しいプロセス要素を作成（デフォルト値）
+                    $newProcess = @{
+                        Name              = "新規プロセス"
+                        ExecuteButtonText = "実行"
+                        LogButtonText     = "ログ確認"
+                        BatchFiles        = @(
+                            @{
+                                Name = "バッチファイル"
+                                Path = ""
+                            }
+                        )
+                        CsvMoveOperations = @()
+                        ExecutionDelay    = 1
+                    }
+                
+                    # Processes配列に追加
+                    if (-not $pageJson.Processes) {
+                        $pageJson.Processes = @()
+                    }
+                    $pageJson.Processes += $newProcess
+                
+                    # JSONファイルに保存（UTF-8 BOM付き）
+                    $jsonContentStr = $pageJson | ConvertTo-Json -Depth 10
+                    $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+                    [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+                
+                    Write-Log "新しい行を追加しました" "INFO"
+                
+                    # 画面を更新
+                    Update-ProcessControls
+                }
+                catch {
+                    Write-Log "行の追加に失敗しました: $($_.Exception.Message)" "ERROR"
+                    [System.Windows.Forms.MessageBox]::Show("行の追加に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                }
+            }
+            else {
+                Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+            }
         }
-    } else {
-        Write-Log "このページはJSONファイルを使用していません" "WARN"
-    }
-})
+        else {
+            Write-Log "このページはJSONファイルを使用していません" "WARN"
+        }
+    })
 $headerPanel.Controls.Add($addRowButton)
 $script:addRowButton = $addRowButton
 
@@ -174,65 +181,69 @@ $deleteRowButton.FlatAppearance.BorderSize = 1
 $deleteRowButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $deleteRowButton.Visible = $false  # 初期状態は非表示
 $deleteRowButton.Add_Click({
-    # 行削除処理
-    $pageConfig = $script:pages[$script:currentPage]
-    if ($pageConfig.JsonPath) {
-        $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
-            $pageConfig.JsonPath
-        } else {
-            Join-Path $PSScriptRoot $pageConfig.JsonPath
-        }
-        
-        if (Test-Path $jsonPath) {
-            try {
-                $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
-                
-                # チェックされた行のインデックスを取得
-                $indicesToDelete = @()
-                for ($i = 0; $i -lt $script:processControls.Count; $i++) {
-                    $ctrlGroup = $script:processControls[$i]
-                    if ($ctrlGroup -and $ctrlGroup.CheckBox -and $ctrlGroup.CheckBox.Checked) {
-                        $indicesToDelete += $i
-                    }
-                }
-                
-                if ($indicesToDelete.Count -eq 0) {
-                    [System.Windows.Forms.MessageBox]::Show("削除する行を選択してください。", "情報", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                    return
-                }
-                
-                # インデックスを降順にソート（後ろから削除することでインデックスのずれを防ぐ）
-                $indicesToDelete = $indicesToDelete | Sort-Object -Descending
-                
-                # チェックされた行を削除（降順にソート済みなので、後ろから削除）
-                $newProcesses = @()
-                for ($idx = 0; $idx -lt $pageJson.Processes.Count; $idx++) {
-                    if ($indicesToDelete -notcontains $idx) {
-                        $newProcesses += $pageJson.Processes[$idx]
-                    }
-                }
-                $pageJson.Processes = $newProcesses
-                
-                # JSONファイルに保存（UTF-8 BOM付き）
-                $jsonContentStr = $pageJson | ConvertTo-Json -Depth 10
-                $utf8WithBom = New-Object System.Text.UTF8Encoding $true
-                [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
-                
-                Write-Log "$($indicesToDelete.Count)行を削除しました" "INFO"
-                
-                # 画面を更新
-                Update-ProcessControls
-            } catch {
-                Write-Log "行の削除に失敗しました: $($_.Exception.Message)" "ERROR"
-                [System.Windows.Forms.MessageBox]::Show("行の削除に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        # 行削除処理
+        $pageConfig = $script:pages[$script:currentPage]
+        if ($pageConfig.JsonPath) {
+            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                $pageConfig.JsonPath
             }
-        } else {
-            Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+            else {
+                Join-Path $PSScriptRoot $pageConfig.JsonPath
+            }
+        
+            if (Test-Path $jsonPath) {
+                try {
+                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                
+                    # チェックされた行のインデックスを取得
+                    $indicesToDelete = @()
+                    for ($i = 0; $i -lt $script:processControls.Count; $i++) {
+                        $ctrlGroup = $script:processControls[$i]
+                        if ($ctrlGroup -and $ctrlGroup.CheckBox -and $ctrlGroup.CheckBox.Checked) {
+                            $indicesToDelete += $i
+                        }
+                    }
+                
+                    if ($indicesToDelete.Count -eq 0) {
+                        [System.Windows.Forms.MessageBox]::Show("削除する行を選択してください。", "情報", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                        return
+                    }
+                
+                    # インデックスを降順にソート（後ろから削除することでインデックスのずれを防ぐ）
+                    $indicesToDelete = $indicesToDelete | Sort-Object -Descending
+                
+                    # チェックされた行を削除（降順にソート済みなので、後ろから削除）
+                    $newProcesses = @()
+                    for ($idx = 0; $idx -lt $pageJson.Processes.Count; $idx++) {
+                        if ($indicesToDelete -notcontains $idx) {
+                            $newProcesses += $pageJson.Processes[$idx]
+                        }
+                    }
+                    $pageJson.Processes = $newProcesses
+                
+                    # JSONファイルに保存（UTF-8 BOM付き）
+                    $jsonContentStr = $pageJson | ConvertTo-Json -Depth 10
+                    $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+                    [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+                
+                    Write-Log "$($indicesToDelete.Count)行を削除しました" "INFO"
+                
+                    # 画面を更新
+                    Update-ProcessControls
+                }
+                catch {
+                    Write-Log "行の削除に失敗しました: $($_.Exception.Message)" "ERROR"
+                    [System.Windows.Forms.MessageBox]::Show("行の削除に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                }
+            }
+            else {
+                Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+            }
         }
-    } else {
-        Write-Log "このページはJSONファイルを使用していません" "WARN"
-    }
-})
+        else {
+            Write-Log "このページはJSONファイルを使用していません" "WARN"
+        }
+    })
 $headerPanel.Controls.Add($deleteRowButton)
 $script:deleteRowButton = $deleteRowButton
 
@@ -257,27 +268,28 @@ $editModeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
 $editModeButton.FlatAppearance.BorderSize = 1
 $editModeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $editModeButton.Add_Click({
-    $script:editMode = -not $script:editMode
-    if ($script:editMode) {
-        $editModeButton.Text = "編集モード ON"
-        $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
-        Write-Log "編集モードを有効にしました" "INFO"
-    } else {
-        $editModeButton.Text = "編集モード OFF"
-        $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
-        Write-Log "編集モードを無効にしました" "INFO"
-    }
-    # ボタンのテキストを更新
-    Update-ProcessControls
+        $script:editMode = -not $script:editMode
+        if ($script:editMode) {
+            $editModeButton.Text = "編集モード ON"
+            $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
+            Write-Log "編集モードを有効にしました" "INFO"
+        }
+        else {
+            $editModeButton.Text = "編集モード OFF"
+            $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
+            Write-Log "編集モードを無効にしました" "INFO"
+        }
+        # ボタンのテキストを更新
+        Update-ProcessControls
     
-    # 行追加・削除ボタンの表示/非表示を切り替え
-    if ($script:addRowButton) {
-        $script:addRowButton.Visible = $script:editMode
-    }
-    if ($script:deleteRowButton) {
-        $script:deleteRowButton.Visible = $script:editMode
-    }
-})
+        # 行追加・削除ボタンの表示/非表示を切り替え
+        if ($script:addRowButton) {
+            $script:addRowButton.Visible = $script:editMode
+        }
+        if ($script:deleteRowButton) {
+            $script:deleteRowButton.Visible = $script:editMode
+        }
+    })
 $headerPanel.Controls.Add($editModeButton)
 $script:editModeButton = $editModeButton
 
@@ -315,27 +327,28 @@ $sourcePathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $sourcePathTextBox.ReadOnly = $true
 $sourcePathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $sourcePathTextBox.Add_Click({
-    if ($script:editMode) {
-        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $folderDialog.Description = "移行データファイル移動元フォルダを選択してください"
-        $folderDialog.ShowNewFolderButton = $true
+        if ($script:editMode) {
+            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+            $folderDialog.Description = "移行データファイル移動元フォルダを選択してください"
+            $folderDialog.ShowNewFolderButton = $true
         
-        # 現在のパスを初期値として設定
-        if ($sourcePathTextBox.Text -and $sourcePathTextBox.Text -ne "パス" -and (Test-Path $sourcePathTextBox.Text)) {
-            $folderDialog.SelectedPath = $sourcePathTextBox.Text
-        } elseif (Test-Path $PSScriptRoot) {
-            $folderDialog.SelectedPath = $PSScriptRoot
-        }
+            # 現在のパスを初期値として設定
+            if ($sourcePathTextBox.Text -and $sourcePathTextBox.Text -ne "パス" -and (Test-Path $sourcePathTextBox.Text)) {
+                $folderDialog.SelectedPath = $sourcePathTextBox.Text
+            }
+            elseif (Test-Path $PSScriptRoot) {
+                $folderDialog.SelectedPath = $PSScriptRoot
+            }
         
-        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $selectedPath = $folderDialog.SelectedPath
-            $sourcePathTextBox.Text = $selectedPath
-            Save-PagePaths -SourcePath $selectedPath
-            Write-Log "移行データファイル移動元を設定しました: $selectedPath" "INFO"
+            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $selectedPath = $folderDialog.SelectedPath
+                $sourcePathTextBox.Text = $selectedPath
+                Save-PagePaths -SourcePath $selectedPath
+                Write-Log "移行データファイル移動元を設定しました: $selectedPath" "INFO"
+            }
+            $folderDialog.Dispose()
         }
-        $folderDialog.Dispose()
-    }
-})
+    })
 $fileMovePanel.Controls.Add($sourcePathTextBox)
 $script:sourcePathTextBox = $sourcePathTextBox
 
@@ -356,27 +369,28 @@ $destPathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $destPathTextBox.ReadOnly = $true
 $destPathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $destPathTextBox.Add_Click({
-    if ($script:editMode) {
-        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $folderDialog.Description = "移行データファイル移動先フォルダを選択してください"
-        $folderDialog.ShowNewFolderButton = $true
+        if ($script:editMode) {
+            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+            $folderDialog.Description = "移行データファイル移動先フォルダを選択してください"
+            $folderDialog.ShowNewFolderButton = $true
         
-        # 現在のパスを初期値として設定
-        if ($destPathTextBox.Text -and $destPathTextBox.Text -ne "パス" -and (Test-Path $destPathTextBox.Text)) {
-            $folderDialog.SelectedPath = $destPathTextBox.Text
-        } elseif (Test-Path $PSScriptRoot) {
-            $folderDialog.SelectedPath = $PSScriptRoot
-        }
+            # 現在のパスを初期値として設定
+            if ($destPathTextBox.Text -and $destPathTextBox.Text -ne "パス" -and (Test-Path $destPathTextBox.Text)) {
+                $folderDialog.SelectedPath = $destPathTextBox.Text
+            }
+            elseif (Test-Path $PSScriptRoot) {
+                $folderDialog.SelectedPath = $PSScriptRoot
+            }
         
-        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $selectedPath = $folderDialog.SelectedPath
-            $destPathTextBox.Text = $selectedPath
-            Save-PagePaths -DestinationPath $selectedPath
-            Write-Log "移行データファイル移動先を設定しました: $selectedPath" "INFO"
+            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $selectedPath = $folderDialog.SelectedPath
+                $destPathTextBox.Text = $selectedPath
+                Save-PagePaths -DestinationPath $selectedPath
+                Write-Log "移行データファイル移動先を設定しました: $selectedPath" "INFO"
+            }
+            $folderDialog.Dispose()
         }
-        $folderDialog.Dispose()
-    }
-})
+    })
 $fileMovePanel.Controls.Add($destPathTextBox)
 $script:destPathTextBox = $destPathTextBox
 
@@ -412,80 +426,85 @@ $logStoragePanel.Controls.Add($logStorageLabel)
 # ログ格納先パス入力（1つ目）
 $logStoragePathTextBox = New-Object System.Windows.Forms.TextBox
 $logStoragePathTextBox.Location = New-Object System.Drawing.Point(10, 35)
-$logStoragePathTextBox.Size = New-Object System.Drawing.Size(150, 30)
+$logStoragePathTextBox.Size = New-Object System.Drawing.Size(355, 30)
 $logStoragePathTextBox.Text = "パス"
 $logStoragePathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $logStoragePathTextBox.ReadOnly = $true
 $logStoragePathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $logStoragePathTextBox.Add_Click({
-    if ($script:editMode) {
-        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $folderDialog.Description = "ログ格納先フォルダを選択してください"
-        $folderDialog.ShowNewFolderButton = $true
+        if ($script:editMode) {
+            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+            $folderDialog.Description = "ログ格納先フォルダを選択してください"
+            $folderDialog.ShowNewFolderButton = $true
         
-        # 現在のパスを初期値として設定
-        if ($logStoragePathTextBox.Text -and $logStoragePathTextBox.Text -ne "パス" -and (Test-Path $logStoragePathTextBox.Text)) {
-            $folderDialog.SelectedPath = $logStoragePathTextBox.Text
-        } elseif (Test-Path $script:logDir) {
-            $folderDialog.SelectedPath = $script:logDir
-        } elseif (Test-Path $PSScriptRoot) {
-            $folderDialog.SelectedPath = $PSScriptRoot
-        }
+            # 現在のパスを初期値として設定
+            if ($logStoragePathTextBox.Text -and $logStoragePathTextBox.Text -ne "パス" -and (Test-Path $logStoragePathTextBox.Text)) {
+                $folderDialog.SelectedPath = $logStoragePathTextBox.Text
+            }
+            elseif (Test-Path $script:logDir) {
+                $folderDialog.SelectedPath = $script:logDir
+            }
+            elseif (Test-Path $PSScriptRoot) {
+                $folderDialog.SelectedPath = $PSScriptRoot
+            }
         
-        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $selectedPath = $folderDialog.SelectedPath
-            $logStoragePathTextBox.Text = $selectedPath
-            Save-PagePaths -LogStoragePath $selectedPath
-            Write-Log "ログ格納先を設定しました: $selectedPath" "INFO"
+            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $selectedPath = $folderDialog.SelectedPath
+                $logStoragePathTextBox.Text = $selectedPath
+                Save-PagePaths -LogStoragePath $selectedPath
+                Write-Log "ログ格納先を設定しました: $selectedPath" "INFO"
+            }
+            $folderDialog.Dispose()
         }
-        $folderDialog.Dispose()
-    }
-})
+    })
 $logStoragePanel.Controls.Add($logStoragePathTextBox)
 $script:logStoragePathTextBox = $logStoragePathTextBox
 
 # ログ格納先パス入力（2つ目）
 $logStoragePath2TextBox = New-Object System.Windows.Forms.TextBox
-$logStoragePath2TextBox.Location = New-Object System.Drawing.Point(170, 35)
-$logStoragePath2TextBox.Size = New-Object System.Drawing.Size(150, 30)
+$logStoragePath2TextBox.Location = New-Object System.Drawing.Point(370, 35)
+$logStoragePath2TextBox.Size = New-Object System.Drawing.Size(355, 30)
 $logStoragePath2TextBox.Text = "パス"
 $logStoragePath2TextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $logStoragePath2TextBox.ReadOnly = $true
 $logStoragePath2TextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $logStoragePath2TextBox.Add_Click({
-    if ($script:editMode) {
-        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $folderDialog.Description = "ログ格納先フォルダを選択してください"
-        $folderDialog.ShowNewFolderButton = $true
+        if ($script:editMode) {
+            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+            $folderDialog.Description = "ログ格納先フォルダを選択してください"
+            $folderDialog.ShowNewFolderButton = $true
         
-        # 現在のパスを初期値として設定
-        if ($logStoragePath2TextBox.Text -and $logStoragePath2TextBox.Text -ne "パス" -and (Test-Path $logStoragePath2TextBox.Text)) {
-            $folderDialog.SelectedPath = $logStoragePath2TextBox.Text
-        } elseif (Test-Path $script:logDir) {
-            $folderDialog.SelectedPath = $script:logDir
-        } elseif (Test-Path $PSScriptRoot) {
-            $folderDialog.SelectedPath = $PSScriptRoot
-        }
+            # 現在のパスを初期値として設定
+            if ($logStoragePath2TextBox.Text -and $logStoragePath2TextBox.Text -ne "パス" -and (Test-Path $logStoragePath2TextBox.Text)) {
+                $folderDialog.SelectedPath = $logStoragePath2TextBox.Text
+            }
+            elseif (Test-Path $script:logDir) {
+                $folderDialog.SelectedPath = $script:logDir
+            }
+            elseif (Test-Path $PSScriptRoot) {
+                $folderDialog.SelectedPath = $PSScriptRoot
+            }
         
-        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $selectedPath = $folderDialog.SelectedPath
-            $logStoragePath2TextBox.Text = $selectedPath
-            Save-PagePaths -LogStoragePath2 $selectedPath
-            Write-Log "ログ格納先2を設定しました: $selectedPath" "INFO"
+            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $selectedPath = $folderDialog.SelectedPath
+                $logStoragePath2TextBox.Text = $selectedPath
+                Save-PagePaths -LogStoragePath2 $selectedPath
+                Write-Log "ログ格納先2を設定しました: $selectedPath" "INFO"
+            }
+            $folderDialog.Dispose()
         }
-        $folderDialog.Dispose()
-    }
-})
+    })
 $logStoragePanel.Controls.Add($logStoragePath2TextBox)
 $script:logStoragePath2TextBox = $logStoragePath2TextBox
 
 # ログ格納ボタン
 $logStorageButton = New-Object System.Windows.Forms.Button
-$logStorageButton.Location = New-Object System.Drawing.Point(330, 35)
+$logStorageButton.Location = New-Object System.Drawing.Point(735, 35)
 $logStorageButton.Size = New-Object System.Drawing.Size(80, 30)
 if ($script:editMode) {
     $logStorageButton.Text = "参照"
-} else {
+}
+else {
     $logStorageButton.Text = "ログ格納"
 }
 $logStorageButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 0)
@@ -494,123 +513,135 @@ $logStorageButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
 $logStorageButton.FlatAppearance.BorderSize = 1
 $logStorageButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $logStorageButton.Add_Click({
-    if ($script:editMode) {
-        # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
-        $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-        $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-        $fileDialog.Title = "ログ格納用バッチファイルを選択してください"
+        if ($script:editMode) {
+            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
+            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+            $fileDialog.Title = "ログ格納用バッチファイルを選択してください"
         
-        # 現在のログ格納用バッチファイルパスを初期値として設定
-        $pageConfig = $script:pages[$script:currentPage]
-        if ($pageConfig.JsonPath) {
-            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
-                $pageConfig.JsonPath
-            } else {
-                Join-Path $PSScriptRoot $pageConfig.JsonPath
-            }
+            # 現在のログ格納用バッチファイルパスを初期値として設定
+            $pageConfig = $script:pages[$script:currentPage]
+            if ($pageConfig.JsonPath) {
+                $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                    $pageConfig.JsonPath
+                }
+                else {
+                    Join-Path $PSScriptRoot $pageConfig.JsonPath
+                }
             
-            if (Test-Path $jsonPath) {
-                try {
-                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
-                    if ($pageJson.LogStorageBatchFile -and $pageJson.LogStorageBatchFile.Path) {
-                        $currentBatchPath = $pageJson.LogStorageBatchFile.Path
-                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatchPath)) {
-                            $currentBatchPath
-                        } else {
-                            Join-Path $PSScriptRoot $currentBatchPath
-                        }
-                        if (Test-Path $initialPath) {
-                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                            $fileDialog.FileName = Split-Path $initialPath -Leaf
+                if (Test-Path $jsonPath) {
+                    try {
+                        $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                        if ($pageJson.LogStorageBatchFile -and $pageJson.LogStorageBatchFile.Path) {
+                            $currentBatchPath = $pageJson.LogStorageBatchFile.Path
+                            $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatchPath)) {
+                                $currentBatchPath
+                            }
+                            else {
+                                Join-Path $PSScriptRoot $currentBatchPath
+                            }
+                            if (Test-Path $initialPath) {
+                                $fileDialog.InitialDirectory = Split-Path $initialPath
+                                $fileDialog.FileName = Split-Path $initialPath -Leaf
+                            }
                         }
                     }
-                } catch {
-                    # エラー時は無視
+                    catch {
+                        # エラー時は無視
+                    }
                 }
             }
-        }
         
-        if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $selectedFile = $fileDialog.FileName
-            Save-LogStorageBatchFile -BatchFilePath $selectedFile
-            Write-Log "ログ格納用バッチファイルを設定しました: $selectedFile" "INFO"
-            [System.Windows.Forms.MessageBox]::Show("ログ格納用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $selectedFile = $fileDialog.FileName
+                Save-LogStorageBatchFile -BatchFilePath $selectedFile
+                Write-Log "ログ格納用バッチファイルを設定しました: $selectedFile" "INFO"
+                [System.Windows.Forms.MessageBox]::Show("ログ格納用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
             
-            # コントロールを更新して新しい設定を反映
-            Update-ProcessControls
-        }
-        $fileDialog.Dispose()
-    } else {
-        # 編集モードOFF：JSONに設定されたバッチファイルを実行してログに記録
-        $pageConfig = $script:pages[$script:currentPage]
-        if ($pageConfig.JsonPath) {
-            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
-                $pageConfig.JsonPath
-            } else {
-                Join-Path $PSScriptRoot $pageConfig.JsonPath
+                # コントロールを更新して新しい設定を反映
+                Update-ProcessControls
             }
+            $fileDialog.Dispose()
+        }
+        else {
+            # 編集モードOFF：JSONに設定されたバッチファイルを実行してログに記録
+            $pageConfig = $script:pages[$script:currentPage]
+            if ($pageConfig.JsonPath) {
+                $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                    $pageConfig.JsonPath
+                }
+                else {
+                    Join-Path $PSScriptRoot $pageConfig.JsonPath
+                }
             
-            if (Test-Path $jsonPath) {
-                try {
-                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
-                    if ($pageJson.LogStorageBatchFile -and $pageJson.LogStorageBatchFile.Path) {
-                        $batchPath = $pageJson.LogStorageBatchFile.Path
-                        if ([System.IO.Path]::IsPathRooted($batchPath)) {
-                            $batchPath = $batchPath
-                        } else {
-                            $batchPath = Join-Path $PSScriptRoot $batchPath
-                        }
+                if (Test-Path $jsonPath) {
+                    try {
+                        $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                        if ($pageJson.LogStorageBatchFile -and $pageJson.LogStorageBatchFile.Path) {
+                            $batchPath = $pageJson.LogStorageBatchFile.Path
+                            if ([System.IO.Path]::IsPathRooted($batchPath)) {
+                                $batchPath = $batchPath
+                            }
+                            else {
+                                $batchPath = Join-Path $PSScriptRoot $batchPath
+                            }
                         
-                        # ログ格納先パスを引数として取得（第一引数：左側、第二引数：右側）
-                        $logStoragePath = ""
-                        if ($script:logStoragePathTextBox -and $script:logStoragePathTextBox.Text -and $script:logStoragePathTextBox.Text -ne "パス") {
-                            $logStoragePath = $script:logStoragePathTextBox.Text
-                        }
+                            # ログ格納先パスを引数として取得（第一引数：左側、第二引数：右側）
+                            $logStoragePath = ""
+                            if ($script:logStoragePathTextBox -and $script:logStoragePathTextBox.Text -and $script:logStoragePathTextBox.Text -ne "パス") {
+                                $logStoragePath = $script:logStoragePathTextBox.Text
+                            }
                         
-                        $logStoragePath2 = ""
-                        if ($script:logStoragePath2TextBox -and $script:logStoragePath2TextBox.Text -and $script:logStoragePath2TextBox.Text -ne "パス") {
-                            $logStoragePath2 = $script:logStoragePath2TextBox.Text
-                        }
+                            $logStoragePath2 = ""
+                            if ($script:logStoragePath2TextBox -and $script:logStoragePath2TextBox.Text -and $script:logStoragePath2TextBox.Text -ne "パス") {
+                                $logStoragePath2 = $script:logStoragePath2TextBox.Text
+                            }
                         
-                        $logStorageButton.Enabled = $false
-                        # 第一引数と第二引数を渡す
-                        $arguments = @()
-                        if ($logStoragePath) {
-                            $arguments += $logStoragePath
-                        }
-                        if ($logStoragePath2) {
-                            $arguments += $logStoragePath2
-                        }
+                            $logStorageButton.Enabled = $false
+                            # 第一引数と第二引数を渡す
+                            $arguments = @()
+                            if ($logStoragePath) {
+                                $arguments += $logStoragePath
+                            }
+                            if ($logStoragePath2) {
+                                $arguments += $logStoragePath2
+                            }
                         
-                        if ($arguments.Count -gt 0) {
-                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1 -Arguments $arguments
-                        } else {
-                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1
+                            if ($arguments.Count -gt 0) {
+                                $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1 -Arguments $arguments
+                            }
+                            else {
+                                $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $pageJson.LogStorageBatchFile.Name -ProcessIndex -1
+                            }
+                            $logStorageButton.Enabled = $true
+                        
+                            if ($result) {
+                                Write-Log "ログ格納処理が正常に完了しました" "INFO"
+                            }
+                            else {
+                                Write-Log "ログ格納処理でエラーが発生しました" "ERROR"
+                            }
                         }
+                        else {
+                            Write-Log "ログ格納用バッチファイルが設定されていません" "ERROR"
+                            [System.Windows.Forms.MessageBox]::Show("ログ格納用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                        }
+                    }
+                    catch {
+                        Write-Log "ログ格納処理の実行に失敗しました: $($_.Exception.Message)" "ERROR"
+                        [System.Windows.Forms.MessageBox]::Show("ログ格納処理の実行に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                         $logStorageButton.Enabled = $true
-                        
-                        if ($result) {
-                            Write-Log "ログ格納処理が正常に完了しました" "INFO"
-                        } else {
-                            Write-Log "ログ格納処理でエラーが発生しました" "ERROR"
-                        }
-                    } else {
-                        Write-Log "ログ格納用バッチファイルが設定されていません" "ERROR"
-                        [System.Windows.Forms.MessageBox]::Show("ログ格納用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
                     }
-                } catch {
-                    Write-Log "ログ格納処理の実行に失敗しました: $($_.Exception.Message)" "ERROR"
-                    [System.Windows.Forms.MessageBox]::Show("ログ格納処理の実行に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-                    $logStorageButton.Enabled = $true
                 }
-            } else {
-                Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+                else {
+                    Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR"
+                }
             }
-        } else {
-            Write-Log "このページはJSONファイルを使用していません" "WARN"
+            else {
+                Write-Log "このページはJSONファイルを使用していません" "WARN"
+            }
         }
-    }
-})
+    })
 $logStoragePanel.Controls.Add($logStorageButton)
 $script:logStorageButton = $logStorageButton
 
@@ -648,5 +679,5 @@ Write-Log "ページ数: $($script:pages.Count)" "INFO"
 
 # フォームを表示
 [System.Windows.Forms.Application]::EnableVisualStyles()
-$form.Add_Shown({$form.Activate()})
+$form.Add_Shown({ $form.Activate() })
 [System.Windows.Forms.Application]::Run($form)
