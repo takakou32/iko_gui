@@ -36,7 +36,7 @@
                       }
                   ],
     "LogStorageBatchFile":  {
-                                "Path":  "log_storage.bat",
+                                "Path":  "upload\\log_upload.bat",
                                 "Name":  "ログ格納用バッチファイル"
                             },
     "LogStoragePath2":  "C:\\"

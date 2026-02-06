@@ -36,20 +36,19 @@
                           "ExecutionDelay":  1
                       },
                       {
-                          "Name":  "3.EB移行ツール適用（ページ2）",
                           "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "DestinationPath":  "C:\\a5m2",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "新しいフォルダー\\sample.bat"
-                                             }
-                                         ],
+                          "Name":  "新規プロセス",
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
+                          "LogButtonText":  "ログ確認",
+                          "ExecutionDelay":  1,
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "バッチファイル",
+                                                 "Path":  ""
+                                             }
+                                         ]
                       }
                   ],
     "LogStoragePath2":  "iko_gui"
