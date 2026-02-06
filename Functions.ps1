@@ -300,18 +300,12 @@ function Invoke-BatchFile {
     Write-Log $logMessage "INFO" $ProcessIndex
     
     try {
-        $stdoutFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}_stdout.log"
-        $stderrFile = Join-Path $processLogDir "process_${script:currentPage}_${ProcessIndex}_stderr.log"
-        
         # 引数がある場合はArgumentListに設定
         $processParams = @{
-            FilePath               = $BatchPath
-            WorkingDirectory       = Split-Path $BatchPath
-            Wait                   = $true
-            NoNewWindow            = $true
-            PassThru               = $true
-            RedirectStandardOutput = $stdoutFile
-            RedirectStandardError  = $stderrFile
+            FilePath         = $BatchPath
+            WorkingDirectory = Split-Path $BatchPath
+            Wait             = $true
+            PassThru         = $true
         }
         
         if ($Arguments.Count -gt 0) {
