@@ -2,6 +2,145 @@
 # エンコーディング: UTF-8 BOM付
 
 # 現在のページのプロセス一覧を取得
+# 現在のページのプロセス一覧を取得
+# モダンなフォルダー選択ダイアログを使用するためのクラス定義
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public class FolderSelectDialog
+{
+    [DllImport("shell32.dll")]
+    private static extern int SHCreateItemFromParsingName([MarshalAs(UnmanagedType.LPWStr)] string pszPath, IntPtr pbc, ref Guid riid, out IShellItem ppv);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetActiveWindow();
+
+    private const string IID_IShellItem = "43826d1e-e718-42ee-bc55-a1e261c37bfe";
+    private const uint FOS_PICKFOLDERS = 0x00000020;
+    private const uint FOS_FORCEFILESYSTEM = 0x00000040;
+
+    public string InitialDirectory { get; set; }
+    public string Title { get; set; }
+
+    public bool ShowDialog(out string selectedPath)
+    {
+        selectedPath = null;
+        IFileOpenDialog dialog = (IFileOpenDialog)new FileOpenDialog();
+        
+        try
+        {
+            dialog.SetOptions(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+            
+            if (!string.IsNullOrEmpty(Title))
+            {
+                dialog.SetTitle(Title);
+            }
+
+            if (!string.IsNullOrEmpty(InitialDirectory))
+            {
+                IShellItem item;
+                Guid riid = new Guid(IID_IShellItem);
+                if (SHCreateItemFromParsingName(InitialDirectory, IntPtr.Zero, ref riid, out item) == 0)
+                {
+                    dialog.SetFolder(item);
+                }
+            }
+
+            if (dialog.Show(GetActiveWindow()) == 0) // S_OK
+            {
+                IShellItem result;
+                dialog.GetResult(out result);
+                string path;
+                result.GetDisplayName(SIGDN.SIGDN_FILESYSPATH, out path);
+                selectedPath = path;
+                return true;
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback needed or just return false
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(dialog);
+        }
+
+        return false;
+    }
+
+    [ComImport]
+    [Guid("DC1C5A9C-E88A-4dde-A5A1-60F82A20AEF7")]
+    [ClassInterface(ClassInterfaceType.None)]
+    private class FileOpenDialog { }
+
+    [ComImport]
+    [Guid("42f85136-db7e-439c-85f1-e4075d135fc8")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IFileOpenDialog
+    {
+        [PreserveSig] int Show(IntPtr parent);
+        void SetFileTypes(); // Placeholder
+        void SetFileTypeIndex(); // Placeholder
+        void GetFileTypeIndex(); // Placeholder
+        void Advise(); // Placeholder
+        void Unadvise(); // Placeholder
+        void SetOptions(uint fos);
+        void GetOptions(); // Placeholder
+        void SetDefaultFolder(); // Placeholder
+        void SetFolder(IShellItem psi);
+        void GetFolder(); // Placeholder
+        void GetCurrentSelection(); // Placeholder
+        void SetFileName(); // Placeholder
+        void GetFileName(); // Placeholder
+        void SetTitle([MarshalAs(UnmanagedType.LPWStr)] string pszTitle);
+        void SetOkButtonLabel(); // Placeholder
+        void SetFileNameLabel(); // Placeholder
+        void GetResult(out IShellItem ppsi);
+        void AddPlace(); // Placeholder
+        void SetDefaultExtension(); // Placeholder
+        void Close(); // Placeholder
+        void SetClientGuid(); // Placeholder
+        void ClearClientData(); // Placeholder
+        void SetFilter(); // Placeholder
+    }
+
+    [ComImport]
+    [Guid("43826d1e-e718-42ee-bc55-a1e261c37bfe")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellItem
+    {
+        void BindToHandler(); // Placeholder
+        void GetParent(); // Placeholder
+        void GetDisplayName(SIGDN sigdnName, [MarshalAs(UnmanagedType.LPWStr)] out string ppszName);
+        void GetAttributes(); // Placeholder
+        void Compare(); // Placeholder
+    }
+
+    private enum SIGDN : uint
+    {
+        SIGDN_FILESYSPATH = 0x80058000
+    }
+}
+"@
+
+function Show-FolderBrowser {
+    param (
+        [string]$InitialDirectory,
+        [string]$Description = "フォルダーを選択してください"
+    )
+
+    $dialog = New-Object FolderSelectDialog
+    $dialog.InitialDirectory = $InitialDirectory
+    $dialog.Title = $Description
+    
+    [string]$path = $null
+    if ($dialog.ShowDialog([ref]$path)) {
+        return $path
+    }
+    return $null
+}
+
 function Get-CurrentPageProcesses {
     if ($script:currentPage -ge $script:pages.Count) {
         return @()
@@ -1799,7 +1938,16 @@ function Update-ProcessControls {
                 $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
+                        if ($script:editMode) {
+                            $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
+                            if ($selectedPath) {
+                                Save-ProcessLogOutputDir -ProcessIndex $clickedProcessIdx -LogOutputDir $selectedPath
+                                Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                            }
+                        }
+                        else {
+                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
+                        }
                     })
                 $script:processPanel.Controls.Add($logButton)
                 
@@ -1927,18 +2075,14 @@ function Update-ProcessControls {
                 $pathTextBox.Tag = $i  # プロセスインデックスをTagに保存
                 $pathTextBox.Add_Click({
                         if ($script:editMode) {
-                            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-                            $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
-                            $folderDialog.ShowNewFolderButton = $true
-                            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $selectedPath = $folderDialog.SelectedPath
+                            $selectedPath = Show-FolderBrowser -InitialDirectory $pathTextBox.Text -Description "V1抽出CSV格納先フォルダを選択してください"
+                            if ($selectedPath) {
                                 $this.Text = $selectedPath
                                 # 各プロセスのDestinationPathをpage3.jsonに保存
                                 $clickedProcessIdx = $this.Tag
                                 Save-ProcessDestinationPath -ProcessIndex $clickedProcessIdx -DestinationPath $selectedPath
                                 Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                             }
-                            $folderDialog.Dispose()
                         }
                     })
                 $script:processPanel.Controls.Add($pathTextBox)
@@ -2062,7 +2206,16 @@ function Update-ProcessControls {
                 $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
+                        if ($script:editMode) {
+                            $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
+                            if ($selectedPath) {
+                                Save-ProcessLogOutputDir -ProcessIndex $clickedProcessIdx -LogOutputDir $selectedPath
+                                Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                            }
+                        }
+                        else {
+                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
+                        }
                     })
                 $script:processPanel.Controls.Add($logButton)
                 
@@ -2183,11 +2336,8 @@ function Update-ProcessControls {
                     $kdlSourceTextBox.Tag = $i  # プロセスインデックスをTagに保存
                     $kdlSourceTextBox.Add_Click({
                             if ($script:editMode) {
-                                $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-                                $folderDialog.Description = "KDL変換CSV格納元フォルダを選択してください"
-                                $folderDialog.ShowNewFolderButton = $true
-                                if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedPath = $folderDialog.SelectedPath
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $this.Text -Description "KDL変換CSV格納元フォルダを選択してください"
+                                if ($selectedPath) {
                                     $this.Text = $selectedPath
                                     # 各プロセスのKdlSourcePathをpage4.jsonに保存
                                     $clickedProcessIdx = $this.Tag
@@ -2239,11 +2389,8 @@ function Update-ProcessControls {
                     $kdlDestTextBox.Tag = $i  # プロセスインデックスをTagに保存
                     $kdlDestTextBox.Add_Click({
                             if ($script:editMode) {
-                                $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-                                $folderDialog.Description = "KDL変換CSV格納先フォルダを選択してください"
-                                $folderDialog.ShowNewFolderButton = $true
-                                if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedPath = $folderDialog.SelectedPath
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $this.Text -Description "KDL変換CSV格納先フォルダを選択してください"
+                                if ($selectedPath) {
                                     $this.Text = $selectedPath
                                     # 各プロセスのKdlDestPathをpage4.jsonに保存
                                     $clickedProcessIdx = $this.Tag
@@ -2773,18 +2920,14 @@ function Update-ProcessControls {
                     $v1CsvDestTextBox.Tag = $i  # プロセスインデックスをTagに保存（3行目以降）
                     $v1CsvDestTextBox.Add_Click({
                             if ($script:editMode) {
-                                $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-                                $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
-                                $folderDialog.ShowNewFolderButton = $true
-                                if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedPath = $folderDialog.SelectedPath
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $this.Text -Description "V1抽出CSV格納先フォルダを選択してください"
+                                if ($selectedPath) {
                                     $this.Text = $selectedPath
                                     # 各プロセスのV1CsvDestPathをpage4.jsonに保存
                                     $clickedProcessIdx = $this.Tag
                                     Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
                                     Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                                 }
-                                $folderDialog.Dispose()
                             }
                         })
                     # V1抽出CSV格納先の初期値を設定（3行目以降）
@@ -3070,7 +3213,16 @@ function Update-ProcessControls {
                     $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $processIdx = $i
                     $logButton.Add_Click({
-                            Show-ProcessLog -ProcessIndex $processIdx
+                            if ($script:editMode) {
+                                $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
+                                if ($selectedPath) {
+                                    Save-ProcessLogOutputDir -ProcessIndex $processIdx -LogOutputDir $selectedPath
+                                    Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $processIdx
+                                }
+                            }
+                            else {
+                                Show-ProcessLog -ProcessIndex $processIdx
+                            }
                         })
                     $script:processPanel.Controls.Add($logButton)
                     
@@ -3190,7 +3342,16 @@ function Update-ProcessControls {
                 $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
+                        if ($script:editMode) {
+                            $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
+                            if ($selectedPath) {
+                                Save-ProcessLogOutputDir -ProcessIndex $clickedProcessIdx -LogOutputDir $selectedPath
+                                Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                            }
+                        }
+                        else {
+                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
+                        }
                     })
                 $script:processPanel.Controls.Add($logButton)
                 

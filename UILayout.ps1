@@ -329,25 +329,18 @@ $sourcePathTextBox.ReadOnly = $true
 $sourcePathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $sourcePathTextBox.Add_Click({
         if ($script:editMode) {
-            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-            $folderDialog.Description = "移行データファイル移動元フォルダを選択してください"
-            $folderDialog.ShowNewFolderButton = $true
-        
-            # 現在のパスを初期値として設定
-            if ($sourcePathTextBox.Text -and $sourcePathTextBox.Text -ne "パス" -and (Test-Path $sourcePathTextBox.Text)) {
-                $folderDialog.SelectedPath = $sourcePathTextBox.Text
-            }
-            elseif (Test-Path $PSScriptRoot) {
-                $folderDialog.SelectedPath = $PSScriptRoot
+            $selectedPath = Show-FolderBrowser -InitialDirectory $sourcePathTextBox.Text -Description "移行データファイル移動元フォルダを選択してください"
+            if (-not $selectedPath -or $selectedPath -eq "") {
+                if (Test-Path $PSScriptRoot) {
+                    $selectedPath = Show-FolderBrowser -InitialDirectory $PSScriptRoot -Description "移行データファイル移動元フォルダを選択してください"
+                }
             }
         
-            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                $selectedPath = $folderDialog.SelectedPath
+            if ($selectedPath) {
                 $sourcePathTextBox.Text = $selectedPath
                 Save-PagePaths -SourcePath $selectedPath
                 Write-Log "移行データファイル移動元を設定しました: $selectedPath" "INFO"
             }
-            $folderDialog.Dispose()
         }
     })
 $fileMovePanel.Controls.Add($sourcePathTextBox)
@@ -371,25 +364,18 @@ $destPathTextBox.ReadOnly = $true
 $destPathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $destPathTextBox.Add_Click({
         if ($script:editMode) {
-            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-            $folderDialog.Description = "移行データファイル移動先フォルダを選択してください"
-            $folderDialog.ShowNewFolderButton = $true
-        
-            # 現在のパスを初期値として設定
-            if ($destPathTextBox.Text -and $destPathTextBox.Text -ne "パス" -and (Test-Path $destPathTextBox.Text)) {
-                $folderDialog.SelectedPath = $destPathTextBox.Text
-            }
-            elseif (Test-Path $PSScriptRoot) {
-                $folderDialog.SelectedPath = $PSScriptRoot
+            $selectedPath = Show-FolderBrowser -InitialDirectory $destPathTextBox.Text -Description "移行データファイル移動先フォルダを選択してください"
+            if (-not $selectedPath -or $selectedPath -eq "") {
+                if (Test-Path $PSScriptRoot) {
+                    $selectedPath = Show-FolderBrowser -InitialDirectory $PSScriptRoot -Description "移行データファイル移動先フォルダを選択してください"
+                }
             }
         
-            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                $selectedPath = $folderDialog.SelectedPath
+            if ($selectedPath) {
                 $destPathTextBox.Text = $selectedPath
                 Save-PagePaths -DestinationPath $selectedPath
                 Write-Log "移行データファイル移動先を設定しました: $selectedPath" "INFO"
             }
-            $folderDialog.Dispose()
         }
     })
 $fileMovePanel.Controls.Add($destPathTextBox)
@@ -434,28 +420,21 @@ $logStoragePathTextBox.ReadOnly = $true
 $logStoragePathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $logStoragePathTextBox.Add_Click({
         if ($script:editMode) {
-            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-            $folderDialog.Description = "ログ格納先フォルダを選択してください"
-            $folderDialog.ShowNewFolderButton = $true
-        
-            # 現在のパスを初期値として設定
-            if ($logStoragePathTextBox.Text -and $logStoragePathTextBox.Text -ne "パス" -and (Test-Path $logStoragePathTextBox.Text)) {
-                $folderDialog.SelectedPath = $logStoragePathTextBox.Text
+            $selectedPath = Show-FolderBrowser -InitialDirectory $logStoragePathTextBox.Text -Description "ログ格納先フォルダを選択してください"
+            if (-not $selectedPath -or $selectedPath -eq "") {
+                if (Test-Path $script:logDir) {
+                    $selectedPath = Show-FolderBrowser -InitialDirectory $script:logDir -Description "ログ格納先フォルダを選択してください"
+                }
+                elseif (Test-Path $PSScriptRoot) {
+                    $selectedPath = Show-FolderBrowser -InitialDirectory $PSScriptRoot -Description "ログ格納先フォルダを選択してください"
+                }
             }
-            elseif (Test-Path $script:logDir) {
-                $folderDialog.SelectedPath = $script:logDir
-            }
-            elseif (Test-Path $PSScriptRoot) {
-                $folderDialog.SelectedPath = $PSScriptRoot
-            }
-        
-            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                $selectedPath = $folderDialog.SelectedPath
+
+            if ($selectedPath) {
                 $logStoragePathTextBox.Text = $selectedPath
                 Save-PagePaths -LogStoragePath $selectedPath
                 Write-Log "ログ格納先を設定しました: $selectedPath" "INFO"
             }
-            $folderDialog.Dispose()
         }
     })
 $logStoragePanel.Controls.Add($logStoragePathTextBox)
@@ -471,28 +450,21 @@ $logStoragePath2TextBox.ReadOnly = $true
 $logStoragePath2TextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $logStoragePath2TextBox.Add_Click({
         if ($script:editMode) {
-            $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-            $folderDialog.Description = "ログ格納先フォルダを選択してください"
-            $folderDialog.ShowNewFolderButton = $true
-        
-            # 現在のパスを初期値として設定
-            if ($logStoragePath2TextBox.Text -and $logStoragePath2TextBox.Text -ne "パス" -and (Test-Path $logStoragePath2TextBox.Text)) {
-                $folderDialog.SelectedPath = $logStoragePath2TextBox.Text
-            }
-            elseif (Test-Path $script:logDir) {
-                $folderDialog.SelectedPath = $script:logDir
-            }
-            elseif (Test-Path $PSScriptRoot) {
-                $folderDialog.SelectedPath = $PSScriptRoot
+            $selectedPath = Show-FolderBrowser -InitialDirectory $logStoragePath2TextBox.Text -Description "ログ格納先フォルダを選択してください"
+            if (-not $selectedPath -or $selectedPath -eq "") {
+                if (Test-Path $script:logDir) {
+                    $selectedPath = Show-FolderBrowser -InitialDirectory $script:logDir -Description "ログ格納先フォルダを選択してください"
+                }
+                elseif (Test-Path $PSScriptRoot) {
+                    $selectedPath = Show-FolderBrowser -InitialDirectory $PSScriptRoot -Description "ログ格納先フォルダを選択してください"
+                }
             }
         
-            if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                $selectedPath = $folderDialog.SelectedPath
+            if ($selectedPath) {
                 $logStoragePath2TextBox.Text = $selectedPath
                 Save-PagePaths -LogStoragePath2 $selectedPath
                 Write-Log "ログ格納先2を設定しました: $selectedPath" "INFO"
             }
-            $folderDialog.Dispose()
         }
     })
 $logStoragePanel.Controls.Add($logStoragePath2TextBox)
