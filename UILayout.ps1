@@ -298,6 +298,7 @@ $processPanel = New-Object System.Windows.Forms.Panel
 $processPanel.Location = New-Object System.Drawing.Point(0, 50)
 $processPanel.Size = New-Object System.Drawing.Size(900, 320)
 $processPanel.BackColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
+$processPanel.AutoScroll = $true
 $form.Controls.Add($processPanel)
 $script:processPanel = $processPanel
 

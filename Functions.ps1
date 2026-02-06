@@ -2131,12 +2131,7 @@ function Update-ProcessControls {
                 $x = 35
                 $y = [int](140 + $row * 220)  # 行間隔を220pxに設定
                 
-                # チェックボックス（編集モードON時のみ表示）
-                $checkBox = New-Object System.Windows.Forms.CheckBox
-                $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
-                $checkBox.Size = New-Object System.Drawing.Size(20, 20)
-                $checkBox.Visible = $script:editMode
-                $script:processPanel.Controls.Add($checkBox)
+
                 
                 # タスク名
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
@@ -2215,56 +2210,7 @@ function Update-ProcessControls {
                     $kdlSourceTextBox.Text = $kdlSourcePathValue
                     $script:processPanel.Controls.Add($kdlSourceTextBox)
                     
-                    # KDL変換CSV格納元の移動設定ボタン（編集モードON時は水色、OFF時は紺色）
-                    $kdlSourceMoveButton = New-Object System.Windows.Forms.Button
-                    $kdlSourceMoveButton.Location = New-Object System.Drawing.Point(415, $y)
-                    $kdlSourceMoveButton.Size = New-Object System.Drawing.Size(60, 30)
-                    if ($script:editMode) {
-                        $kdlSourceMoveButton.Text = "移動設定"
-                        $kdlSourceMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
-                        $kdlSourceMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
-                    }
-                    else {
-                        $kdlSourceMoveButton.Text = "移動"
-                        $kdlSourceMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
-                        $kdlSourceMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
-                    }
-                    $kdlSourceMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $kdlSourceMoveButton.FlatAppearance.BorderSize = 1
-                    $kdlSourceMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
-                    $kdlSourceMoveButton.Visible = $true  # 常に表示
-                    $kdlSourceMoveButton.Tag = $i
-                    $kdlSourceMoveButton.Add_Click({
-                            $clickedProcessIdx = $this.Tag
-                            $currentProcessName = ""
-                            $kdlSourcePath = ""
-                            $kdlDestPath = ""
-                        
-                            # プロセス名とパスを取得
-                            if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
-                                $ctrlGroup = $script:processControls[$clickedProcessIdx]
-                                if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
-                                    $currentProcessName = $ctrlGroup.NameTextBox.Text
-                                }
-                                if ($ctrlGroup -and $ctrlGroup.KdlSourceTextBox) {
-                                    $kdlSourcePath = $ctrlGroup.KdlSourceTextBox.Text
-                                }
-                                if ($ctrlGroup -and $ctrlGroup.KdlDestTextBox) {
-                                    $kdlDestPath = $ctrlGroup.KdlDestTextBox.Text
-                                }
-                            }
-                        
-                            # 編集モードと非編集モードで動作を分岐
-                            if ($script:editMode) {
-                                # 編集モード：移動設定ダイアログを表示
-                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
-                            }
-                            else {
-                                # 非編集モード：ファイル移動を実行（KDL変換CSV用）
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $kdlSourcePath -V1CsvDestinationPath $kdlDestPath
-                            }
-                        })
-                    $script:processPanel.Controls.Add($kdlSourceMoveButton)
+
                     
                     # KDL変換CSV格納先ラベル
                     $kdlDestLabel = New-Object System.Windows.Forms.Label
@@ -2365,8 +2311,8 @@ function Update-ProcessControls {
                                 Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
                             }
                             else {
-                                # 非編集モード：ファイル移動を実行（KDL変換CSV用）
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $kdlSourcePath -V1CsvDestinationPath $kdlDestPath
+                                # 非編集モード：ファイルコピーを実行（KDL格納元 -> KDL格納先）
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $kdlSourcePath -V1CsvDestinationPath $kdlDestPath -IsCopy $true
                             }
                         })
                     $script:processPanel.Controls.Add($kdlDestMoveButton)
@@ -2472,8 +2418,8 @@ function Update-ProcessControls {
                                 Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
                             }
                             else {
-                                # 非編集モード：ファイル移動を実行
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+                                # 非編集モード：ファイルコピーを実行（V1格納元 -> V1格納先）
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath -IsCopy $true
                             }
                         })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
@@ -2774,10 +2720,11 @@ function Update-ProcessControls {
                     
                     # 4ページ目用のコントロール情報を保存（1行目・2行目）
                     $script:processControls += @{
-                        CheckBox            = $checkBox
+                        CheckBox            = $null
                         NameTextBox         = $nameTextBox
                         KdlSourceTextBox    = $kdlSourceTextBox
-                        KdlSourceMoveButton = $kdlSourceMoveButton
+
+                        KdlSourceMoveButton = $null
                         KdlDestTextBox      = $kdlDestTextBox
                         KdlDestMoveButton   = $kdlDestMoveButton
                         V1CsvDestTextBox    = $v1CsvDestTextBox
