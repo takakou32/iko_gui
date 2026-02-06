@@ -58,7 +58,22 @@
                       },
                       {
                           "ExecuteButtonText":  "実行",
-                          "Name":  "新規プロセス",
+                          "Name":  "新規プロセス1",
+                          "CsvMoveOperations":  [
+
+                                                ],
+                          "LogButtonText":  "ログ確認",
+                          "ExecutionDelay":  1,
+                          "BatchFiles":  [
+                                             {
+                                                 "Name":  "バッチファイル",
+                                                 "Path":  ""
+                                             }
+                                         ]
+                      },
+                      {
+                          "ExecuteButtonText":  "実行",
+                          "Name":  "新規プロセスd",
                           "CsvMoveOperations":  [
 
                                                 ],

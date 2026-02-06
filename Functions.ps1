@@ -2757,7 +2757,7 @@ function Update-ProcessControls {
                     # V1抽出CSV格納先パス入力
                     $v1CsvDestTextBox = New-Object System.Windows.Forms.TextBox
                     $v1CsvDestTextBox.Location = New-Object System.Drawing.Point(150, $y)
-                    $v1CsvDestTextBox.Size = New-Object System.Drawing.Size(260, 30)
+                    $v1CsvDestTextBox.Size = New-Object System.Drawing.Size(200, 30)
                     $v1CsvDestTextBox.Text = "パス"
                     $v1CsvDestTextBox.ReadOnly = $true
                     $v1CsvDestTextBox.BackColor = [System.Drawing.Color]::White
@@ -2802,7 +2802,7 @@ function Update-ProcessControls {
                     
                     # V1抽出CSV格納先の移動設定ボタン（編集モードON時は水色、OFF時は紺色）
                     $v1CsvDestMoveButton = New-Object System.Windows.Forms.Button
-                    $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(415, $y)
+                    $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(360, $y)
                     $v1CsvDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
                     if ($script:editMode) {
                         $v1CsvDestMoveButton.Text = "移動設定"
@@ -2854,11 +2854,11 @@ function Update-ProcessControls {
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
                     
                     # ボタン行（直接取込、取込後、ログ確認）
-                    $buttonY = [int]($y + 115)
+                    $buttonY = $y
                     
                     # 直接取込ボタン（オレンジ）
                     $directImportButton = New-Object System.Windows.Forms.Button
-                    $directImportButton.Location = New-Object System.Drawing.Point(535, $buttonY)
+                    $directImportButton.Location = New-Object System.Drawing.Point(440, $buttonY)
                     $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
 
                     if ($script:editMode) {
@@ -2952,7 +2952,9 @@ function Update-ProcessControls {
                     
                     # 取込後ボタン（オレンジ）
                     $afterImportButton = New-Object System.Windows.Forms.Button
-                    $afterImportButton.Location = New-Object System.Drawing.Point(610, $buttonY)
+                    # 取込後ボタン（オレンジ）
+                    $afterImportButton = New-Object System.Windows.Forms.Button
+                    $afterImportButton.Location = New-Object System.Drawing.Point(550, $buttonY)
                     $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
                     if ($script:editMode) {
                         $afterImportButton.Text = "参照"
@@ -3045,7 +3047,9 @@ function Update-ProcessControls {
                     
                     # ログ確認ボタン（緑）
                     $logButton = New-Object System.Windows.Forms.Button
-                    $logButton.Location = New-Object System.Drawing.Point(710, $buttonY)
+                    # ログ確認ボタン（緑）
+                    $logButton = New-Object System.Windows.Forms.Button
+                    $logButton.Location = New-Object System.Drawing.Point(650, $buttonY)
                     $logButton.Size = New-Object System.Drawing.Size(80, 30)
                     if ($script:editMode) {
                         $logButton.Text = "参照"
