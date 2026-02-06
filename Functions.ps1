@@ -1653,9 +1653,9 @@ function Update-ProcessControls {
                 $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
                 $nameTextBox.ReadOnly = -not $script:editMode
-                $nameTextBox.BackColor = [System.Drawing.Color]::White
+                $nameTextBox.BackColor = [System.Drawing.Color]::FromArgb(230, 245, 255)
                 $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
                 $nameTextBox.Multiline = $false
                 $nameTextBox.Height = 30
                 $nameTextBox.Tag = $i
@@ -1883,9 +1883,9 @@ function Update-ProcessControls {
                 $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
                 $nameTextBox.ReadOnly = -not $script:editMode
-                $nameTextBox.BackColor = [System.Drawing.Color]::White
+                $nameTextBox.BackColor = [System.Drawing.Color]::FromArgb(230, 245, 255)
                 $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
                 $nameTextBox.Multiline = $false
                 $nameTextBox.Height = 30
                 $nameTextBox.Tag = $i
@@ -2145,9 +2145,9 @@ function Update-ProcessControls {
                 $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
                 $nameTextBox.ReadOnly = -not $script:editMode
-                $nameTextBox.BackColor = [System.Drawing.Color]::White
+                $nameTextBox.BackColor = [System.Drawing.Color]::FromArgb(230, 245, 255)
                 $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
                 $nameTextBox.Multiline = $false
                 $nameTextBox.Height = 30
                 $nameTextBox.Tag = $i
@@ -2164,7 +2164,7 @@ function Update-ProcessControls {
                 if ($i -lt 2) {
                     # KDL変換CSV格納元ラベル
                     $kdlSourceLabel = New-Object System.Windows.Forms.Label
-                    $kdlSourceLabel.Location = New-Object System.Drawing.Point(150, [int]($y - 20))
+                    $kdlSourceLabel.Location = New-Object System.Drawing.Point(175, [int]($y - 20))
                     $kdlSourceLabel.Size = New-Object System.Drawing.Size(150, 20)
                     $kdlSourceLabel.Text = "KDL変換CSV格納元"
                     $kdlSourceLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
@@ -2172,7 +2172,7 @@ function Update-ProcessControls {
                     
                     # KDL変換CSV格納元パス入力
                     $kdlSourceTextBox = New-Object System.Windows.Forms.TextBox
-                    $kdlSourceTextBox.Location = New-Object System.Drawing.Point(150, $y)
+                    $kdlSourceTextBox.Location = New-Object System.Drawing.Point(175, $y)
                     $kdlSourceTextBox.Size = New-Object System.Drawing.Size(260, 30)
                     $kdlSourceTextBox.Text = "パス"
                     $kdlSourceTextBox.ReadOnly = $true
@@ -2220,7 +2220,7 @@ function Update-ProcessControls {
                     
                     # KDL変換CSV格納先ラベル
                     $kdlDestLabel = New-Object System.Windows.Forms.Label
-                    $kdlDestLabel.Location = New-Object System.Drawing.Point(490, [int]($y - 20))
+                    $kdlDestLabel.Location = New-Object System.Drawing.Point(515, [int]($y - 20))
                     $kdlDestLabel.Size = New-Object System.Drawing.Size(150, 20)
                     $kdlDestLabel.Text = "KDL変換CSV格納先"
                     $kdlDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
@@ -2228,7 +2228,7 @@ function Update-ProcessControls {
                     
                     # KDL変換CSV格納先パス入力
                     $kdlDestTextBox = New-Object System.Windows.Forms.TextBox
-                    $kdlDestTextBox.Location = New-Object System.Drawing.Point(490, $y)
+                    $kdlDestTextBox.Location = New-Object System.Drawing.Point(515, $y)
                     $kdlDestTextBox.Size = New-Object System.Drawing.Size(230, 30)
                     $kdlDestTextBox.Text = "パス"
                     $kdlDestTextBox.ReadOnly = $true
@@ -2274,7 +2274,7 @@ function Update-ProcessControls {
                     
                     # KDL変換CSV格納先の移動設定ボタン（編集モードON時は水色、OFF時は紺色）
                     $kdlDestMoveButton = New-Object System.Windows.Forms.Button
-                    $kdlDestMoveButton.Location = New-Object System.Drawing.Point(725, $y)
+                    $kdlDestMoveButton.Location = New-Object System.Drawing.Point(750, $y)
                     $kdlDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
                     if ($script:editMode) {
                         $kdlDestMoveButton.Text = "移動設定"
@@ -2754,7 +2754,7 @@ function Update-ProcessControls {
                     
                     # V1抽出CSV格納先ラベル
                     $v1CsvDestLabel = New-Object System.Windows.Forms.Label
-                    $v1CsvDestLabel.Location = New-Object System.Drawing.Point(150, [int]($y - 20))
+                    $v1CsvDestLabel.Location = New-Object System.Drawing.Point(175, [int]($y - 20))
                     $v1CsvDestLabel.Size = New-Object System.Drawing.Size(150, 20)
                     $v1CsvDestLabel.Text = "V1抽出CSV格納先"
                     $v1CsvDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
@@ -2762,7 +2762,7 @@ function Update-ProcessControls {
                     
                     # V1抽出CSV格納先パス入力
                     $v1CsvDestTextBox = New-Object System.Windows.Forms.TextBox
-                    $v1CsvDestTextBox.Location = New-Object System.Drawing.Point(150, $y)
+                    $v1CsvDestTextBox.Location = New-Object System.Drawing.Point(175, $y)
                     $v1CsvDestTextBox.Size = New-Object System.Drawing.Size(200, 30)
                     $v1CsvDestTextBox.Text = "パス"
                     $v1CsvDestTextBox.ReadOnly = $true
@@ -2808,7 +2808,7 @@ function Update-ProcessControls {
                     
                     # V1抽出CSV格納先の移動設定ボタン（編集モードON時は水色、OFF時は紺色）
                     $v1CsvDestMoveButton = New-Object System.Windows.Forms.Button
-                    $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(360, $y)
+                    $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(385, $y)
                     $v1CsvDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
                     if ($script:editMode) {
                         $v1CsvDestMoveButton.Text = "移動設定"
@@ -2864,7 +2864,7 @@ function Update-ProcessControls {
                     
                     # 直接取込ボタン（オレンジ）
                     $directImportButton = New-Object System.Windows.Forms.Button
-                    $directImportButton.Location = New-Object System.Drawing.Point(440, $buttonY)
+                    $directImportButton.Location = New-Object System.Drawing.Point(460, $buttonY)
                     $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
 
                     if ($script:editMode) {
@@ -2960,7 +2960,7 @@ function Update-ProcessControls {
                     $afterImportButton = New-Object System.Windows.Forms.Button
                     # 取込後ボタン（オレンジ）
                     $afterImportButton = New-Object System.Windows.Forms.Button
-                    $afterImportButton.Location = New-Object System.Drawing.Point(550, $buttonY)
+                    $afterImportButton.Location = New-Object System.Drawing.Point(560, $buttonY)
                     $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
                     if ($script:editMode) {
                         $afterImportButton.Text = "参照"
@@ -3107,9 +3107,9 @@ function Update-ProcessControls {
                 $nameTextBox.Size = New-Object System.Drawing.Size(140, 40)
                 $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
                 $nameTextBox.ReadOnly = -not $script:editMode
-                $nameTextBox.BackColor = [System.Drawing.Color]::White
+                $nameTextBox.BackColor = [System.Drawing.Color]::FromArgb(230, 245, 255)
                 $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
                 $nameTextBox.Multiline = $true
                 $nameTextBox.Height = 40
                 $nameTextBox.Tag = $i
