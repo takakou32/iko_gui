@@ -2150,7 +2150,65 @@ function Update-ProcessControls {
                 $csvConvertButton.Tag = $i  # プロセスインデックスをTagに保存
                 $csvConvertButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                        if ($script:editMode) {
+                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存（CSV名変換用：Index 1）
+                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                            $fileDialog.Title = "CSV名変換用バッチファイルを選択してください"
+                            
+                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                    $currentBatch = $processConfig.BatchFiles[1]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    }
+                                    else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                    }
+                                }
+                            }
+                            
+                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $selectedFile = $fileDialog.FileName
+                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
+                                Write-Log "CSV名変換用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                [System.Windows.Forms.MessageBox]::Show("CSV名変換用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                # コントロールを更新して新しい設定を反映
+                                Update-ProcessControls
+                            }
+                            $fileDialog.Dispose()
+                        }
+                        else {
+                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 1）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                    $batch = $processConfig.BatchFiles[1]
+                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                        $batch.Path
+                                    }
+                                    else {
+                                        Join-Path $PSScriptRoot $batch.Path
+                                    }
+                                    $this.Enabled = $false
+                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    $this.Enabled = $true
+                                }
+                                else {
+                                    Write-Log "CSV名変換用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("CSV名変換用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                }
+                            }
+                        }
                     })
                 $script:processPanel.Controls.Add($csvConvertButton)
                 
@@ -2173,7 +2231,65 @@ function Update-ProcessControls {
                 $executeButton.Tag = $i  # プロセスインデックスをTagに保存
                 $executeButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                        if ($script:editMode) {
+                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存（実行用：Index 0）
+                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                            $fileDialog.Title = "実行用バッチファイルを選択してください"
+                            
+                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 0）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    $currentBatch = $processConfig.BatchFiles[0]
+                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                        $currentBatch.Path
+                                    }
+                                    else {
+                                        Join-Path $PSScriptRoot $currentBatch.Path
+                                    }
+                                    if (Test-Path $initialPath) {
+                                        $fileDialog.InitialDirectory = Split-Path $initialPath
+                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                    }
+                                }
+                            }
+                            
+                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                $selectedFile = $fileDialog.FileName
+                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
+                                Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                # コントロールを更新して新しい設定を反映
+                                Update-ProcessControls
+                            }
+                            $fileDialog.Dispose()
+                        }
+                        else {
+                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 0）
+                            $currentProcesses = Get-CurrentPageProcesses
+                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                $processConfig = $currentProcesses[$clickedProcessIdx]
+                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                    $batch = $processConfig.BatchFiles[0]
+                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                        $batch.Path
+                                    }
+                                    else {
+                                        Join-Path $PSScriptRoot $batch.Path
+                                    }
+                                    $this.Enabled = $false
+                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    $this.Enabled = $true
+                                }
+                                else {
+                                    Write-Log "実行用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                }
+                            }
+                        }
                     })
                 $script:processPanel.Controls.Add($executeButton)
                 
