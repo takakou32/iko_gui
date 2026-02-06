@@ -2129,7 +2129,13 @@ function Update-ProcessControls {
                 
                 # プロセス行のレイアウト（行ごとに異なる）
                 $x = 35
-                $y = [int](140 + $row * 220)  # 行間隔を220pxに設定
+                if ($row -lt 2) {
+                    $y = [int](140 + $row * 220)
+                }
+                else {
+                    # 3行目以降は行間を詰める（前の行までの高さ580px + 60pxずつ）
+                    $y = [int](580 + ($row - 2) * 60)
+                }
                 
 
                 
