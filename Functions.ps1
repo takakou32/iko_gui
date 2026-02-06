@@ -1987,17 +1987,13 @@ function Update-ProcessControls {
                     $v1CsvSourceTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
                     $v1CsvSourceTextBox.Add_Click({
                             if ($script:editMode) {
-                                $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-                                $folderDialog.Description = "V1抽出CSV格納元フォルダを選択してください"
-                                $folderDialog.ShowNewFolderButton = $true
-                                if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedPath = $folderDialog.SelectedPath
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $v1CsvSourceTextBox.Text -Description "V1抽出CSV格納元フォルダを選択してください"
+                                if ($selectedPath) {
                                     $v1CsvSourceTextBox.Text = $selectedPath
                                     # page3.jsonに保存
                                     Save-PagePaths -SourcePath $selectedPath
                                     Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
                                 }
-                                $folderDialog.Dispose()
                             }
                         })
                     $script:processPanel.Controls.Add($v1CsvSourceTextBox)
@@ -2262,17 +2258,13 @@ function Update-ProcessControls {
                     $v1CsvSourceTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
                     $v1CsvSourceTextBox.Add_Click({
                             if ($script:editMode) {
-                                $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-                                $folderDialog.Description = "V1抽出CSV格納元フォルダを選択してください"
-                                $folderDialog.ShowNewFolderButton = $true
-                                if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedPath = $folderDialog.SelectedPath
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $v1CsvSourceTextBox.Text -Description "V1抽出CSV格納元フォルダを選択してください"
+                                if ($selectedPath) {
                                     $v1CsvSourceTextBox.Text = $selectedPath
                                     # page4.jsonに保存
                                     Save-PagePaths -SourcePath $selectedPath
                                     Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
                                 }
-                                $folderDialog.Dispose()
                             }
                         })
                     # V1抽出CSV格納元の初期値はLoad-PagePathsで設定される（ページ4の場合も対応済み）
@@ -2344,7 +2336,7 @@ function Update-ProcessControls {
                                     Save-ProcessKdlSourcePath -ProcessIndex $clickedProcessIdx -KdlSourcePath $selectedPath
                                     Write-Log "KDL変換CSV格納元を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                                 }
-                                $folderDialog.Dispose()
+
                             }
                         })
                     # KDL変換CSV格納元の初期値を設定
@@ -2397,7 +2389,7 @@ function Update-ProcessControls {
                                     Save-ProcessKdlDestPath -ProcessIndex $clickedProcessIdx -KdlDestPath $selectedPath
                                     Write-Log "KDL変換CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                                 }
-                                $folderDialog.Dispose()
+
                             }
                         })
                     # KDL変換CSV格納先の初期値を設定
@@ -2491,18 +2483,14 @@ function Update-ProcessControls {
                     $v1CsvDestTextBox.Tag = $i  # プロセスインデックスをTagに保存（1行目・2行目）
                     $v1CsvDestTextBox.Add_Click({
                             if ($script:editMode) {
-                                $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-                                $folderDialog.Description = "V1抽出CSV格納先フォルダを選択してください"
-                                $folderDialog.ShowNewFolderButton = $true
-                                if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedPath = $folderDialog.SelectedPath
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $this.Text -Description "V1抽出CSV格納先フォルダを選択してください"
+                                if ($selectedPath) {
                                     $this.Text = $selectedPath
                                     # 各プロセスのV1CsvDestPathをpage4.jsonに保存
                                     $clickedProcessIdx = $this.Tag
                                     Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
                                     Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                                 }
-                                $folderDialog.Dispose()
                             }
                         })
                     # V1抽出CSV格納先の初期値を設定（1行目・2行目）
@@ -2867,7 +2855,16 @@ function Update-ProcessControls {
                     $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $processIdx = $i
                     $logButton.Add_Click({
-                            Show-ProcessLog -ProcessIndex $processIdx
+                            if ($script:editMode) {
+                                $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
+                                if ($selectedPath) {
+                                    Save-ProcessLogOutputDir -ProcessIndex $processIdx -LogOutputDir $selectedPath
+                                    Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $processIdx
+                                }
+                            }
+                            else {
+                                Show-ProcessLog -ProcessIndex $processIdx
+                            }
                         })
                     $script:processPanel.Controls.Add($logButton)
                     

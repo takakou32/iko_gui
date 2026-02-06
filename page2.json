@@ -32,7 +32,8 @@
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
                                              }
-                                         ]
+                                         ],
+                          "LogOutputDir":  "C:\\work\\test\\fizz-buzz"
                       },
                       {
                           "ExecuteButtonText":  "実行",

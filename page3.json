@@ -17,7 +17,8 @@
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
+                          "ExecutionDelay":  1,
+                          "LogOutputDir":  "C:\\work\\test\\fizz-buzz\\test"
                       },
                       {
                           "Name":  "2.EB移行ツール適用（ページ2）",

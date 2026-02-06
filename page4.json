@@ -8,7 +8,7 @@
                           "Name":  "1.EB SQLLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
-                          "KdlSourcePath":  "C:\\work",
+                          "KdlSourcePath":  "C:\\work\\test",
                           "KdlDestPath":  "doc",
                           "V1CsvDestPath":  "",
                           "BatchFiles":  [
@@ -72,5 +72,5 @@
                                          ]
                       }
                   ],
-    "LogStoragePath2":  "movefiles"
+    "LogStoragePath2":  ""
 }
