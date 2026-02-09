@@ -14,8 +14,12 @@
                           "ExecutionDelay":  1,
                           "BatchFiles":  [
                                              {
-                                                 "Name":  "バッチファイル",
-                                                 "Path":  ""
+                                                 "Name":  "チェック用バッチ",
+                                                 "Path":  "run.bat"
+                                             },
+                                             {
+                                                 "Name":  "実行用バッチ",
+                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat"
                                              }
                                          ],
                           "LogOutputDir":  "eb"
@@ -30,7 +34,11 @@
                           "ExecutionDelay":  1,
                           "BatchFiles":  [
                                              {
-                                                 "Name":  "バッチファイル",
+                                                 "Name":  "チェック用バッチ",
+                                                 "Path":  ""
+                                             },
+                                             {
+                                                 "Name":  "実行用バッチ",
                                                  "Path":  ""
                                              }
                                          ]

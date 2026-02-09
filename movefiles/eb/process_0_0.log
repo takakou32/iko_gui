@@ -1,1 +1,17 @@
 [2026-02-09 14:19:06] [INFO] ログ出力フォルダを開きました: C:\work\iko_gui\movefiles\eb
+[2026-02-09 15:18:00] [INFO] バッチファイルパスを保存しました: C:\work\SpringSample\gradlew.bat
+[2026-02-09 15:18:00] [INFO] チェック用バッチファイルを設定しました: C:\work\SpringSample\gradlew.bat
+[2026-02-09 15:18:10] [INFO] バッチファイルパスを保存しました: run.bat
+[2026-02-09 15:18:10] [INFO] バッチファイルを設定しました: C:\work\iko_gui\run.bat
+[2026-02-09 15:18:49] [INFO] バッチファイルパスを保存しました: C:\work\SpringSample\gradlew.bat
+[2026-02-09 15:18:49] [INFO] バッチファイルを設定しました: C:\work\SpringSample\gradlew.bat
+[2026-02-09 15:19:22] [INFO] バッチファイルパスを保存しました: run.bat
+[2026-02-09 15:19:22] [INFO] バッチファイルを設定しました: C:\work\iko_gui\run.bat
+[2026-02-09 15:19:28] [INFO] バッチファイルパスを保存しました: run.bat
+[2026-02-09 15:19:28] [INFO] バッチファイルを設定しました: C:\work\iko_gui\run.bat
+[2026-02-09 15:22:42] [INFO] バッチファイルを実行中: チェック用バッチ (C:\work\iko_gui\run.bat)
+[2026-02-09 15:22:48] [ERROR] バッチファイルの実行が完了しました: チェック用バッチ (終了コード: -1073741510)
+[2026-02-09 15:22:53] [INFO] バッチファイルパスを保存しました: C:\work\SpringSample\gradlew.bat
+[2026-02-09 15:22:53] [INFO] 実行用バッチファイルを設定しました: C:\work\SpringSample\gradlew.bat
+[2026-02-09 15:23:06] [INFO] バッチファイルパスを保存しました: run.bat
+[2026-02-09 15:23:06] [INFO] チェック用バッチファイルを設定しました: C:\work\iko_gui\run.bat

@@ -1841,30 +1841,13 @@ function Update-ProcessControls {
                     $fileMoveButton.Tag = $i  # プロセスインデックスをTagに保存
                     $fileMoveButton.Add_Click({
                             $clickedProcessIdx = $this.Tag
-                            Start-ProcessFlow -ProcessIndex $clickedProcessIdx
-                        })
-                }
-                else {
-                    # 2ページ目：セットボタン
-                    # 編集モードOFF時は「セット」と表示し、実行ボタンと同じ機能（プロセス実行）
-                    # 編集モードON時は「参照」と表示し、実行ボタンの編集モードON時と同じ機能（ファイル選択ウィザードを開き、パスをJSONに保存）
-                    if ($script:editMode) {
-                        $fileMoveButton.Text = "参照"
-                    }
-                    else {
-                        $fileMoveButton.Text = "セット"
-                    }
-                    $processIdx = $i
-                    $fileMoveButton.Tag = $i  # プロセスインデックスをTagに保存
-                    $fileMoveButton.Add_Click({
-                            $clickedProcessIdx = $this.Tag  # Tagからプロセスインデックスを取得
-                            # 編集モードON時は実行ボタンと同じ機能（ファイル選択ウィザードを開き、パスをJSONに保存）
+                            
                             if ($script:editMode) {
                                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                                $fileDialog.Title = "バッチファイルを選択してください"
+                                $fileDialog.Title = "チェック用バッチファイルを選択してください"
                             
-                                # 現在のバッチファイルパスを初期値として設定
+                                # 現在のバッチファイルパスを初期値として設定（Index 0）
                                 $currentProcesses = Get-CurrentPageProcesses
                                 if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
@@ -1886,8 +1869,8 @@ function Update-ProcessControls {
                                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                     $selectedFile = $fileDialog.FileName
                                     Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
-                                    Write-Log "バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    Write-Log "チェック用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
                                 
                                     # コントロールを更新して新しい設定を反映
                                     Update-ProcessControls
@@ -1895,8 +1878,104 @@ function Update-ProcessControls {
                                 $fileDialog.Dispose()
                             }
                             else {
-                                # 編集モードOFF時は実行ボタンと同じ機能（プロセス実行）
-                                Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                                # 編集モードOFF時はチェック用バッチファイルを実行（Index 0）
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $processConfig = $currentProcesses[$clickedProcessIdx]
+                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                        $batch = $processConfig.BatchFiles[0]
+                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                            $batch.Path
+                                        }
+                                        else {
+                                            Join-Path $PSScriptRoot $batch.Path
+                                        }
+                                        
+                                        $this.Enabled = $false
+                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                        $this.Enabled = $true
+                                    }
+                                    else {
+                                        Write-Log "チェック用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルが設定されていません。`n編集モードで設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                    }
+                                }
+                            }
+                        })
+                }
+                else {
+                    # 2ページ目：セットボタン
+                    # 編集モードOFF時は「セット」と表示し、実行ボタンと同じ機能（プロセス実行）
+                    # 編集モードON時は「参照」と表示し、実行ボタンの編集モードON時と同じ機能（ファイル選択ウィザードを開き、パスをJSONに保存）
+                    if ($script:editMode) {
+                        $fileMoveButton.Text = "参照"
+                    }
+                    else {
+                        $fileMoveButton.Text = "セット"
+                    }
+                    $processIdx = $i
+                    $fileMoveButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $fileMoveButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag  # Tagからプロセスインデックスを取得
+                            # 編集モードON時は実行ボタンと同じ機能（ファイル選択ウィザードを開き、パスをJSONに保存）
+                            if ($script:editMode) {
+                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                $fileDialog.Title = "チェック用バッチファイルを選択してください"
+                            
+                                # 現在のバッチファイルパスを初期値として設定（Index 0）
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $processConfig = $currentProcesses[$clickedProcessIdx]
+                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                        $currentBatch = $processConfig.BatchFiles[0]
+                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                            $currentBatch.Path
+                                        }
+                                        else {
+                                            Join-Path $PSScriptRoot $currentBatch.Path
+                                        }
+                                        if (Test-Path $initialPath) {
+                                            $fileDialog.InitialDirectory = Split-Path $initialPath
+                                            $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                        }
+                                    }
+                                }
+                            
+                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                    $selectedFile = $fileDialog.FileName
+                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
+                                    Write-Log "チェック用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                    # コントロールを更新して新しい設定を反映
+                                    Update-ProcessControls
+                                }
+                                $fileDialog.Dispose()
+                            }
+                            else {
+                                # 編集モードOFF時はチェック用バッチファイルを実行（Index 0）
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $processConfig = $currentProcesses[$clickedProcessIdx]
+                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                        $batch = $processConfig.BatchFiles[0]
+                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                            $batch.Path
+                                        }
+                                        else {
+                                            Join-Path $PSScriptRoot $batch.Path
+                                        }
+                                        
+                                        $this.Enabled = $false
+                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                        $this.Enabled = $true
+                                    }
+                                    else {
+                                        Write-Log "チェック用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルが設定されていません。`n編集モードで設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                    }
+                                }
                             }
                         })
                     $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
@@ -1928,7 +2007,71 @@ function Update-ProcessControls {
                 $executeButton.Tag = $i  # プロセスインデックスをTagに保存
                 $executeButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                        
+                        if ($script:currentPage -eq 0 -or $script:currentPage -eq 1) {
+                            if ($script:editMode) {
+                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                $fileDialog.Title = "実行用バッチファイルを選択してください"
+                            
+                                # 現在のバッチファイルパスを初期値として設定（Index 1）
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $processConfig = $currentProcesses[$clickedProcessIdx]
+                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                        $currentBatch = $processConfig.BatchFiles[1]
+                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
+                                            $currentBatch.Path
+                                        }
+                                        else {
+                                            Join-Path $PSScriptRoot $currentBatch.Path
+                                        }
+                                        if (Test-Path $initialPath) {
+                                            $fileDialog.InitialDirectory = Split-Path $initialPath
+                                            $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                        }
+                                    }
+                                }
+                            
+                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                    $selectedFile = $fileDialog.FileName
+                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
+                                    Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                
+                                    # コントロールを更新して新しい設定を反映
+                                    Update-ProcessControls
+                                }
+                                $fileDialog.Dispose()
+                            }
+                            else {
+                                # 編集モードOFF時は実行用バッチファイルを実行（Index 1）
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $processConfig = $currentProcesses[$clickedProcessIdx]
+                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                        $batch = $processConfig.BatchFiles[1]
+                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
+                                            $batch.Path
+                                        }
+                                        else {
+                                            Join-Path $PSScriptRoot $batch.Path
+                                        }
+                                        
+                                        $this.Enabled = $false
+                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                        $this.Enabled = $true
+                                    }
+                                    else {
+                                        Write-Log "実行用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルが設定されていません。`n編集モードで設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                    }
+                                }
+                            }
+                        }
+                        else {
+                            Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                        }
                     })
                 $script:processPanel.Controls.Add($executeButton)
                 

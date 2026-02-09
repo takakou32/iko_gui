@@ -12,6 +12,10 @@
                                              {
                                                  "Name":  "サンプル1",
                                                  "Path":  "run.bat"
+                                             },
+                                             {
+                                                 "Name":  "実行用バッチ",
+                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat"
                                              }
                                          ],
                           "CsvMoveOperations":  [
@@ -32,6 +36,10 @@
                                              {
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
+                                             },
+                                             {
+                                                 "Name":  "実行用バッチ",
+                                                 "Path":  ""
                                              }
                                          ],
                           "LogOutputDir":  "C:\\work\\test\\fizz-buzz"
@@ -47,6 +55,10 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "バッチファイル",
+                                                 "Path":  ""
+                                             },
+                                             {
+                                                 "Name":  "実行用バッチ",
                                                  "Path":  ""
                                              }
                                          ]

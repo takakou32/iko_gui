@@ -40,14 +40,14 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル2",
-                                                 "Path":  "sample2.bat"
+                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat"
                                              },
                                              {
-                                                 "Path":  "sample2.bat",
+                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat",
                                                  "Name":  "バッチファイル"
                                              },
                                              {
-                                                 "Path":  "sample2.bat",
+                                                 "Path":  "run.bat",
                                                  "Name":  "バッチファイル"
                                              }
                                          ],
