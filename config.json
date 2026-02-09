@@ -17,5 +17,6 @@
                       "Title":  "4.SQLLOADER 実行",
                       "JsonPath":  "page4.json"
                   }
-              ]
+              ],
+    "GlobalLogPath":  "movefiles"
 }

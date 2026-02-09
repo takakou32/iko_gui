@@ -23,7 +23,7 @@ $script:headerPanel = $headerPanel
 # タイトルラベル
 $titleLabel = New-Object System.Windows.Forms.Label
 $titleLabel.Location = New-Object System.Drawing.Point(10, 10)
-$titleLabel.Size = New-Object System.Drawing.Size(400, 30)
+$titleLabel.Size = New-Object System.Drawing.Size(330, 30)
 # 初期タイトルの設定（ページJSONから読み込む）
 $initialPageTitle = ""
 if ($script:pages.Count -gt 0) {
@@ -93,6 +93,57 @@ $rightArrowButton.Add_Click({
         }
     })
 $headerPanel.Controls.Add($rightArrowButton)
+
+# ログ格納パス設定ボタン（編集モードON時のみ表示）
+$logSettingsButton = New-Object System.Windows.Forms.Button
+$logSettingsButton.Location = New-Object System.Drawing.Point(570, 10)
+$logSettingsButton.Size = New-Object System.Drawing.Size(110, 30)
+$logSettingsButton.Text = "ログ格納パス設定"
+$logSettingsButton.BackColor = [System.Drawing.Color]::Gray
+$logSettingsButton.ForeColor = [System.Drawing.Color]::White
+$logSettingsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$logSettingsButton.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
+$logSettingsButton.Visible = $false # 初期状態は非表示
+$logSettingsButton.Add_Click({
+        # フォルダ選択ダイアログを表示
+        $fileDialog = New-Object FolderSelectDialog
+        $fileDialog.InitialDirectory = $script:globalLogPath
+        $fileDialog.Title = "ログ格納パス設定（全体共通）"
+    
+        [string]$path = $null
+        if ($fileDialog.ShowDialog([ref]$path)) {
+            $selectedPath = $path
+        
+            # 相対パスに変換（PSScriptRoot以下であれば）
+            if ($selectedPath.StartsWith($PSScriptRoot)) {
+                $relativePath = $selectedPath.Substring($PSScriptRoot.Length).TrimStart("\")
+                if (-not ($script:config.Psobject.Properties.Match("GlobalLogPath").Count)) {
+                    $script:config | Add-Member -MemberType NoteProperty -Name "GlobalLogPath" -Value $relativePath
+                }
+                else {
+                    $script:config.GlobalLogPath = $relativePath
+                }
+            }
+            else {
+                if (-not ($script:config.Psobject.Properties.Match("GlobalLogPath").Count)) {
+                    $script:config | Add-Member -MemberType NoteProperty -Name "GlobalLogPath" -Value $selectedPath
+                }
+                else {
+                    $script:config.GlobalLogPath = $selectedPath
+                }
+            }
+        
+            # config.jsonに保存
+            $json = $script:config | ConvertTo-Json -Depth 10
+            [System.IO.File]::WriteAllText($script:configPath, $json, [System.Text.Encoding]::UTF8)
+        
+            # グローバル変数を更新
+            $script:globalLogPath = $selectedPath
+        
+            [System.Windows.Forms.MessageBox]::Show("ログ格納パスを更新しました。`n$selectedPath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        }
+    })
+$headerPanel.Controls.Add($logSettingsButton)
 
 # 行追加ボタン（編集モードON時のみ表示）- 最後に追加してZ-orderを最前面に
 $addRowButton = New-Object System.Windows.Forms.Button
@@ -249,8 +300,8 @@ $script:deleteRowButton = $deleteRowButton
 
 # ページラベル
 $pageLabel = New-Object System.Windows.Forms.Label
-$pageLabel.Location = New-Object System.Drawing.Point(420, 10)
-$pageLabel.Size = New-Object System.Drawing.Size(150, 30)
+$pageLabel.Location = New-Object System.Drawing.Point(340, 10)
+$pageLabel.Size = New-Object System.Drawing.Size(110, 30)
 $pageLabel.Text = "ページ 1 / $($script:pages.Count)"
 $pageLabel.Font = New-Object System.Drawing.Font("メイリオ", 10)
 $pageLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
@@ -259,7 +310,7 @@ $script:pageLabel = $pageLabel
 
 # 編集モード切り替えボタン
 $editModeButton = New-Object System.Windows.Forms.Button
-$editModeButton.Location = New-Object System.Drawing.Point(580, 10)
+$editModeButton.Location = New-Object System.Drawing.Point(460, 10)
 $editModeButton.Size = New-Object System.Drawing.Size(100, 30)
 $editModeButton.Text = "編集モード OFF"
 $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
@@ -288,6 +339,9 @@ $editModeButton.Add_Click({
         }
         if ($script:deleteRowButton) {
             $script:deleteRowButton.Visible = $script:editMode
+        }
+        if ($script:logSettingsButton) {
+            $script:logSettingsButton.Visible = $script:editMode
         }
     })
 $headerPanel.Controls.Add($editModeButton)

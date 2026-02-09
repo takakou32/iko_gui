@@ -17,7 +17,8 @@
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
+                          "ExecutionDelay":  1,
+                          "LogOutputDir":  "C:\\work\\iko_gui\\logs"
                       },
                       {
                           "ExecuteButtonText":  "実行",

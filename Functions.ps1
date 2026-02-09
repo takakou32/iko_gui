@@ -131,6 +131,22 @@ function Show-FolderBrowser {
     )
 
     $dialog = New-Object FolderSelectDialog
+    
+    if ($InitialDirectory) {
+        # Check if we should resolve relative path (for log settings)
+        if ($Description -like "*ログ*") {
+            try {
+                # Try to resolve relative path to global log path
+                if (-not [System.IO.Path]::IsPathRooted($InitialDirectory)) {
+                    $InitialDirectory = Join-Path $script:globalLogPath $InitialDirectory
+                }
+            }
+            catch {
+                # Ignore path errors
+            }
+        }
+    }
+    
     $dialog.InitialDirectory = $InitialDirectory
     $dialog.Title = $Description
     
@@ -139,6 +155,21 @@ function Show-FolderBrowser {
         return $path
     }
     return $null
+}
+
+# ログパス解決関数
+function Resolve-LogPath {
+    param([string]$SubPath)
+    
+    if (-not $SubPath) {
+        return $script:globalLogPath
+    }
+    
+    if ([System.IO.Path]::IsPathRooted($SubPath)) {
+        return $SubPath
+    }
+    
+    return Join-Path $script:globalLogPath $SubPath
 }
 
 function Get-CurrentPageProcesses {
@@ -201,20 +232,17 @@ function Write-Log {
             if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
                 $processConfig = $currentProcesses[$ProcessIndex]
                 if ($processConfig.LogOutputDir) {
-                    $LogDir = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
-                        $processConfig.LogOutputDir
-                    }
-                    else {
-                        Join-Path $PSScriptRoot $processConfig.LogOutputDir
-                    }
-                }
-                else {
-                    $LogDir = $script:logDir
+                    $LogDir = Resolve-LogPath -SubPath $processConfig.LogOutputDir
                 }
             }
-            else {
-                $LogDir = $script:logDir
-            }
+        }
+        
+        # それくてもLogDirがない場合はデフォルト
+        if (-not $LogDir) {
+            $LogDir = $script:logDir
+        }
+        else {
+            $LogDir = Resolve-LogPath -SubPath $LogDir
         }
         
         # ログディレクトリが存在しない場合は作成
@@ -279,12 +307,8 @@ function Invoke-BatchFile {
     if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
         $processConfig = $currentProcesses[$ProcessIndex]
         if ($processConfig.LogOutputDir) {
-            $processLogDir = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
-                $processConfig.LogOutputDir
-            }
-            else {
-                Join-Path $PSScriptRoot $processConfig.LogOutputDir
-            }
+            $processLogDir = Resolve-LogPath -SubPath $processConfig.LogOutputDir
+            
             if (-not (Test-Path $processLogDir)) {
                 New-Item -ItemType Directory -Path $processLogDir -Force | Out-Null
             }
@@ -1539,62 +1563,61 @@ function Show-ProcessLog {
     
     # 編集モード中はフォルダ選択ダイアログを表示
     if ($script:editMode) {
-        $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $folderDialog.Description = "ログ出力フォルダを選択してください"
-        $folderDialog.ShowNewFolderButton = $true
-        
-        # 現在のログフォルダを初期値として設定
+        # GlobalLogPathが設定されていない場合はエラー
+        if (-not $script:globalLogPath) {
+            [System.Windows.Forms.MessageBox]::Show("共通ログパス（全体設定）が設定されていません。`n先にヘッダーの「ログ格納パス設定」から設定してください。", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+            return
+        }
+
+        # 初期パスの決定（GlobalLogPathを基準にする）
+        $initialDirectory = $script:globalLogPath
         $currentProcesses = Get-CurrentPageProcesses
-        $processConfig = $currentProcesses[$ProcessIndex]
-        if ($processConfig.LogOutputDir) {
-            $initialPath = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
-                $processConfig.LogOutputDir
-            }
-            else {
-                Join-Path $PSScriptRoot $processConfig.LogOutputDir
-            }
-            if (Test-Path $initialPath) {
-                $folderDialog.SelectedPath = $initialPath
+        if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
+            $processConfig = $currentProcesses[$ProcessIndex]
+            if ($processConfig.LogOutputDir) {
+                $initialDirectory = Resolve-LogPath -SubPath $processConfig.LogOutputDir
             }
         }
-        else {
-            if (Test-Path $script:logDir) {
-                $folderDialog.SelectedPath = $script:logDir
+
+        # フォルダ選択ダイアログを表示（共通関数を使用）
+        $selectedPath = Show-FolderBrowser -InitialDirectory $initialDirectory -Description "ログ出力フォルダを選択してください（共通ログパス配下のみ）"
+
+        if ($selectedPath) {
+            # パスの正規化（末尾の￥削除、大文字小文字無視で比較準備）
+            $normalizedGlobal = [System.IO.Path]::GetFullPath($script:globalLogPath).TrimEnd('\')
+            $normalizedSelected = [System.IO.Path]::GetFullPath($selectedPath).TrimEnd('\')
+
+            # 比較用パス（末尾に\をつける）
+            $globalCompare = $normalizedGlobal
+            if (-not $globalCompare.EndsWith('\')) {
+                $globalCompare += '\'
             }
-        }
-        
-        if ($folderDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-            $selectedPath = $folderDialog.SelectedPath
-            # 相対パスに変換（可能な場合）
-            $relativePath = try {
-                $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
-                $targetPath = [System.IO.Path]::GetFullPath($selectedPath).TrimEnd('\', '/')
-                
-                if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                    $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                    if ([string]::IsNullOrEmpty($relative)) {
-                        $relative = Split-Path $targetPath -Leaf
-                    }
-                    $relative
-                }
-                else {
-                    $selectedPath
-                }
+
+            # 共通パス配下かどうかチェック（完全一致 または \付きで始まるか）
+            $isValid = ($normalizedSelected -eq $normalizedGlobal) -or ($normalizedSelected.StartsWith($globalCompare, [System.StringComparison]::OrdinalIgnoreCase))
+
+            if (-not $isValid) {
+                [System.Windows.Forms.MessageBox]::Show("共通ログパス配下のフォルダのみ設定可能です。`n`n共通パス: $normalizedGlobal`n選択パス: $normalizedSelected", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                return
             }
-            catch {
-                $selectedPath
-            }
+
+            # 相対パスの算出
+            $relativePath = $normalizedSelected.Substring($normalizedGlobal.Length).TrimStart('\')
             
+            # ルートそのものが選択された場合
+            if ([string]::IsNullOrEmpty($relativePath)) {
+                $relativePath = "."
+            }
+
             # JSONファイルを更新
             if (Save-ProcessLogOutputDir -ProcessIndex $ProcessIndex -LogOutputDir $relativePath) {
-                Write-Log "ログ出力フォルダを設定しました: $relativePath" "INFO" $ProcessIndex
+                Write-Log "ログ出力フォルダを設定しました: $relativePath (共通パスからの相対)" "INFO" $ProcessIndex
                 [System.Windows.Forms.MessageBox]::Show("ログ出力フォルダを設定しました。`n$relativePath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
             }
             else {
                 [System.Windows.Forms.MessageBox]::Show("ログ出力フォルダの保存に失敗しました。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
             }
         }
-        $folderDialog.Dispose()
         return
     }
     
@@ -1613,12 +1636,8 @@ function Show-ProcessLog {
     $processLogDir = $logDir  # デフォルト値
     if ($processConfig.LogOutputDir) {
         # LogOutputDirが設定されている場合はそれを使用
-        $processLogDir = if ([System.IO.Path]::IsPathRooted($processConfig.LogOutputDir)) {
-            $processConfig.LogOutputDir
-        }
-        else {
-            Join-Path $PSScriptRoot $processConfig.LogOutputDir
-        }
+        # LogOutputDirが設定されている場合はそれを使用
+        $processLogDir = Resolve-LogPath -SubPath $processConfig.LogOutputDir
     }
     
     # ログ出力フォルダをエクスプローラで開く
@@ -1932,16 +1951,7 @@ function Update-ProcessControls {
                 $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        if ($script:editMode) {
-                            $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
-                            if ($selectedPath) {
-                                Save-ProcessLogOutputDir -ProcessIndex $clickedProcessIdx -LogOutputDir $selectedPath
-                                Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $clickedProcessIdx
-                            }
-                        }
-                        else {
-                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
-                        }
+                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
                     })
                 $script:processPanel.Controls.Add($logButton)
                 
@@ -2312,16 +2322,7 @@ function Update-ProcessControls {
                 $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        if ($script:editMode) {
-                            $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
-                            if ($selectedPath) {
-                                Save-ProcessLogOutputDir -ProcessIndex $clickedProcessIdx -LogOutputDir $selectedPath
-                                Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $clickedProcessIdx
-                            }
-                        }
-                        else {
-                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
-                        }
+                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
                     })
                 $script:processPanel.Controls.Add($logButton)
                 
@@ -2965,16 +2966,7 @@ function Update-ProcessControls {
                     $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $processIdx = $i
                     $logButton.Add_Click({
-                            if ($script:editMode) {
-                                $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
-                                if ($selectedPath) {
-                                    Save-ProcessLogOutputDir -ProcessIndex $processIdx -LogOutputDir $selectedPath
-                                    Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $processIdx
-                                }
-                            }
-                            else {
-                                Show-ProcessLog -ProcessIndex $processIdx
-                            }
+                            Show-ProcessLog -ProcessIndex $processIdx
                         })
                     $script:processPanel.Controls.Add($logButton)
                     
@@ -3320,16 +3312,7 @@ function Update-ProcessControls {
                     $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $processIdx = $i
                     $logButton.Add_Click({
-                            if ($script:editMode) {
-                                $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
-                                if ($selectedPath) {
-                                    Save-ProcessLogOutputDir -ProcessIndex $processIdx -LogOutputDir $selectedPath
-                                    Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $processIdx
-                                }
-                            }
-                            else {
-                                Show-ProcessLog -ProcessIndex $processIdx
-                            }
+                            Show-ProcessLog -ProcessIndex $processIdx
                         })
                     $script:processPanel.Controls.Add($logButton)
                     
@@ -3449,16 +3432,7 @@ function Update-ProcessControls {
                 $logButton.Tag = $i  # プロセスインデックスをTagに保存
                 $logButton.Add_Click({
                         $clickedProcessIdx = $this.Tag
-                        if ($script:editMode) {
-                            $selectedPath = Show-FolderBrowser -Description "ログ出力フォルダを選択してください"
-                            if ($selectedPath) {
-                                Save-ProcessLogOutputDir -ProcessIndex $clickedProcessIdx -LogOutputDir $selectedPath
-                                Write-Log "ログ出力フォルダを設定しました: $selectedPath" "INFO" $clickedProcessIdx
-                            }
-                        }
-                        else {
-                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
-                        }
+                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
                     })
                 $script:processPanel.Controls.Add($logButton)
                 

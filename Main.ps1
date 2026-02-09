@@ -7,9 +7,24 @@ Add-Type -AssemblyName System.Drawing
 $script:configPath = Join-Path $PSScriptRoot "config.json"
 if (Test-Path $script:configPath) {
     $script:config = Get-Content $script:configPath -Encoding UTF8 | ConvertFrom-Json
-} else {
+}
+else {
     Write-Host "設定ファイルが見つかりません: $script:configPath"
     exit 1
+}
+
+# グローバルログパスの設定
+if ($script:config.GlobalLogPath) {
+    if ([System.IO.Path]::IsPathRooted($script:config.GlobalLogPath)) {
+        $script:globalLogPath = $script:config.GlobalLogPath
+    }
+    else {
+        $script:globalLogPath = Join-Path $PSScriptRoot $script:config.GlobalLogPath
+    }
+}
+else {
+    # デフォルト設定（logsフォルダ）
+    $script:globalLogPath = Join-Path $PSScriptRoot "logs"
 }
 
 # ログファイルのパス
@@ -30,15 +45,17 @@ $script:editMode = $false
 # ページ設定の読み込み
 if ($script:config.Pages) {
     $script:pages = $script:config.Pages
-} else {
+}
+else {
     # 後方互換性のため、旧形式の設定もサポート
     if ($script:config.Processes) {
         $script:pages = @(@{
-            Title = if ($script:config.Title) { $script:config.Title } else { "" }
-            JsonPath = $null
-            Processes = $script:config.Processes
-        })
-    } else {
+                Title     = if ($script:config.Title) { $script:config.Title } else { "" }
+                JsonPath  = $null
+                Processes = $script:config.Processes
+            })
+    }
+    else {
         Write-Host "設定ファイルの形式が正しくありません"
         exit 1
     }
