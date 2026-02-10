@@ -94,11 +94,11 @@ $rightArrowButton.Add_Click({
     })
 $headerPanel.Controls.Add($rightArrowButton)
 
-# ログ格納パス設定ボタン（編集モードON時のみ表示）
+# ログ格納パス設定（ツール格納場所設定）ボタン（編集モードON時のみ表示）
 $logSettingsButton = New-Object System.Windows.Forms.Button
 $logSettingsButton.Location = New-Object System.Drawing.Point(570, 10)
-$logSettingsButton.Size = New-Object System.Drawing.Size(110, 30)
-$logSettingsButton.Text = "ログ格納パス設定"
+$logSettingsButton.Size = New-Object System.Drawing.Size(120, 30) # 幅を少し広げる
+$logSettingsButton.Text = "ツール格納場所設定"
 $logSettingsButton.BackColor = [System.Drawing.Color]::Gray
 $logSettingsButton.ForeColor = [System.Drawing.Color]::White
 $logSettingsButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
@@ -108,39 +108,44 @@ $logSettingsButton.Add_Click({
         # フォルダ選択ダイアログを表示
         $fileDialog = New-Object FolderSelectDialog
         $fileDialog.InitialDirectory = $script:globalLogPath
-        $fileDialog.Title = "ログ格納パス設定（全体共通）"
+        $fileDialog.Title = "ツール格納場所設定（全体共通）"
     
         [string]$path = $null
         if ($fileDialog.ShowDialog([ref]$path)) {
             $selectedPath = $path
-        
-            # 相対パスに変換（PSScriptRoot以下であれば）
-            if ($selectedPath.StartsWith($PSScriptRoot)) {
-                $relativePath = $selectedPath.Substring($PSScriptRoot.Length).TrimStart("\")
-                if (-not ($script:config.Psobject.Properties.Match("GlobalLogPath").Count)) {
-                    $script:config | Add-Member -MemberType NoteProperty -Name "GlobalLogPath" -Value $relativePath
+            
+            # コンフィグファイルを再読み込みして最新の状態にする
+            if (Test-Path $script:configPath) {
+                try {
+                    $currentConfig = Get-Content $script:configPath -Encoding UTF8 | ConvertFrom-Json
+                    
+                    
+                    # ルートパス取得（$script:configPathから）
+                    $rootPath = Split-Path $script:configPath -Parent
+                    
+                    # 絶対パスのまま保存（ユーザー要望により相対パス変換を廃止）
+                    $savePath = $selectedPath
+                    
+                    # GlobalLogPathプロパティを更新（Forceで上書き）
+                    $currentConfig | Add-Member -MemberType NoteProperty -Name "GlobalLogPath" -Value $savePath -Force
+                
+                    # config.jsonに保存
+                    $json = $currentConfig | ConvertTo-Json -Depth 10
+                    [System.IO.File]::WriteAllText($script:configPath, $json, [System.Text.Encoding]::UTF8)
+                
+                    # メモリ上の設定とグローバル変数を更新
+                    $script:config = $currentConfig
+                    $script:globalLogPath = $selectedPath
+                
+                    [System.Windows.Forms.MessageBox]::Show("ツール格納場所を更新しました。`n$selectedPath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
                 }
-                else {
-                    $script:config.GlobalLogPath = $relativePath
+                catch {
+                    [System.Windows.Forms.MessageBox]::Show("設定の保存に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
                 }
             }
             else {
-                if (-not ($script:config.Psobject.Properties.Match("GlobalLogPath").Count)) {
-                    $script:config | Add-Member -MemberType NoteProperty -Name "GlobalLogPath" -Value $selectedPath
-                }
-                else {
-                    $script:config.GlobalLogPath = $selectedPath
-                }
+                [System.Windows.Forms.MessageBox]::Show("設定ファイルが見つかりません。`n$script:configPath", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
             }
-        
-            # config.jsonに保存
-            $json = $script:config | ConvertTo-Json -Depth 10
-            [System.IO.File]::WriteAllText($script:configPath, $json, [System.Text.Encoding]::UTF8)
-        
-            # グローバル変数を更新
-            $script:globalLogPath = $selectedPath
-        
-            [System.Windows.Forms.MessageBox]::Show("ログ格納パスを更新しました。`n$selectedPath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
         }
     })
 $headerPanel.Controls.Add($logSettingsButton)
@@ -581,12 +586,13 @@ $logStorageButton.Add_Click({
         
             if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                 $selectedFile = $fileDialog.FileName
-                Save-LogStorageBatchFile -BatchFilePath $selectedFile
-                Write-Log "ログ格納用バッチファイルを設定しました: $selectedFile" "INFO"
-                [System.Windows.Forms.MessageBox]::Show("ログ格納用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-            
-                # コントロールを更新して新しい設定を反映
-                Update-ProcessControls
+                if (Save-LogStorageBatchFile -BatchFilePath $selectedFile) {
+                    Write-Log "ログ格納用バッチファイルを設定しました: $selectedFile" "INFO"
+                    [System.Windows.Forms.MessageBox]::Show("ログ格納用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                
+                    # コントロールを更新して新しい設定を反映
+                    Update-ProcessControls
+                }
             }
             $fileDialog.Dispose()
         }

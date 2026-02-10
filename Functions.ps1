@@ -394,8 +394,16 @@ function Save-LogStorageBatchFile {
         }
         
         # 相対パスに変換（可能な場合）
+        # 相対パスに変換（可能な場合）
         $relativePath = try {
-            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            # ユーザー要望により、GlobalLogPath（ツール格納場所）を基準とする
+            $basePath = if ($script:globalLogPath) { 
+                [System.IO.Path]::GetFullPath($script:globalLogPath).TrimEnd('\', '/') 
+            }
+            else { 
+                [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/') 
+            }
+            
             $targetPath = [System.IO.Path]::GetFullPath($BatchFilePath).TrimEnd('\', '/')
             
             if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -405,9 +413,10 @@ function Save-LogStorageBatchFile {
                 }
                 $relative
             }
-            else {
-                $BatchFilePath
-            }
+            # 基準パス外の場合はエラーとして処理（Save-BatchFilePathと同様）
+            Write-Log "バッチファイルは共通パス（$basePath）配下に配置する必要があります: $targetPath" "ERROR"
+            [void][System.Windows.Forms.MessageBox]::Show("バッチファイルは共通パス（ツール格納場所）配下に配置する必要があります。`n共通パス: $basePath", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            return $false
         }
         catch {
             $BatchFilePath
@@ -433,6 +442,59 @@ function Save-BatchFilePath {
     param([int]$ProcessIndex, [string]$BatchFilePath, [int]$BatchIndex = 0)
     
     $pageConfig = $script:pages[$script:currentPage]
+    
+    # LogStoragePath（共通パス）を取得
+    # ユーザー要望により、GlobalLogPath（ツール格納場所）を使用する
+    $logStoragePath = if ($script:globalLogPath) { $script:globalLogPath } else { "" }
+    
+    # GlobalLogPathが設定されていない場合は、ページ設定のLogStoragePathを使用（後方互換性）
+    if (-not $logStoragePath) {
+        $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+        
+        # メモリ上にない場合、JSONファイルから直接読み込む試み
+        if (-not $logStoragePath -and $pageConfig.JsonPath) {
+            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                $pageConfig.JsonPath
+            }
+            else {
+                Join-Path $PSScriptRoot $pageConfig.JsonPath
+            }
+            
+            if (Test-Path $jsonPath) {
+                try {
+                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                    if ($pageJson.LogStoragePath) {
+                        $logStoragePath = $pageJson.LogStoragePath
+                        # メモリ上の設定も更新（次回以降のためにキャッシュ）
+                        $pageConfig.LogStoragePath = $logStoragePath
+                    }
+                }
+                catch {}
+            }
+        }
+    }
+    
+    # 相対パスの場合は絶対パスに展開（比較用）
+    $fullBatchPath = [System.IO.Path]::GetFullPath($BatchFilePath)
+    
+    # LogStoragePathが設定されている場合、パス制限チェック
+    if ($logStoragePath) {
+        $fullLogStoragePath = [System.IO.Path]::GetFullPath($logStoragePath)
+        
+        # 大文字小文字を区別せずに比較（共通パス配下かチェック）
+        if (-not $fullBatchPath.StartsWith($fullLogStoragePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            Write-Log "バッチファイルは共通パス（$fullLogStoragePath）配下に配置する必要があります: $fullBatchPath" "ERROR" $ProcessIndex
+            [void][System.Windows.Forms.MessageBox]::Show("バッチファイルは共通パス（LogStoragePath）配下に配置する必要があります。`n共通パス: $fullLogStoragePath", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            return $false
+        }
+        
+        # 相対パスに変換
+        $relativePath = $fullBatchPath.Substring($fullLogStoragePath.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+        $BatchFilePath = $relativePath
+    }
+    
+    # ページ設定の保存処理
+    # 既存のロジック（JSON保存）を維持しつつ、BatchFiles配列の更新を行う
     if (-not $pageConfig.JsonPath) {
         Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
         return $false
@@ -462,49 +524,41 @@ function Save-BatchFilePath {
             $process.BatchFiles = @()
         }
         
-        if ($BatchIndex -ge $process.BatchFiles.Count) {
-            # 新しいバッチファイルエントリを追加
-            $process.BatchFiles += @{
-                Name = "バッチファイル"
-                Path = $BatchFilePath
-            }
-        }
-        else {
-            # 既存のバッチファイルエントリを更新
-            $process.BatchFiles[$BatchIndex].Path = $BatchFilePath
+        # 指定されたインデックスまで配列を拡張
+        while ($process.BatchFiles.Count -le $BatchIndex) {
+            $process.BatchFiles += @{ Name = "バッチファイル"; Path = "" }
         }
         
-        # 相対パスに変換（可能な場合）
-        $relativePath = try {
-            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
-            $targetPath = [System.IO.Path]::GetFullPath($BatchFilePath).TrimEnd('\', '/')
-            
-            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                if ([string]::IsNullOrEmpty($relative)) {
-                    $relative = Split-Path $targetPath -Leaf
-                }
-                $relative
-            }
-            else {
-                $BatchFilePath
-            }
-        }
-        catch {
-            $BatchFilePath
-        }
-        
-        $process.BatchFiles[$BatchIndex].Path = $relativePath
+        # パスを更新（相対パス）
+        $process.BatchFiles[$BatchIndex].Path = $BatchFilePath
         
         # JSONファイルに保存（UTF-8 BOM付き）
         $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
         $utf8WithBom = New-Object System.Text.UTF8Encoding $true
         [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
-        Write-Log "バッチファイルパスを保存しました: $relativePath" "INFO" $ProcessIndex
+        
+        # メモリ上の設定も更新（重要：UI更新のため）
+        if ($script:pages[$script:currentPage].Processes) {
+            # メモリ上のProcesses配列も更新する必要があるが、
+            # ここでは簡易的にJSON再読み込みを促すか、あるいは直接メモリを更新する
+            # Functions.ps1の他の箇所ではLoad-PageConfigなどで再読み込みしている可能性がある
+            # ここではJSON保存成功を返すのみとする（呼び出し元でUpdate-ProcessControlsなどが呼ばれるため再描画時に再読み込みされることを期待）
+            # しかし、メモリ上のキャッシュが更新されないと即座に反映されない場合がある
+            # 安全のため、メモリ上のオブジェクトも更新する
+            try {
+                if ($script:pages[$script:currentPage].Processes[$ProcessIndex].BatchFiles) {
+                    # 配列拡張が必要な場合もあるが、複雑になるため、ここではJSON保存を主とする
+                    # Reload-PageConfigがあれば呼びたいところ
+                }
+            }
+            catch {}
+        }
+
+        Write-Log "バッチファイルパスを保存しました (Index: $BatchIndex): $BatchFilePath" "INFO" $ProcessIndex
         return $true
     }
     catch {
-        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        Write-Log "バッチファイルパスの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
         return $false
     }
 }
@@ -1222,6 +1276,68 @@ function Save-PagePaths {
     }
 }
 
+# バッチファイルパス解決関数
+function Resolve-BatchPath {
+    param(
+        [string]$Path
+    )
+    
+    if ([string]::IsNullOrEmpty($Path)) { return "" }
+    
+    # 既に絶対パスの場合はそのまま返す
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    
+    # ページ設定からLogStoragePath（共通パス）を取得
+    # ユーザー要望により、GlobalLogPath（ツール格納場所）を優先使用する
+    $logStoragePath = if ($script:globalLogPath) { $script:globalLogPath } else { "" }
+    
+    if (-not $logStoragePath) {
+        $pageConfig = $script:pages[$script:currentPage]
+        $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+        
+        # メモリ上にない場合、JSONファイルから直接読み込む試み
+        if (-not $logStoragePath -and $pageConfig.JsonPath) {
+            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                $pageConfig.JsonPath
+            }
+            else {
+                Join-Path $PSScriptRoot $pageConfig.JsonPath
+            }
+            
+            if (Test-Path $jsonPath) {
+                try {
+                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                    if ($pageJson.LogStoragePath) {
+                        $logStoragePath = $pageJson.LogStoragePath
+                        # メモリ上の設定も更新（次回以降のためにキャッシュ）
+                        $pageConfig.LogStoragePath = $logStoragePath
+                    }
+                }
+                catch {}
+            }
+        }
+    }
+    
+    # LogStoragePathからの解決を試みる
+    if ($logStoragePath) {
+        $resolved = Join-Path $logStoragePath $Path
+        if (Test-Path $resolved) { return $resolved }
+    }
+    
+    # PSScriptRootからの解決を試みる（後方互換性）
+    $resolved = Join-Path $PSScriptRoot $Path
+    if (Test-Path $resolved) { return $resolved }
+    
+    # 見つからない場合は、LogStoragePathがあればそれを優先したパスを返す（エラー表示用）
+    if ($logStoragePath) {
+        return Join-Path $logStoragePath $Path
+    }
+    
+    return $resolved
+}
+
 # プロセス実行関数
 function Start-ProcessFlow {
     param([int]$ProcessIndex)
@@ -1232,17 +1348,48 @@ function Start-ProcessFlow {
         $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
         $fileDialog.Title = "バッチファイルを選択してください"
         
-        # 現在のバッチファイルパスを初期値として設定
+        # LogStoragePathを初期ディレクトリに設定
+        # ユーザー要望により、GlobalLogPath（ツール格納場所）を優先使用する
+        $logStoragePath = if ($script:globalLogPath) { $script:globalLogPath } else { "" }
+        
+        if (-not $logStoragePath) {
+            $pageConfig = $script:pages[$script:currentPage]
+            $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+            
+            # メモリ上にない場合、JSONファイルから直接読み込む試み
+            if (-not $logStoragePath -and $pageConfig.JsonPath) {
+                $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                    $pageConfig.JsonPath
+                }
+                else {
+                    Join-Path $PSScriptRoot $pageConfig.JsonPath
+                }
+                
+                if (Test-Path $jsonPath) {
+                    try {
+                        $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                        if ($pageJson.LogStoragePath) {
+                            $logStoragePath = $pageJson.LogStoragePath
+                            # メモリ上の設定も更新（次回以降のためにキャッシュ）
+                            $pageConfig.LogStoragePath = $logStoragePath
+                        }
+                    }
+                    catch {}
+                }
+            }
+        }
+
+        if ($logStoragePath -and (Test-Path $logStoragePath)) {
+            $fileDialog.InitialDirectory = $logStoragePath
+        }
+        
+        # 現在のバッチファイルパスを初期値として設定（あれば）
         $currentProcesses = Get-CurrentPageProcesses
         $processConfig = $currentProcesses[$ProcessIndex]
         if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
             $currentBatch = $processConfig.BatchFiles[0]
-            $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                $currentBatch.Path
-            }
-            else {
-                Join-Path $PSScriptRoot $currentBatch.Path
-            }
+            # Resolve-BatchPathを使用してパスを解決
+            $initialPath = Resolve-BatchPath -Path $currentBatch.Path
             if (Test-Path $initialPath) {
                 $fileDialog.InitialDirectory = Split-Path $initialPath
                 $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -1251,12 +1398,14 @@ function Start-ProcessFlow {
         
         if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             $selectedFile = $fileDialog.FileName
-            Save-BatchFilePath -ProcessIndex $ProcessIndex -BatchFilePath $selectedFile -BatchIndex 0
-            Write-Log "バッチファイルを設定しました: $selectedFile" "INFO" $ProcessIndex
-            [System.Windows.Forms.MessageBox]::Show("バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-            
-            # コントロールを更新して新しい設定を反映
-            Update-ProcessControls
+            # Save-BatchFilePath内でパス制限チェックが行われる
+            if (Save-BatchFilePath -ProcessIndex $ProcessIndex -BatchFilePath $selectedFile -BatchIndex 0) {
+                Write-Log "バッチファイルを設定しました: $selectedFile" "INFO" $ProcessIndex
+                [System.Windows.Forms.MessageBox]::Show("バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                
+                # コントロールを更新して新しい設定を反映
+                Update-ProcessControls
+            }
         }
         $fileDialog.Dispose()
         return
@@ -1279,12 +1428,8 @@ function Start-ProcessFlow {
     # バッチファイルの実行
     if ($processConfig.BatchFiles) {
         foreach ($batch in $processConfig.BatchFiles) {
-            $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                $batch.Path
-            }
-            else {
-                Join-Path $PSScriptRoot $batch.Path
-            }
+            # Resolve-BatchPathを使用してパスを解決
+            $batchPath = Resolve-BatchPath -Path $batch.Path
             
             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $ProcessIndex
             if (-not $result) {
@@ -1321,7 +1466,7 @@ function Show-FileMoveSettingsDialog {
     }
     
     $processConfig = $currentProcesses[$ProcessIndex]
-    [System.Windows.Forms.MessageBox]::Show("デバッグProcessName: $ProcessName")
+    # [System.Windows.Forms.MessageBox]::Show("デバッグProcessName: $ProcessName")
     # movefiles フォルダのファイルを読み込み
     $initialText = ""
     $fileNameRaw = if ($processConfig.Name) { $processConfig.Name } elseif ($ProcessName) { $ProcessName } else { "" }   
@@ -1868,12 +2013,13 @@ function Update-ProcessControls {
                             
                                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                     $selectedFile = $fileDialog.FileName
-                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
-                                    Write-Log "チェック用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
+                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
+                                        Write-Log "チェック用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    
+                                        # コントロールを更新して新しい設定を反映
+                                        Update-ProcessControls
+                                    }
                                 }
                                 $fileDialog.Dispose()
                             }
@@ -1944,12 +2090,13 @@ function Update-ProcessControls {
                             
                                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                     $selectedFile = $fileDialog.FileName
-                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
-                                    Write-Log "チェック用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
+                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
+                                        Write-Log "チェック用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    
+                                        # コントロールを更新して新しい設定を反映
+                                        Update-ProcessControls
+                                    }
                                 }
                                 $fileDialog.Dispose()
                             }
@@ -2013,6 +2160,13 @@ function Update-ProcessControls {
                                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                 $fileDialog.Title = "実行用バッチファイルを選択してください"
+                                
+                                # LogStoragePathを初期ディレクトリに設定
+                                $pageConfig = $script:pages[$script:currentPage]
+                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                    $fileDialog.InitialDirectory = $logStoragePath
+                                }
                             
                                 # 現在のバッチファイルパスを初期値として設定（Index 1）
                                 $currentProcesses = Get-CurrentPageProcesses
@@ -2020,12 +2174,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                         $currentBatch = $processConfig.BatchFiles[1]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                             $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -2035,12 +2185,13 @@ function Update-ProcessControls {
                             
                                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                     $selectedFile = $fileDialog.FileName
-                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
-                                    Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
+                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1) {
+                                        Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    
+                                        # コントロールを更新して新しい設定を反映
+                                        Update-ProcessControls
+                                    }
                                 }
                                 $fileDialog.Dispose()
                             }
@@ -2051,12 +2202,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                         $batch = $processConfig.BatchFiles[1]
-                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                            $batch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $batch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
                                         $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
@@ -2309,18 +2456,21 @@ function Update-ProcessControls {
                             $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                             $fileDialog.Title = "CSV名変換用バッチファイルを選択してください"
                             
+                            # LogStoragePathを初期ディレクトリに設定
+                            $pageConfig = $script:pages[$script:currentPage]
+                            $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                            if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                $fileDialog.InitialDirectory = $logStoragePath
+                            }
+                            
                             # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
                             $currentProcesses = Get-CurrentPageProcesses
                             if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
                                 $processConfig = $currentProcesses[$clickedProcessIdx]
                                 if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                     $currentBatch = $processConfig.BatchFiles[1]
-                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                        $currentBatch.Path
-                                    }
-                                    else {
-                                        Join-Path $PSScriptRoot $currentBatch.Path
-                                    }
+                                    # Resolve-BatchPathを使用してパスを解決
+                                    $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                     if (Test-Path $initialPath) {
                                         $fileDialog.InitialDirectory = Split-Path $initialPath
                                         $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -2330,12 +2480,14 @@ function Update-ProcessControls {
                             
                             if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                 $selectedFile = $fileDialog.FileName
-                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
-                                Write-Log "CSV名変換用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                [System.Windows.Forms.MessageBox]::Show("CSV名変換用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                # コントロールを更新して新しい設定を反映
-                                Update-ProcessControls
+                                # Save-BatchFilePath内でパス制限チェックが行われる
+                                if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1) {
+                                    Write-Log "CSV名変換用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("CSV名変換用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    
+                                    # コントロールを更新して新しい設定を反映
+                                    Update-ProcessControls
+                                }
                             }
                             $fileDialog.Dispose()
                         }
@@ -2346,12 +2498,9 @@ function Update-ProcessControls {
                                 $processConfig = $currentProcesses[$clickedProcessIdx]
                                 if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                     $batch = $processConfig.BatchFiles[1]
-                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                        $batch.Path
-                                    }
-                                    else {
-                                        Join-Path $PSScriptRoot $batch.Path
-                                    }
+                                    # Resolve-BatchPathを使用してパスを解決
+                                    $batchPath = Resolve-BatchPath -Path $batch.Path
+                                    
                                     $this.Enabled = $false
                                     $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                     $this.Enabled = $true
@@ -2390,18 +2539,21 @@ function Update-ProcessControls {
                             $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                             $fileDialog.Title = "実行用バッチファイルを選択してください"
                             
+                            # LogStoragePathを初期ディレクトリに設定
+                            $pageConfig = $script:pages[$script:currentPage]
+                            $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                            if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                $fileDialog.InitialDirectory = $logStoragePath
+                            }
+                            
                             # 現在のバッチファイルパスを初期値として設定（BatchIndex = 0）
                             $currentProcesses = Get-CurrentPageProcesses
                             if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
                                 $processConfig = $currentProcesses[$clickedProcessIdx]
                                 if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                     $currentBatch = $processConfig.BatchFiles[0]
-                                    $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                        $currentBatch.Path
-                                    }
-                                    else {
-                                        Join-Path $PSScriptRoot $currentBatch.Path
-                                    }
+                                    # Resolve-BatchPathを使用してパスを解決
+                                    $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                     if (Test-Path $initialPath) {
                                         $fileDialog.InitialDirectory = Split-Path $initialPath
                                         $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -2411,12 +2563,13 @@ function Update-ProcessControls {
                             
                             if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                 $selectedFile = $fileDialog.FileName
-                                Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
-                                Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                # コントロールを更新して新しい設定を反映
-                                Update-ProcessControls
+                                if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
+                                    Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                    [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    
+                                    # コントロールを更新して新しい設定を反映
+                                    Update-ProcessControls
+                                }
                             }
                             $fileDialog.Dispose()
                         }
@@ -2427,12 +2580,8 @@ function Update-ProcessControls {
                                 $processConfig = $currentProcesses[$clickedProcessIdx]
                                 if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                     $batch = $processConfig.BatchFiles[0]
-                                    $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                        $batch.Path
-                                    }
-                                    else {
-                                        Join-Path $PSScriptRoot $batch.Path
-                                    }
+                                    # Resolve-BatchPathを使用してパスを解決
+                                    $batchPath = Resolve-BatchPath -Path $batch.Path
                                     $this.Enabled = $false
                                     $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                     $this.Enabled = $true
@@ -2846,6 +2995,13 @@ function Update-ProcessControls {
                                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                 $fileDialog.Title = "KDL取込用バッチファイルを選択してください"
+                                
+                                # LogStoragePathを初期ディレクトリに設定
+                                $pageConfig = $script:pages[$script:currentPage]
+                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                    $fileDialog.InitialDirectory = $logStoragePath
+                                }
                             
                                 # 現在のバッチファイルパスを初期値として設定（BatchIndex = 0）
                                 $currentProcesses = Get-CurrentPageProcesses
@@ -2853,12 +3009,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                         $currentBatch = $processConfig.BatchFiles[0]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                             $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -2868,12 +3020,14 @@ function Update-ProcessControls {
                             
                                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                     $selectedFile = $fileDialog.FileName
-                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0
-                                    Write-Log "KDL取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("KDL取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
+                                    # Save-BatchFilePath内でパス制限チェックが行われる
+                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
+                                        Write-Log "KDL取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("KDL取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    
+                                        # コントロールを更新して新しい設定を反映
+                                        Update-ProcessControls
+                                    }
                                 }
                                 $fileDialog.Dispose()
                             }
@@ -2884,12 +3038,9 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                         $batch = $processConfig.BatchFiles[0]
-                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                            $batch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $batch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $batchPath = Resolve-BatchPath -Path $batch.Path
+                                        
                                         $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                         $this.Enabled = $true
@@ -2927,6 +3078,13 @@ function Update-ProcessControls {
                                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                 $fileDialog.Title = "直接取込用バッチファイルを選択してください"
+                                
+                                # LogStoragePathを初期ディレクトリに設定
+                                $pageConfig = $script:pages[$script:currentPage]
+                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                    $fileDialog.InitialDirectory = $logStoragePath
+                                }
                             
                                 # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
                                 $currentProcesses = Get-CurrentPageProcesses
@@ -2934,12 +3092,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                         $currentBatch = $processConfig.BatchFiles[1]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                             $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -2948,12 +3102,8 @@ function Update-ProcessControls {
                                     elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                         # BatchFiles[1]が存在しない場合は、BatchFiles[0]を初期値として使用
                                         $currentBatch = $processConfig.BatchFiles[0]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                         }
@@ -2978,12 +3128,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                         $batch = $processConfig.BatchFiles[1]
-                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                            $batch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $batch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $batchPath = Resolve-BatchPath -Path $batch.Path
                                         $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                         $this.Enabled = $true
@@ -3021,6 +3167,13 @@ function Update-ProcessControls {
                                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                 $fileDialog.Title = "取込後用バッチファイルを選択してください"
+                                
+                                # LogStoragePathを初期ディレクトリに設定
+                                $pageConfig = $script:pages[$script:currentPage]
+                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                    $fileDialog.InitialDirectory = $logStoragePath
+                                }
                             
                                 # 現在のバッチファイルパスを初期値として設定（BatchIndex = 2）
                                 $currentProcesses = Get-CurrentPageProcesses
@@ -3028,12 +3181,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
                                         $currentBatch = $processConfig.BatchFiles[2]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                             $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -3042,12 +3191,8 @@ function Update-ProcessControls {
                                     elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                         # BatchFiles[2]が存在しない場合は、BatchFiles[0]を初期値として使用
                                         $currentBatch = $processConfig.BatchFiles[0]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                         }
@@ -3072,12 +3217,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
                                         $batch = $processConfig.BatchFiles[2]
-                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                            $batch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $batch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $batchPath = Resolve-BatchPath -Path $batch.Path
                                         $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                         $this.Enabled = $true
@@ -3271,6 +3412,13 @@ function Update-ProcessControls {
                                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                 $fileDialog.Title = "直接取込用バッチファイルを選択してください"
+                                
+                                # LogStoragePathを初期ディレクトリに設定
+                                $pageConfig = $script:pages[$script:currentPage]
+                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                    $fileDialog.InitialDirectory = $logStoragePath
+                                }
                             
                                 # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
                                 $currentProcesses = Get-CurrentPageProcesses
@@ -3278,12 +3426,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                         $currentBatch = $processConfig.BatchFiles[1]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                             $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -3292,12 +3436,8 @@ function Update-ProcessControls {
                                     elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                         # BatchFiles[1]が存在しない場合は、BatchFiles[0]を初期値として使用
                                         $currentBatch = $processConfig.BatchFiles[0]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                         }
@@ -3306,12 +3446,13 @@ function Update-ProcessControls {
                             
                                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                     $selectedFile = $fileDialog.FileName
-                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
-                                    Write-Log "直接取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
+                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1) {
+                                        Write-Log "直接取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    
+                                        # コントロールを更新して新しい設定を反映
+                                        Update-ProcessControls
+                                    }
                                 }
                                 $fileDialog.Dispose()
                             }
@@ -3322,12 +3463,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                         $batch = $processConfig.BatchFiles[1]
-                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                            $batch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $batch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $batchPath = Resolve-BatchPath -Path $batch.Path
                                         $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                         $this.Enabled = $true
@@ -3366,6 +3503,13 @@ function Update-ProcessControls {
                                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                 $fileDialog.Title = "取込後用バッチファイルを選択してください"
+                                
+                                # LogStoragePathを初期ディレクトリに設定
+                                $pageConfig = $script:pages[$script:currentPage]
+                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                    $fileDialog.InitialDirectory = $logStoragePath
+                                }
                             
                                 # 現在のバッチファイルパスを初期値として設定（BatchIndex = 2）
                                 $currentProcesses = Get-CurrentPageProcesses
@@ -3373,12 +3517,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
                                         $currentBatch = $processConfig.BatchFiles[2]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                             $fileDialog.FileName = Split-Path $initialPath -Leaf
@@ -3387,12 +3527,8 @@ function Update-ProcessControls {
                                     elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                         # BatchFiles[2]が存在しない場合は、BatchFiles[0]を初期値として使用
                                         $currentBatch = $processConfig.BatchFiles[0]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
                                         if (Test-Path $initialPath) {
                                             $fileDialog.InitialDirectory = Split-Path $initialPath
                                         }
@@ -3401,12 +3537,13 @@ function Update-ProcessControls {
                             
                                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                     $selectedFile = $fileDialog.FileName
-                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 2
-                                    Write-Log "取込後用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("取込後用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
+                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 2) {
+                                        Write-Log "取込後用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("取込後用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                    
+                                        # コントロールを更新して新しい設定を反映
+                                        Update-ProcessControls
+                                    }
                                 }
                                 $fileDialog.Dispose()
                             }
@@ -3417,12 +3554,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
                                         $batch = $processConfig.BatchFiles[2]
-                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                            $batch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $batch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $batchPath = Resolve-BatchPath -Path $batch.Path
                                         $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                         $this.Enabled = $true

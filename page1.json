@@ -19,10 +19,10 @@
                                              },
                                              {
                                                  "Name":  "実行用バッチ",
-                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat"
+                                                 "Path":  "run.bat"
                                              }
                                          ],
-                          "LogOutputDir":  "eb"
+                          "LogOutputDir":  "log2"
                       },
                       {
                           "ExecuteButtonText":  "実行",
