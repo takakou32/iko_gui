@@ -304,9 +304,13 @@ function Invoke-BatchFile {
         $psi.Arguments = "/c `"$BatchPath`" $Arguments"
         $psi.WorkingDirectory = $workingDir
         $psi.UseShellExecute = $false
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError = $true
-        $psi.CreateNoWindow = $true
+        # ウィンドウを表示するため、リダイレクトを無効化（ユーザー要望）
+        # $psi.RedirectStandardOutput = $true
+        # $psi.RedirectStandardError = $true
+        # $psi.CreateNoWindow = $true
+        $psi.RedirectStandardOutput = $false
+        $psi.RedirectStandardError = $false
+        $psi.CreateNoWindow = $false
         
         # エンコーディング設定（Shift-JIS）
         $psi.StandardOutputEncoding = [System.Text.Encoding]::GetEncoding("Shift_JIS")
@@ -338,12 +342,20 @@ function Invoke-BatchFile {
             }
         }
         
-        Register-ObjectEvent -InputObject $process -EventName "OutputDataReceived" -Action $outputHandler | Out-Null
-        Register-ObjectEvent -InputObject $process -EventName "ErrorDataReceived" -Action $errorHandler | Out-Null
+        if ($psi.RedirectStandardOutput) {
+            Register-ObjectEvent -InputObject $process -EventName "OutputDataReceived" -Action $outputHandler | Out-Null
+        }
+        if ($psi.RedirectStandardError) {
+            Register-ObjectEvent -InputObject $process -EventName "ErrorDataReceived" -Action $errorHandler | Out-Null
+        }
         
         $process.Start() | Out-Null
-        $process.BeginOutputReadLine()
-        $process.BeginErrorReadLine()
+        if ($psi.RedirectStandardOutput) {
+            $process.BeginOutputReadLine()
+        }
+        if ($psi.RedirectStandardError) {
+            $process.BeginErrorReadLine()
+        }
         
         # UIの応答性を維持しながら待機
         while (-not $process.HasExited) {
