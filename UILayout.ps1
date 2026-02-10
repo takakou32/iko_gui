@@ -388,12 +388,15 @@ $sourcePathTextBox.ReadOnly = $true
 $sourcePathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $sourcePathTextBox.Add_Click({
         if ($script:editMode) {
-            $selectedPath = Show-FolderBrowser -InitialDirectory $sourcePathTextBox.Text -Description "移行データファイル移動元フォルダを選択してください"
-            if (-not $selectedPath -or $selectedPath -eq "") {
+            # 初期ディレクトリの決定
+            $initialDir = $sourcePathTextBox.Text
+            if (-not (Test-Path $initialDir)) {
                 if (Test-Path $PSScriptRoot) {
-                    $selectedPath = Show-FolderBrowser -InitialDirectory $PSScriptRoot -Description "移行データファイル移動元フォルダを選択してください"
+                    $initialDir = $PSScriptRoot
                 }
             }
+
+            $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "移行データファイル移動元フォルダを選択してください"
         
             if ($selectedPath) {
                 $sourcePathTextBox.Text = $selectedPath
@@ -423,12 +426,15 @@ $destPathTextBox.ReadOnly = $true
 $destPathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $destPathTextBox.Add_Click({
         if ($script:editMode) {
-            $selectedPath = Show-FolderBrowser -InitialDirectory $destPathTextBox.Text -Description "移行データファイル移動先フォルダを選択してください"
-            if (-not $selectedPath -or $selectedPath -eq "") {
+            # 初期ディレクトリの決定
+            $initialDir = $destPathTextBox.Text
+            if (-not (Test-Path $initialDir)) {
                 if (Test-Path $PSScriptRoot) {
-                    $selectedPath = Show-FolderBrowser -InitialDirectory $PSScriptRoot -Description "移行データファイル移動先フォルダを選択してください"
+                    $initialDir = $PSScriptRoot
                 }
             }
+
+            $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "移行データファイル移動先フォルダを選択してください"
         
             if ($selectedPath) {
                 $destPathTextBox.Text = $selectedPath
@@ -479,15 +485,18 @@ $logStoragePathTextBox.ReadOnly = $true
 $logStoragePathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $logStoragePathTextBox.Add_Click({
         if ($script:editMode) {
-            $selectedPath = Show-FolderBrowser -InitialDirectory $logStoragePathTextBox.Text -Description "ログ格納先フォルダを選択してください"
-            if (-not $selectedPath -or $selectedPath -eq "") {
+            # 初期ディレクトリの決定
+            $initialDir = $logStoragePathTextBox.Text
+            if (-not (Test-Path $initialDir)) {
                 if (Test-Path $script:logDir) {
-                    $selectedPath = Show-FolderBrowser -InitialDirectory $script:logDir -Description "ログ格納先フォルダを選択してください"
+                    $initialDir = $script:logDir
                 }
                 elseif (Test-Path $PSScriptRoot) {
-                    $selectedPath = Show-FolderBrowser -InitialDirectory $PSScriptRoot -Description "ログ格納先フォルダを選択してください"
+                    $initialDir = $PSScriptRoot
                 }
             }
+
+            $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "ログ格納先フォルダを選択してください"
 
             if ($selectedPath) {
                 $logStoragePathTextBox.Text = $selectedPath
@@ -509,15 +518,18 @@ $logStoragePath2TextBox.ReadOnly = $true
 $logStoragePath2TextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
 $logStoragePath2TextBox.Add_Click({
         if ($script:editMode) {
-            $selectedPath = Show-FolderBrowser -InitialDirectory $logStoragePath2TextBox.Text -Description "ログ格納先フォルダを選択してください"
-            if (-not $selectedPath -or $selectedPath -eq "") {
+            # 初期ディレクトリの決定
+            $initialDir = $logStoragePath2TextBox.Text
+            if (-not (Test-Path $initialDir)) {
                 if (Test-Path $script:logDir) {
-                    $selectedPath = Show-FolderBrowser -InitialDirectory $script:logDir -Description "ログ格納先フォルダを選択してください"
+                    $initialDir = $script:logDir
                 }
                 elseif (Test-Path $PSScriptRoot) {
-                    $selectedPath = Show-FolderBrowser -InitialDirectory $PSScriptRoot -Description "ログ格納先フォルダを選択してください"
+                    $initialDir = $PSScriptRoot
                 }
             }
+
+            $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "ログ格納先フォルダを選択してください"
         
             if ($selectedPath) {
                 $logStoragePath2TextBox.Text = $selectedPath

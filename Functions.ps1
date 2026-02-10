@@ -417,6 +417,9 @@ function Save-LogStorageBatchFile {
             
             $targetPath = [System.IO.Path]::GetFullPath($BatchFilePath).TrimEnd('\', '/')
             
+            # デバッグ用ログ
+            Write-Log "Path Check - Base: '$basePath', Target: '$targetPath'" "INFO"
+            
             if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
                 $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
                 if ([string]::IsNullOrEmpty($relative)) {
@@ -424,12 +427,15 @@ function Save-LogStorageBatchFile {
                 }
                 $relative
             }
-            # 基準パス外の場合はエラーとして処理（Save-BatchFilePathと同様）
-            Write-Log "バッチファイルは共通パス（$basePath）配下に配置する必要があります: $targetPath" "ERROR"
-            [void][System.Windows.Forms.MessageBox]::Show("バッチファイルは共通パス（ツール格納場所）配下に配置する必要があります。`n共通パス: $basePath", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            return $false
+            else {
+                # 基準パス外の場合はエラーとして処理
+                Write-Log "バッチファイルは共通パス（$basePath）配下に配置する必要があります: $targetPath" "ERROR"
+                [void][System.Windows.Forms.MessageBox]::Show("バッチファイルは共通パス（ツール格納場所）配下に配置する必要があります。`n共通パス: $basePath`n選択されたパス: $targetPath", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                return $false
+            }
         }
         catch {
+            Write-Log "パス変換エラー: $($_.Exception.Message)" "ERROR"
             $BatchFilePath
         }
         

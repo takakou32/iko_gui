@@ -48,5 +48,5 @@
                                 "Path":  "upload\\log_upload.bat",
                                 "Name":  "ログ格納用バッチファイル"
                             },
-    "LogStoragePath2":  "C:\\work\\新しいフォルダー"
+    "LogStoragePath2":  "logs\\eb"
 }
