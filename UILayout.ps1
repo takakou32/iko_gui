@@ -714,8 +714,8 @@ $script:logTextBox = $logTextBox
 # プロセスコントロールの初期化
 Update-ProcessControls
 
-# 初期ページパスの読み込み（Update-ProcessControls内でLoad-PagePathsが呼ばれるが、念のため）
-Load-PagePaths
+# 初期ページパスの読み込み（Update-ProcessControls内でUpdate-PagePathsが呼ばれるが、念のため）
+Update-PagePaths
 
 # 初期メッセージ
 Write-Log "アプリケーションを起動しました" "INFO"

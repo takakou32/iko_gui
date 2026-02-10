@@ -633,6 +633,30 @@ function Save-ProcessName {
     }
 }
 
+
+# 共通基準パス取得関数
+function Get-CommonBasePath {
+    # ページ固有のLogStoragePathを最優先（設定されており、かつ有効なパスの場合）
+    $pageConfig = $script:pages[$script:currentPage]
+    if ($pageConfig.LogStoragePath -and $pageConfig.LogStoragePath -ne "パス") {
+        try {
+            # パスが存在するかどうかに関わらず、設定値を基準とする
+            return [System.IO.Path]::GetFullPath($pageConfig.LogStoragePath).TrimEnd('\', '/')
+        }
+        catch {
+            # 無効なパスの場合はスルー
+        }
+    }
+
+    # 次にGlobalLogPath
+    if ($script:globalLogPath) {
+        return [System.IO.Path]::GetFullPath($script:globalLogPath).TrimEnd('\', '/')
+    }
+    
+    # フォールバック
+    return [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+}
+
 # プロセスDestinationPath保存関数（ページ3用）
 function Save-ProcessDestinationPath {
     param([int]$ProcessIndex, [string]$DestinationPath)
@@ -671,18 +695,14 @@ function Save-ProcessDestinationPath {
         
         # 相対パスに変換（可能な場合）
         $relativePath = try {
-            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $basePath = Get-CommonBasePath
             $targetPath = [System.IO.Path]::GetFullPath($DestinationPath).TrimEnd('\', '/')
             
             if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
                 $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                # 相対パスが空文字列の場合（選択パスが$PSScriptRootと完全に同じ場合）は絶対パスをそのまま保存
-                if ([string]::IsNullOrEmpty($relative)) {
-                    $DestinationPath
-                }
-                else {
-                    $relative
-                }
+                # 相対パスが空文字列の場合（選択パスが共通基準パスと完全に同じ場合）は絶対パスをそのまま保存するのではなく、"."とするか、空にするか
+                # 既存ロジックに合わせてそのまま返す
+                $relative
             }
             else {
                 $DestinationPath
@@ -699,6 +719,101 @@ function Save-ProcessDestinationPath {
         $utf8WithBom = New-Object System.Text.UTF8Encoding $true
         [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
         Write-Log "プロセスDestinationPathを保存しました: $relativePath" "INFO" $ProcessIndex
+        return $true
+    }
+    catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
+
+
+# 共通基準パス取得関数
+# 共通基準パス取得関数
+function Get-CommonBasePath {
+    # ユーザー要望により、GlobalLogPathを最優先
+    if ($script:globalLogPath) {
+        return [System.IO.Path]::GetFullPath($script:globalLogPath).TrimEnd('\', '/')
+    }
+    
+    # 次にページ固有のLogStoragePath
+    $pageConfig = $script:pages[$script:currentPage]
+    if ($pageConfig.LogStoragePath) {
+        $path = $pageConfig.LogStoragePath
+        if (-not [System.IO.Path]::IsPathRooted($path)) {
+            $path = Join-Path $PSScriptRoot $path
+        }
+        return [System.IO.Path]::GetFullPath($path).TrimEnd('\', '/')
+    }
+    
+    # フォールバック
+    return [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+}
+
+# プロセスKDL変換CSV格納先パス保存関数（ページ4用）
+function Save-ProcessKdlDestPath {
+    param([int]$ProcessIndex, [string]$KdlDestPath)
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    }
+    else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $process = $jsonContent.Processes[$ProcessIndex]
+        
+        # KdlDestPathプロパティが存在しない場合は追加
+        if (-not (Get-Member -InputObject $process -Name "KdlDestPath" -MemberType NoteProperty)) {
+            Add-Member -InputObject $process -MemberType NoteProperty -Name "KdlDestPath" -Value ""
+        }
+        
+        # 相対パスに変換（可能な場合）
+        $relativePath = try {
+            $basePath = Get-CommonBasePath
+            $targetPath = [System.IO.Path]::GetFullPath($KdlDestPath).TrimEnd('\', '/')
+            
+            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                # 相対パスが空文字列の場合（選択パスが基準パスと完全に同じ場合）は絶対パスをそのまま保存するのではなく、"."とするか、空にするか
+                # ここではディレクトリ指定なので "" (空) になると困るかもしれないが、Join-Pathで空文字は無視されるのでOK
+                # ただし、JSON上 "" だと未設定と区別がつかない可能性があるが、現状のロジックでは "" はパスとして認識される
+                $relative
+            }
+            else {
+                $KdlDestPath
+            }
+        }
+        catch {
+            $KdlDestPath
+        }
+        
+        $process.KdlDestPath = $relativePath
+        
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        Write-Log "プロセスKDL変換CSV格納先パスを保存しました: $relativePath" "INFO" $ProcessIndex
         return $true
     }
     catch {
@@ -745,18 +860,12 @@ function Save-ProcessKdlSourcePath {
         
         # 相対パスに変換（可能な場合）
         $relativePath = try {
-            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $basePath = Get-CommonBasePath
             $targetPath = [System.IO.Path]::GetFullPath($KdlSourcePath).TrimEnd('\', '/')
             
             if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
                 $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                # 相対パスが空文字列の場合（選択パスが$PSScriptRootと完全に同じ場合）は絶対パスをそのまま保存
-                if ([string]::IsNullOrEmpty($relative)) {
-                    $KdlSourcePath
-                }
-                else {
-                    $relative
-                }
+                $relative
             }
             else {
                 $KdlSourcePath
@@ -773,80 +882,6 @@ function Save-ProcessKdlSourcePath {
         $utf8WithBom = New-Object System.Text.UTF8Encoding $true
         [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
         Write-Log "プロセスKDL変換CSV格納元パスを保存しました: $relativePath" "INFO" $ProcessIndex
-        return $true
-    }
-    catch {
-        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
-        return $false
-    }
-}
-
-# プロセスKDL変換CSV格納先パス保存関数（ページ4用）
-function Save-ProcessKdlDestPath {
-    param([int]$ProcessIndex, [string]$KdlDestPath)
-    
-    $pageConfig = $script:pages[$script:currentPage]
-    if (-not $pageConfig.JsonPath) {
-        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
-        return $false
-    }
-    
-    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
-        $pageConfig.JsonPath
-    }
-    else {
-        Join-Path $PSScriptRoot $pageConfig.JsonPath
-    }
-    
-    if (-not (Test-Path $jsonPath)) {
-        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
-        return $false
-    }
-    
-    try {
-        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
-        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
-            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
-            return $false
-        }
-        
-        $process = $jsonContent.Processes[$ProcessIndex]
-        
-        # KdlDestPathプロパティが存在しない場合は追加
-        if (-not (Get-Member -InputObject $process -Name "KdlDestPath" -MemberType NoteProperty)) {
-            Add-Member -InputObject $process -MemberType NoteProperty -Name "KdlDestPath" -Value ""
-        }
-        
-        # 相対パスに変換（可能な場合）
-        $relativePath = try {
-            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
-            $targetPath = [System.IO.Path]::GetFullPath($KdlDestPath).TrimEnd('\', '/')
-            
-            if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                # 相対パスが空文字列の場合（選択パスが$PSScriptRootと完全に同じ場合）は絶対パスをそのまま保存
-                if ([string]::IsNullOrEmpty($relative)) {
-                    $KdlDestPath
-                }
-                else {
-                    $relative
-                }
-            }
-            else {
-                $KdlDestPath
-            }
-        }
-        catch {
-            $KdlDestPath
-        }
-        
-        $process.KdlDestPath = $relativePath
-        
-        # JSONファイルに保存（UTF-8 BOM付き）
-        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
-        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
-        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
-        Write-Log "プロセスKDL変換CSV格納先パスを保存しました: $relativePath" "INFO" $ProcessIndex
         return $true
     }
     catch {
@@ -893,18 +928,12 @@ function Save-ProcessV1CsvDestPath {
         
         # 相対パスに変換（可能な場合）
         $relativePath = try {
-            $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+            $basePath = Get-CommonBasePath
             $targetPath = [System.IO.Path]::GetFullPath($V1CsvDestPath).TrimEnd('\', '/')
             
             if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
                 $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                # 相対パスが空文字列の場合（選択パスが$PSScriptRootと完全に同じ場合）は絶対パスをそのまま保存
-                if ([string]::IsNullOrEmpty($relative)) {
-                    $V1CsvDestPath
-                }
-                else {
-                    $relative
-                }
+                $relative
             }
             else {
                 $V1CsvDestPath
@@ -982,7 +1011,7 @@ function Save-ProcessLogOutputDir {
 }
 
 # ページパス読み込み関数
-function Load-PagePaths {
+function Update-PagePaths {
     if ($script:currentPage -ge $script:pages.Count) {
         return
     }
@@ -1026,8 +1055,8 @@ function Load-PagePaths {
     # ページ3・ページ4の場合はV1抽出CSV格納元テキストボックスに設定
     if ($script:currentPage -eq 2 -or $script:currentPage -eq 3) {
         # 3ページ目・4ページ目：V1抽出CSV格納元
+        # ユーザー要望により絶対パス（または既存ロジック）のまま扱う
         if ($sourcePath -and $sourcePath -ne "パス" -and $sourcePath -ne "") {
-            # 相対パスの場合は絶対パスに変換
             try {
                 if (-not [System.IO.Path]::IsPathRooted($sourcePath)) {
                     $sourcePath = Join-Path $PSScriptRoot $sourcePath
@@ -1122,7 +1151,7 @@ function Load-PagePaths {
     }
     
     # ログ格納先（2つ目）
-    if ($logStoragePath2 -ne $null -and $logStoragePath2 -ne "" -and $logStoragePath2 -ne "パス") {
+    if ($null -ne $logStoragePath2 -and $logStoragePath2 -ne "" -and $logStoragePath2 -ne "パス") {
         # 相対パスの場合は絶対パスに変換
         try {
             if (-not [System.IO.Path]::IsPathRooted($logStoragePath2)) {
@@ -1184,7 +1213,8 @@ function Save-PagePaths {
         # ページJSONファイルを読み込む
         $pageJson = Get-Content $pageJsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
         
-        # 相対パスに変換（可能な場合）
+        # SourcePath（V1抽出CSV格納元など）
+        # ユーザー要望により変更なし（PSScriptRoot基準、もしくは絶対パス）
         if ($SourcePath) {
             $relativeSourcePath = try {
                 $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
@@ -1207,16 +1237,21 @@ function Save-PagePaths {
             $pageJson.SourcePath = $relativeSourcePath
         }
         
+        # DestinationPath（V1抽出CSV格納先など）
         if ($DestinationPath) {
             $relativeDestPath = try {
-                $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+                # ユーザー要望により、Page 3の場合は共通基準パスを使用
+                $basePath = if ($script:currentPage -eq 2) {
+                    Get-CommonBasePath
+                }
+                else {
+                    [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+                }
+                
                 $targetPath = [System.IO.Path]::GetFullPath($DestinationPath).TrimEnd('\', '/')
                 
                 if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
                     $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                    if ([string]::IsNullOrEmpty($relative)) {
-                        $relative = Split-Path $targetPath -Leaf
-                    }
                     $relative
                 }
                 else {
@@ -2358,7 +2393,9 @@ function Update-ProcessControls {
                         $destPathValue = $processConfig.DestinationPath
                         # 相対パスの場合は絶対パスに変換
                         if (-not [System.IO.Path]::IsPathRooted($destPathValue)) {
-                            $destPathValue = Join-Path $PSScriptRoot $destPathValue
+                            # 共通基準パスを使用
+                            $basePath = Get-CommonBasePath
+                            $destPathValue = Join-Path $basePath $destPathValue
                         }
                         $destPathValue = [System.IO.Path]::GetFullPath($destPathValue)
                     }
@@ -2375,7 +2412,11 @@ function Update-ProcessControls {
                 $pathTextBox.Tag = $i  # プロセスインデックスをTagに保存
                 $pathTextBox.Add_Click({
                         if ($script:editMode) {
-                            $selectedPath = Show-FolderBrowser -InitialDirectory $pathTextBox.Text -Description "V1抽出CSV格納先フォルダを選択してください"
+                            $initialDir = "パス"
+                            if ($this.Text -ne "パス") {
+                                $initialDir = $this.Text
+                            }
+                            $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "V1抽出CSV格納先フォルダを選択してください"
                             if ($selectedPath) {
                                 $this.Text = $selectedPath
                                 # 各プロセスのDestinationPathをpage3.jsonに保存
@@ -2896,7 +2937,11 @@ function Update-ProcessControls {
                     $v1CsvDestTextBox.Tag = $i  # プロセスインデックスをTagに保存（1行目・2行目）
                     $v1CsvDestTextBox.Add_Click({
                             if ($script:editMode) {
-                                $selectedPath = Show-FolderBrowser -InitialDirectory $this.Text -Description "V1抽出CSV格納先フォルダを選択してください"
+                                $initialDir = "パス"
+                                if ($this.Text -ne "パス") {
+                                    $initialDir = $this.Text
+                                }
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "V1抽出CSV格納先フォルダを選択してください"
                                 if ($selectedPath) {
                                     $this.Text = $selectedPath
                                     # 各プロセスのV1CsvDestPathをpage4.jsonに保存
@@ -2913,7 +2958,9 @@ function Update-ProcessControls {
                             $v1CsvDestPathValue = $processConfig.V1CsvDestPath
                             # 相対パスの場合は絶対パスに変換
                             if (-not [System.IO.Path]::IsPathRooted($v1CsvDestPathValue)) {
-                                $v1CsvDestPathValue = Join-Path $PSScriptRoot $v1CsvDestPathValue
+                                # 共通基準パスを使用
+                                $basePath = Get-CommonBasePath
+                                $v1CsvDestPathValue = Join-Path $basePath $v1CsvDestPathValue
                             }
                             $v1CsvDestPathValue = [System.IO.Path]::GetFullPath($v1CsvDestPathValue)
                         }
@@ -3921,7 +3968,7 @@ function Update-ProcessControls {
     }
     
     # ページパスの読み込み
-    Load-PagePaths
+    Update-PagePaths
     
     # ログ格納ボタンのテキストを編集モードに応じて更新
     if ($script:logStorageButton) {

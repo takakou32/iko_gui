@@ -1,39 +1,36 @@
 
-try {
-    $script:configPath = "c:\work\iko_gui\config.json"
-    $currentConfig = Get-Content $script:configPath -Encoding UTF8 | ConvertFrom-Json
-    
-    Write-Host "Config loaded."
-    Write-Host "GlobalLogPath current value: '$($currentConfig.GlobalLogPath)'"
-    
-    # Simulate the logic used in UILayout.ps1
-    $selectedPath = "C:\Test\LogPath"
-    $PSScriptRoot = "c:\work\iko_gui"
-    
-    $savePath = $selectedPath
-    if ($selectedPath.StartsWith($PSScriptRoot)) {
-        $relativePath = $selectedPath.Substring($PSScriptRoot.Length).TrimStart("\")
-        $savePath = $relativePath
-    }
-    
-    Write-Host "Save Path: $savePath"
 
-    # The problematic check
-    $prop = $currentConfig.PSObject.Properties['GlobalLogPath']
-    Write-Host "Property check result: '$prop'"
+try {
+    Write-Host "Verifying Functions.ps1 syntax..."
+    . c:\work\iko_gui\Functions.ps1
+    Write-Host "Functions.ps1 loaded successfully."
     
-    if ($prop) {
-        Write-Host "Property found, updating..."
-        $currentConfig.GlobalLogPath = $savePath
+    # Check if Update-PagePaths exists
+    if (Get-Command Update-PagePaths -ErrorAction SilentlyContinue) {
+        Write-Host "Update-PagePaths function exists."
     }
     else {
-        Write-Host "Property NOT found, adding..."
-        $currentConfig | Add-Member -MemberType NoteProperty -Name "GlobalLogPath" -Value $savePath
+        Write-Error "Update-PagePaths function NOT found."
     }
     
-    Write-Host "New GlobalLogPath value: '$($currentConfig.GlobalLogPath)'"
-    
+    # Check if Get-CommonBasePath exists
+    if (Get-Command Get-CommonBasePath -ErrorAction SilentlyContinue) {
+        Write-Host "Get-CommonBasePath function exists."
+    }
+    else {
+        Write-Error "Get-CommonBasePath function NOT found."
+    }
+
+    # Check if Save-ProcessDestinationPath exists
+    if (Get-Command Save-ProcessDestinationPath -ErrorAction SilentlyContinue) {
+        Write-Host "Save-ProcessDestinationPath function exists."
+    }
+    else {
+        Write-Error "Save-ProcessDestinationPath function NOT found."
+    }
+
 }
 catch {
-    Write-Error "Error occurred: $($_.Exception.Message)"
+    Write-Error "Syntax Check Failed: $($_.Exception.Message)"
 }
+

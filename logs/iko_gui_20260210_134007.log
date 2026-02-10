@@ -1,0 +1,26 @@
+Session Started at 20260210_134007
+[2026-02-10 13:40:08] [INFO] ページ 1 のプロセスを読み込みました (プロセス数: 2)
+[2026-02-10 13:40:08] [INFO] アプリケーションを起動しました
+[2026-02-10 13:40:08] [INFO] 設定ファイル: C:\work\iko_gui\config\json\config.json
+[2026-02-10 13:40:08] [INFO] ページ数: 4
+[2026-02-10 13:40:09] [INFO] ページ 2 のプロセスを読み込みました (プロセス数: 3)
+[2026-02-10 13:40:10] [INFO] ページ 3 のプロセスを読み込みました (プロセス数: 3)
+[2026-02-10 13:40:11] [INFO] ページ 4 のプロセスを読み込みました (プロセス数: 3)
+[2026-02-10 13:40:14] [INFO] 編集モードを有効にしました
+[2026-02-10 13:40:14] [INFO] ページ 4 のプロセスを読み込みました (プロセス数: 3)
+[2026-02-10 13:40:17] [INFO] [Page:4 Process:1] プロセスKDL変換CSV格納先パスを保存しました: doc
+[2026-02-10 13:40:17] [INFO] [Page:4 Process:1] KDL変換CSV格納先を設定しました: C:\work\iko_gui\doc
+[2026-02-10 13:40:34] [INFO] [Page:4 Process:1] プロセスKDL変換CSV格納元パスを保存しました: C:\work\test\fizz-buzz
+[2026-02-10 13:40:34] [INFO] [Page:4 Process:1] KDL変換CSV格納元を設定しました: C:\work\test\fizz-buzz
+[2026-02-10 13:41:00] [INFO] [Page:4 Process:1] プロセスV1抽出CSV格納先パスを保存しました: logs
+[2026-02-10 13:41:00] [INFO] [Page:4 Process:1] V1抽出CSV格納先を設定しました: C:\work\iko_gui\logs
+[2026-02-10 13:41:09] [INFO] [Page:4 Process:1] プロセスKDL変換CSV格納元パスを保存しました: C:\work\test\fizz-buzz\.github
+[2026-02-10 13:41:09] [INFO] [Page:4 Process:1] KDL変換CSV格納元を設定しました: C:\work\test\fizz-buzz\.github
+[2026-02-10 13:41:21] [INFO] [Page:4 Process:2] プロセスKDL変換CSV格納元パスを保存しました: C:\work\新しいフォルダー
+[2026-02-10 13:41:21] [INFO] [Page:4 Process:2] KDL変換CSV格納元を設定しました: C:\work\新しいフォルダー
+[2026-02-10 13:41:28] [INFO] [Page:4 Process:2] プロセスKDL変換CSV格納先パスを保存しました: C:\work\新しいフォルダー\新しいフォルダー
+[2026-02-10 13:41:28] [INFO] [Page:4 Process:2] KDL変換CSV格納先を設定しました: C:\work\新しいフォルダー\新しいフォルダー
+[2026-02-10 13:41:48] [INFO] [Page:4 Process:2] プロセスKDL変換CSV格納先パスを保存しました: C:\work\fizz-buzz@
+[2026-02-10 13:41:48] [INFO] [Page:4 Process:2] KDL変換CSV格納先を設定しました: C:\work\fizz-buzz@
+[2026-02-10 13:42:06] [INFO] [Page:4 Process:3] プロセスV1抽出CSV格納先パスを保存しました: C:\work\fizz-buzz@\node_modules
+[2026-02-10 13:42:06] [INFO] [Page:4 Process:3] V1抽出CSV格納先を設定しました: C:\work\fizz-buzz@\node_modules
