@@ -33,6 +33,12 @@ if (-not (Test-Path $script:logDir)) {
     New-Item -ItemType Directory -Path $script:logDir -Force | Out-Null
 }
 
+# セッションログファイルの初期化（起動ごとに単一のログファイルを生成）
+$script:sessionStartTime = Get-Date -Format "yyyyMMdd_HHmmss"
+$script:sessionLogFile = Join-Path $script:logDir "iko_gui_$script:sessionStartTime.log"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($script:sessionLogFile, "Session Started at $script:sessionStartTime`r`n", $utf8NoBom)
+
 # グローバル変数
 $script:currentPage = 0
 $script:processesPerPage = 8

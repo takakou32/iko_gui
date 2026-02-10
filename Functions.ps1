@@ -224,36 +224,26 @@ function Write-Log {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logMessage = "[$timestamp] [$Level] $Message"
     
-    # プロセス固有のログファイル
-    if ($ProcessIndex -ge 0) {
-        # LogDirが指定されていない場合、ProcessIndexから取得
-        if (-not $LogDir) {
-            $currentProcesses = Get-CurrentPageProcesses
-            if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
-                $processConfig = $currentProcesses[$ProcessIndex]
-                if ($processConfig.LogOutputDir) {
-                    $LogDir = Resolve-LogPath -SubPath $processConfig.LogOutputDir
-                }
-            }
+    # 単一セッションログファイルへの出力（ユーザー要望により一元化）
+    if ($script:sessionLogFile) {
+        # プロセスインデックスがある場合は識別子を追加
+        $logPrefix = ""
+        if ($ProcessIndex -ge 0) {
+            $logPrefix = "[Page:$($script:currentPage + 1) Process:$($ProcessIndex + 1)] "
         }
         
-        # それくてもLogDirがない場合はデフォルト
-        if (-not $LogDir) {
-            $LogDir = $script:logDir
-        }
-        else {
-            $LogDir = Resolve-LogPath -SubPath $LogDir
-        }
+        $fileLogMessage = "[$timestamp] [$Level] $logPrefix$Message"
         
-        # ログディレクトリが存在しない場合は作成
-        if (-not (Test-Path $LogDir)) {
-            New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+        # ログファイルへの追記（ロック競合を避けるため簡易的なリトライを入れるか、あるいは単一スレッド前提とする）
+        # GUIイベントハンドラ内であればメインスレッドなので競合はしにくいが、念のため
+        try {
+            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+            [System.IO.File]::AppendAllText($script:sessionLogFile, $fileLogMessage + "`r`n", $utf8NoBom)
         }
-        
-        $processLogFile = Join-Path $LogDir "process_${script:currentPage}_${ProcessIndex}.log"
-        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-        [System.IO.File]::AppendAllText($processLogFile, $logMessage + "`r`n", $utf8NoBom)
-        $script:processLogs["${script:currentPage}_${ProcessIndex}"] = $processLogFile
+        catch {
+            # ログ出力失敗時はコンソールに出すくらいしかできない
+            Write-Host "Log Write Failed: $_"
+        }
     }
     
     # GUIのログ表示エリアに追加
@@ -264,6 +254,7 @@ function Write-Log {
     Write-Host $logMessage
 }
 
+# Batファイル実行関数
 # Batファイル実行関数
 function Invoke-BatchFile {
     param(
@@ -298,64 +289,84 @@ function Invoke-BatchFile {
     
     if (-not (Test-Path $BatchPath)) {
         Write-Log "バッチファイルが見つかりません: $BatchPath" "ERROR" $ProcessIndex
+        [System.Windows.Forms.MessageBox]::Show("バッチファイルが見つかりません。`n$BatchPath", "実行エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
         return $false
     }
     
-    # ログ出力ディレクトリの決定
-    $currentProcesses = Get-CurrentPageProcesses
-    $processLogDir = $script:logDir
-    if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
-        $processConfig = $currentProcesses[$ProcessIndex]
-        if ($processConfig.LogOutputDir) {
-            $processLogDir = Resolve-LogPath -SubPath $processConfig.LogOutputDir
-            
-            if (-not (Test-Path $processLogDir)) {
-                New-Item -ItemType Directory -Path $processLogDir -Force | Out-Null
-            }
-        }
-    }
+    Write-Log "バッチファイル実行開始: $DisplayName ($BatchPath)" "INFO" $ProcessIndex
     
-    # ログメッセージの構築
-    $logMessage = "バッチファイルを実行中: $DisplayName ($BatchPath)"
-    if ($Arguments.Count -gt 0) {
-        $argumentsStr = $Arguments -join " "
-        $logMessage += " [引数: $argumentsStr]"
-    }
-    Write-Log $logMessage "INFO" $ProcessIndex
+    # 実行ディレクトリ（バッチファイルのある場所）
+    $workingDir = Split-Path -Parent $BatchPath
     
     try {
-        # 引数がある場合はArgumentListに設定
-        $processParams = @{
-            FilePath         = $BatchPath
-            WorkingDirectory = Split-Path $BatchPath
-            Wait             = $true
-            PassThru         = $true
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = "cmd.exe"
+        $psi.Arguments = "/c `"$BatchPath`" $Arguments"
+        $psi.WorkingDirectory = $workingDir
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.CreateNoWindow = $true
+        
+        # エンコーディング設定（Shift-JIS）
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::GetEncoding("Shift_JIS")
+        $psi.StandardErrorEncoding = [System.Text.Encoding]::GetEncoding("Shift_JIS")
+        
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $psi
+        $process.EnableRaisingEvents = $true
+        
+        # 出力ハンドラ（Write-Logにリダイレクト）
+        $outputHandler = {
+            param($sender, $e)
+            if ($e.Data) {
+                # メインスレッドでの実行を確実にするため、Write-Logを直接呼び出す
+                # 注意: イベントハンドラは別スレッドで実行される可能性があるが、
+                # Write-Log内でファイル書き込みを行っているため（排他制御は簡易的だが）、
+                # ここではそのまま呼び出す。UI更新系はInvokeが必要かもしれないが、
+                # Write-Log内のUI更新はテキストボックスへの追記なので、
+                # cross-thread operation エラーが出る可能性がある。
+                # そこで、フォームのInvokeを使用する。
+                $script:mainForm.Invoke([action] { Write-Log $e.Data "INFO" $ProcessIndex })
+            }
         }
         
-        if ($Arguments.Count -gt 0) {
-            $processParams['ArgumentList'] = $Arguments
+        $errorHandler = {
+            param($sender, $e)
+            if ($e.Data) {
+                $script:mainForm.Invoke([action] { Write-Log $e.Data "ERROR" $ProcessIndex })
+            }
         }
         
-        $process = Start-Process @processParams
+        Register-ObjectEvent -InputObject $process -EventName "OutputDataReceived" -Action $outputHandler | Out-Null
+        Register-ObjectEvent -InputObject $process -EventName "ErrorDataReceived" -Action $errorHandler | Out-Null
         
-        # 完了メッセージの構築
-        $completionMessage = "バッチファイルの実行が完了しました: $DisplayName (終了コード: $($process.ExitCode))"
-        if ($Arguments.Count -gt 0) {
-            $argumentsStr = $Arguments -join " "
-            $completionMessage += " [引数: $argumentsStr]"
+        $process.Start() | Out-Null
+        $process.BeginOutputReadLine()
+        $process.BeginErrorReadLine()
+        
+        # UIの応答性を維持しながら待機
+        while (-not $process.HasExited) {
+            [System.Windows.Forms.Application]::DoEvents()
+            Start-Sleep -Milliseconds 50
         }
         
-        if ($process.ExitCode -eq 0) {
-            Write-Log $completionMessage "INFO" $ProcessIndex
+        $exitCode = $process.ExitCode
+        $process.Dispose()
+        
+        if ($exitCode -eq 0) {
+            Write-Log "バッチファイル実行完了 (ExitCode: 0)" "INFO" $ProcessIndex
             return $true
         }
         else {
-            Write-Log $completionMessage "ERROR" $ProcessIndex
+            Write-Log "バッチファイル実行エラー (ExitCode: $exitCode)" "ERROR" $ProcessIndex
+            [System.Windows.Forms.MessageBox]::Show("バッチファイルの実行中にエラーが発生しました。`nログを確認してください。", "実行エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
             return $false
         }
     }
     catch {
-        Write-Log "バッチファイルの実行中に例外が発生しました: $DisplayName - $($_.Exception.Message)" "ERROR" $ProcessIndex
+        Write-Log "実行例外: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        [System.Windows.Forms.MessageBox]::Show("実行中に例外が発生しました。`n$($_.Exception.Message)", "例外", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
         return $false
     }
 }
