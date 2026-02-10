@@ -303,7 +303,7 @@ function Invoke-BatchFile {
         $psi.FileName = "cmd.exe"
         $psi.Arguments = "/c `"$BatchPath`" $Arguments"
         $psi.WorkingDirectory = $workingDir
-        $psi.UseShellExecute = $false
+        $psi.UseShellExecute = $true
         # ウィンドウを表示するため、リダイレクトを無効化（ユーザー要望）
         # $psi.RedirectStandardOutput = $true
         # $psi.RedirectStandardError = $true
@@ -313,12 +313,16 @@ function Invoke-BatchFile {
         $psi.CreateNoWindow = $false
         
         # エンコーディング設定（Shift-JIS）
-        $psi.StandardOutputEncoding = [System.Text.Encoding]::GetEncoding("Shift_JIS")
-        $psi.StandardErrorEncoding = [System.Text.Encoding]::GetEncoding("Shift_JIS")
+        if ($psi.RedirectStandardOutput) {
+            $psi.StandardOutputEncoding = [System.Text.Encoding]::GetEncoding("Shift_JIS")
+        }
+        if ($psi.RedirectStandardError) {
+            $psi.StandardErrorEncoding = [System.Text.Encoding]::GetEncoding("Shift_JIS")
+        }
         
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $psi
-        $process.EnableRaisingEvents = $true
+        # $process = New-Object System.Diagnostics.Process
+        # $process.StartInfo = $psi
+        # $process.EnableRaisingEvents = $true
         
         # 出力ハンドラ（Write-Logにリダイレクト）
         $outputHandler = {
@@ -342,14 +346,8 @@ function Invoke-BatchFile {
             }
         }
         
-        if ($psi.RedirectStandardOutput) {
-            Register-ObjectEvent -InputObject $process -EventName "OutputDataReceived" -Action $outputHandler | Out-Null
-        }
-        if ($psi.RedirectStandardError) {
-            Register-ObjectEvent -InputObject $process -EventName "ErrorDataReceived" -Action $errorHandler | Out-Null
-        }
-        
-        $process.Start() | Out-Null
+        # スタティックメソッドでプロセスを開始（0引数エラー対策）
+        $process = [System.Diagnostics.Process]::Start($psi)
         if ($psi.RedirectStandardOutput) {
             $process.BeginOutputReadLine()
         }

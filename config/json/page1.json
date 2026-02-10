@@ -19,7 +19,7 @@
                                              },
                                              {
                                                  "Name":  "実行用バッチ",
-                                                 "Path":  "run.bat"
+                                                 "Path":  "upload\\log_upload.bat"
                                              }
                                          ],
                           "LogOutputDir":  "log2"
