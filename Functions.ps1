@@ -1486,7 +1486,7 @@ function Show-FileMoveSettingsDialog {
         $fileNameRaw = "process_${script:currentPage + 1}_${ProcessIndex + 1}"
     }
     $safeFileName = [regex]::Replace($fileNameRaw, '[<>:"/\\|?*\r\n\t]', '_')
-    $moveFilesDir = Join-Path $PSScriptRoot "movefiles"
+    $moveFilesDir = Join-Path $PSScriptRoot "config\movefiles"
     if (Test-Path $moveFilesDir) {
         $candidatePath = Join-Path $moveFilesDir ($safeFileName + ".txt")
         if (Test-Path $candidatePath) {
@@ -1571,7 +1571,7 @@ function Show-FileMoveSettingsDialog {
         }
         # ファイル名として使えない文字を置換（改行やタブも除去）
         $safeFileName = [regex]::Replace($fileNameRaw, '[<>:"/\\|?*\r\n\t]', '_')
-        $moveFilesDir = Join-Path $PSScriptRoot "movefiles"
+        $moveFilesDir = Join-Path $PSScriptRoot "config\movefiles"
         if (-not (Test-Path $moveFilesDir)) {
             New-Item -ItemType Directory -Path $moveFilesDir -Force | Out-Null
         }
@@ -1656,7 +1656,7 @@ function Invoke-FileMoveOperation {
     
     # movefileフォルダからファイルリストを読み込み
     $safeFileName = [regex]::Replace($ProcessName.Trim(), '[<>:"/\\|?*\r\n\t]', '_')
-    $moveFilesDir = Join-Path $PSScriptRoot "movefiles"
+    $moveFilesDir = Join-Path $PSScriptRoot "config\movefiles"
     $moveFilePath = Join-Path $moveFilesDir ($safeFileName + ".txt")
     
     if (-not (Test-Path $moveFilePath)) {

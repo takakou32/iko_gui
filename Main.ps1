@@ -4,7 +4,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 # 設定ファイルの読み込み
-$script:configPath = Join-Path $PSScriptRoot "config.json"
+$script:configPath = Join-Path $PSScriptRoot "config\json\config.json"
 if (Test-Path $script:configPath) {
     $script:config = Get-Content $script:configPath -Encoding UTF8 | ConvertFrom-Json
 }
