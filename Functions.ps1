@@ -486,7 +486,16 @@ function Save-BatchFilePath {
                 $pageConfig.JsonPath
             }
             else {
-                Join-Path $PSScriptRoot $pageConfig.JsonPath
+                $path1 = Join-Path $PSScriptRoot $pageConfig.JsonPath
+                if (Test-Path $path1) {
+                    $path1
+                }
+                elseif ($script:configDir -and (Test-Path (Join-Path $script:configDir $pageConfig.JsonPath))) {
+                    Join-Path $script:configDir $pageConfig.JsonPath
+                }
+                else {
+                    $path1
+                }
             }
             
             if (Test-Path $jsonPath) {
@@ -1037,7 +1046,16 @@ function Update-PagePaths {
             $pageConfig.JsonPath
         }
         else {
-            Join-Path $PSScriptRoot $pageConfig.JsonPath
+            $path1 = Join-Path $PSScriptRoot $pageConfig.JsonPath
+            if (Test-Path $path1) {
+                $path1
+            }
+            elseif ($script:configDir -and (Test-Path (Join-Path $script:configDir $pageConfig.JsonPath))) {
+                Join-Path $script:configDir $pageConfig.JsonPath
+            }
+            else {
+                $path1
+            }
         }
     }
     
@@ -1213,7 +1231,16 @@ function Save-PagePaths {
         $pageConfig.JsonPath
     }
     else {
-        Join-Path $PSScriptRoot $pageConfig.JsonPath
+        $path1 = Join-Path $PSScriptRoot $pageConfig.JsonPath
+        if (Test-Path $path1) {
+            $path1
+        }
+        elseif ($script:configDir -and (Test-Path (Join-Path $script:configDir $pageConfig.JsonPath))) {
+            Join-Path $script:configDir $pageConfig.JsonPath
+        }
+        else {
+            $path1
+        }
     }
     
     if (-not (Test-Path $pageJsonPath)) {
@@ -1374,7 +1401,16 @@ function Resolve-BatchPath {
                 $pageConfig.JsonPath
             }
             else {
-                Join-Path $PSScriptRoot $pageConfig.JsonPath
+                $path1 = Join-Path $PSScriptRoot $pageConfig.JsonPath
+                if (Test-Path $path1) {
+                    $path1
+                }
+                elseif ($script:configDir -and (Test-Path (Join-Path $script:configDir $pageConfig.JsonPath))) {
+                    Join-Path $script:configDir $pageConfig.JsonPath
+                }
+                else {
+                    $path1
+                }
             }
             
             if (Test-Path $jsonPath) {

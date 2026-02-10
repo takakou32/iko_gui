@@ -7,6 +7,7 @@ Add-Type -AssemblyName System.Drawing
 $script:configPath = Join-Path $PSScriptRoot "config\json\config.json"
 if (Test-Path $script:configPath) {
     $script:config = Get-Content $script:configPath -Encoding UTF8 | ConvertFrom-Json
+    $script:configDir = Split-Path $script:configPath -Parent
 }
 else {
     Write-Host "設定ファイルが見つかりません: $script:configPath"
