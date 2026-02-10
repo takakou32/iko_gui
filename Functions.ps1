@@ -2030,12 +2030,8 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                         $batch = $processConfig.BatchFiles[0]
-                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                            $batch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $batch.Path
-                                        }
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
                                         $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
@@ -2107,12 +2103,9 @@ function Update-ProcessControls {
                                     $processConfig = $currentProcesses[$clickedProcessIdx]
                                     if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                         $batch = $processConfig.BatchFiles[0]
-                                        $batchPath = if ([System.IO.Path]::IsPathRooted($batch.Path)) {
-                                            $batch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $batch.Path
-                                        }
+                                        $batch = $processConfig.BatchFiles[0]
+                                        # Resolve-BatchPathを使用してパスを解決
+                                        $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
                                         $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
