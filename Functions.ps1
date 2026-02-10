@@ -1320,6 +1320,13 @@ function Save-PagePaths {
         [System.IO.File]::WriteAllText($pageJsonPath, $jsonContent, $utf8WithBom)
         
         Write-Log "ページパスを保存しました: $pageJsonPath" "INFO"
+
+        # メモリ上の設定も更新（動的なUI更新のため）
+        if ($SourcePath) { $pageConfig.SourcePath = $pageJson.SourcePath }
+        if ($DestinationPath) { $pageConfig.DestinationPath = $pageJson.DestinationPath }
+        if ($LogStoragePath) { $pageConfig.LogStoragePath = $pageJson.LogStoragePath }
+        if ($LogStoragePath2) { $pageConfig.LogStoragePath2 = $pageJson.LogStoragePath2 }
+        
         return $true
     }
     catch {
@@ -2800,7 +2807,8 @@ function Update-ProcessControls {
                             $kdlSourcePathValue = $processConfig.KdlSourcePath
                             # 相対パスの場合は絶対パスに変換
                             if (-not [System.IO.Path]::IsPathRooted($kdlSourcePathValue)) {
-                                $kdlSourcePathValue = Join-Path $PSScriptRoot $kdlSourcePathValue
+                                $basePath = Get-CommonBasePath
+                                $kdlSourcePathValue = Join-Path $basePath $kdlSourcePathValue
                             }
                             $kdlSourcePathValue = [System.IO.Path]::GetFullPath($kdlSourcePathValue)
                         }
@@ -2853,7 +2861,8 @@ function Update-ProcessControls {
                             $kdlDestPathValue = $processConfig.KdlDestPath
                             # 相対パスの場合は絶対パスに変換
                             if (-not [System.IO.Path]::IsPathRooted($kdlDestPathValue)) {
-                                $kdlDestPathValue = Join-Path $PSScriptRoot $kdlDestPathValue
+                                $basePath = Get-CommonBasePath
+                                $kdlDestPathValue = Join-Path $basePath $kdlDestPathValue
                             }
                             $kdlDestPathValue = [System.IO.Path]::GetFullPath($kdlDestPathValue)
                         }

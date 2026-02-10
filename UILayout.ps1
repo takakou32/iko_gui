@@ -138,6 +138,9 @@ $logSettingsButton.Add_Click({
                     $script:globalLogPath = $selectedPath
                 
                     [System.Windows.Forms.MessageBox]::Show("ツール格納場所を更新しました。`n$selectedPath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    
+                    # 画面を更新
+                    Update-ProcessControls
                 }
                 catch {
                     [System.Windows.Forms.MessageBox]::Show("設定の保存に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
@@ -502,6 +505,9 @@ $logStoragePathTextBox.Add_Click({
                 $logStoragePathTextBox.Text = $selectedPath
                 Save-PagePaths -LogStoragePath $selectedPath
                 Write-Log "ログ格納先を設定しました: $selectedPath" "INFO"
+                
+                # 画面を更新（相対パス表示の再計算のため）
+                Update-ProcessControls
             }
         }
     })
@@ -535,6 +541,9 @@ $logStoragePath2TextBox.Add_Click({
                 $logStoragePath2TextBox.Text = $selectedPath
                 Save-PagePaths -LogStoragePath2 $selectedPath
                 Write-Log "ログ格納先2を設定しました: $selectedPath" "INFO"
+                
+                # 画面を更新
+                Update-ProcessControls
             }
         }
     })

@@ -7,7 +7,7 @@
                           "Name":  "1.EB移行ツール適用（ページ2）",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
-                          "DestinationPath":  "C:\\work\\iko_gui",
+                          "DestinationPath":  "log2",
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル1",
@@ -28,7 +28,7 @@
                           "Name":  "2.EB移行ツール適用（ページ2）",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
-                          "DestinationPath":  "C:\\work",
+                          "DestinationPath":  "node_modules",
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル2",
