@@ -331,11 +331,25 @@ $editModeButton.Add_Click({
         if ($script:editMode) {
             $editModeButton.Text = "編集モード ON"
             $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
+            
+            # 背景色を薄いグレーに変更
+            $grayColor = [System.Drawing.Color]::LightGray
+            $script:processPanel.BackColor = $grayColor
+            if ($script:fileMovePanel) { $script:fileMovePanel.BackColor = $grayColor }
+            if ($script:logStoragePanel) { $script:logStoragePanel.BackColor = $grayColor }
+            
             Write-Log "編集モードを有効にしました" "INFO"
         }
         else {
             $editModeButton.Text = "編集モード OFF"
             $editModeButton.BackColor = [System.Drawing.Color]::FromArgb(200, 200, 200)
+            
+            # 背景色を元に戻す（ベージュ/ホワイト）
+            $originalColor = [System.Drawing.Color]::FromArgb(255, 250, 240)
+            $script:processPanel.BackColor = $originalColor
+            if ($script:fileMovePanel) { $script:fileMovePanel.BackColor = $originalColor }
+            if ($script:logStoragePanel) { $script:logStoragePanel.BackColor = $originalColor }
+            
             Write-Log "編集モードを無効にしました" "INFO"
         }
         # ボタンのテキストを更新
