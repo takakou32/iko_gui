@@ -653,28 +653,7 @@ function Save-ProcessName {
 }
 
 
-# 共通基準パス取得関数
-function Get-CommonBasePath {
-    # ページ固有のLogStoragePathを最優先（設定されており、かつ有効なパスの場合）
-    $pageConfig = $script:pages[$script:currentPage]
-    if ($pageConfig.LogStoragePath -and $pageConfig.LogStoragePath -ne "パス") {
-        try {
-            # パスが存在するかどうかに関わらず、設定値を基準とする
-            return [System.IO.Path]::GetFullPath($pageConfig.LogStoragePath).TrimEnd('\', '/')
-        }
-        catch {
-            # 無効なパスの場合はスルー
-        }
-    }
 
-    # 次にGlobalLogPath
-    if ($script:globalLogPath) {
-        return [System.IO.Path]::GetFullPath($script:globalLogPath).TrimEnd('\', '/')
-    }
-    
-    # フォールバック
-    return [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
-}
 
 # プロセスDestinationPath保存関数（ページ3用）
 function Save-ProcessDestinationPath {
@@ -3654,7 +3633,8 @@ function Update-ProcessControls {
                         try {
                             $v1CsvDestPathValue = $processConfig.V1CsvDestPath
                             if (-not [System.IO.Path]::IsPathRooted($v1CsvDestPathValue)) {
-                                $v1CsvDestPathValue = Join-Path $PSScriptRoot $v1CsvDestPathValue
+                                $basePath = Get-CommonBasePath
+                                $v1CsvDestPathValue = Join-Path $basePath $v1CsvDestPathValue
                             }
                             $v1CsvDestPathValue = [System.IO.Path]::GetFullPath($v1CsvDestPathValue)
                         }
@@ -3910,7 +3890,8 @@ function Update-ProcessControls {
                             $v1CsvDestPathValue = $processConfig.V1CsvDestPath
                             # 相対パスの場合は絶対パスに変換
                             if (-not [System.IO.Path]::IsPathRooted($v1CsvDestPathValue)) {
-                                $v1CsvDestPathValue = Join-Path $PSScriptRoot $v1CsvDestPathValue
+                                $basePath = Get-CommonBasePath
+                                $v1CsvDestPathValue = Join-Path $basePath $v1CsvDestPathValue
                             }
                             $v1CsvDestPathValue = [System.IO.Path]::GetFullPath($v1CsvDestPathValue)
                         }
@@ -4291,7 +4272,8 @@ function Update-ProcessControls {
                         try {
                             $v1CsvDestPathValue = $processConfig.V1CsvDestPath
                             if (-not [System.IO.Path]::IsPathRooted($v1CsvDestPathValue)) {
-                                $v1CsvDestPathValue = Join-Path $PSScriptRoot $v1CsvDestPathValue
+                                $basePath = Get-CommonBasePath
+                                $v1CsvDestPathValue = Join-Path $basePath $v1CsvDestPathValue
                             }
                             $v1CsvDestPathValue = [System.IO.Path]::GetFullPath($v1CsvDestPathValue)
                         }
