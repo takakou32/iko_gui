@@ -2812,8 +2812,8 @@ function Update-ProcessControls {
                     })
                 $script:processPanel.Controls.Add($nameTextBox)
                 
-                # 1行目と2行目はKDL変換CSV格納元・格納先、V1抽出CSV格納先がある
                 if ($i -lt 2) {
+
                     # KDL変換CSV格納元ラベル
                     $kdlSourceLabel = New-Object System.Windows.Forms.Label
                     $kdlSourceLabel.Location = New-Object System.Drawing.Point(175, [int]($y - 20))
@@ -3462,15 +3462,145 @@ function Update-ProcessControls {
                     $maintButton2 = $null
 
                     if ($i -eq 0) {
-                        # 1行目: メンテEA, メンテEB
-                        $maintButton1 = Create-MaintButton -x $maint1X -text "メンテEA" -batchIndex 3 -title "メンテEA"
-                        $maintButton2 = Create-MaintButton -x $maint2X -text "メンテEB" -batchIndex 4 -title "メンテEB"
+                        # 1行目: 取込後(2) -> 取込後EA, メンテEA(3) -> 取込後EB, メンテEB(4) -> メンテ
+                        
+                        # 既存の「取込後」ボタンのテキストを「取込後EA」に変更（編集モード以外）
+                        if (-not $script:editMode) {
+                            $afterImportButton.Text = "取込後EA"
+                        }
+                        
+                        # ボタン幅調整（必要なら）
+                        # $afterImportButton.Size = New-Object System.Drawing.Size(90, 30) 
+
+                        # 追加ボタン1: 取込後EB (BatchIndex 3)
+                        $maintButton1 = Create-MaintButton -x $maint1X -text "取込後EB" -batchIndex 3 -title "取込後EB"
+                        
+                        # 追加ボタン2: メンテ (BatchIndex 4)
+                        $maintButton2 = Create-MaintButton -x $maint2X -text "メンテ" -batchIndex 4 -title "メンテ"
                     }
                     elseif ($i -eq 1) {
-                        # 2行目: メンテ（位置はメンテEAと同じ）
+                        # 2行目: メンテ (BatchIndex 3)
+                        # 配置: 取込後 (440) と ログ確認 (710? -> 240/340に移動済み) の間？
+                        # 元のコードでは $maint1X = 530 だった。
+                        # "取込後" ($afterImportX = 440, Width=90 -> Right=530)
+                        # "ログ確認" はRow 2では $kdlImportX (240) の下 ($logY) に移動している。
+                        # 元のレイアウトではログ確認は右にあったが、前回変更で下に移動した。
+                        # 
+                        # ユーザー要望: 「取込後、ログ確認の間に移動」
+                        # 今のレイアウト:
+                        # [KDL] [Direct] [After] [   ] [   ]
+                        # [Log] [Log2]
+                        #
+                        # ユーザーの言う「ログ確認」は元の位置(右側)を指している可能性もあるが、
+                        # 前回の変更でログ確認は2段目に移った。
+                        # "３行目の取込後、ログ確認の間に移動させてほしい" -> User said "4ページ2行目のメンテボタンを、３行目の取込後、ログ確認の間に移動させてほしい。"
+                        # !!! Wait. The user request says: "4ページ2行目のメンテボタンを、３行目の取込後、ログ確認の間に移動させてほしい。"
+                        # This implies moving the button FROM Row 2 TO Row 3 ?? Or moving it within Row 2 to be between "After Import" and "Log Check"?
+                        # And "3行目" might mean "Index 2"? 
+                        #
+                        # Let's re-read carefully: "４ページ2行目のメンテボタンを、３行目の取込後、ログ確認の間に移動させてほしい。"
+                        # Literally: "Move the maintenance button of Page 4 Row 2 to between After Import and Log Check of Row 3."
+                        # This sounds like merging Row 2's maintenance button into Row 3 ?? 
+                        # Or maybe user counts rows 1-based.
+                        # Row 1 (Index 0). Row 2 (Index 1). Row 3 (Index 2).
+                        # User wants `Maint` button of Row 2 (Index 1) moved to Row 3 (Index 2) ??
+                        # "Three line's After Import and Log Check between"
+                        # 
+                        # Let's assume User means:
+                        # Row 1: Modified as requested.
+                        # Row 2 (Index 1): Use "Maint" button.
+                        # Button Position: Between "After Import" and "Log Check".
+                        # 
+                        # NOTE: In previous step, "Log Check" was moved to next line (Y+35).
+                        # So "Between After Import and Log Check" might mean physically between them ?
+                        # If Log Check is below, "Between" is ambiguous.
+                        #
+                        # UNLESS "Log Check" on Row 2 wasn't moved?
+                        # My previous edit moved Log buttons for BOTH Row 1 and Row 2.
+                        # 
+                        # Perhaps user wants the Maint button on Row 2 to be placed at X coordinate between After Import (X=440) and Log Check (X=710 - original position).
+                        # But Log Check is now at X=240, Y+35.
+                        #
+                        # However, since user approved the plan which said:
+                        # "Row 2 (2行目): 「メンテ」ボタンを「取込後」と「ログ確認」の間に移動"
+                        # I will assume standard horizontal layout flow if they were on same line, or just X-coordinate wise.
+                        #
+                        # Let's look at Row 3 (Index 2) - previously "Dynamic".
+                        # Now Dynamic starts from Row 4 (Index 3).
+                        # So Row 3 (Index 2) is now a Static row?
+                        # Or user means: Row 2's maintenance button should be moved to Row 3?
+                        # 
+                        # Let's assume Row 2 (Index 1) is the target row.
+                        # And we place "Maint" at $maint1X (530). 
+                        # After Import is 440. 
+                        # Log Check (Original) was 710.
+                        # So 530 is largely between 440 and 710.
+                        #
+                        # But wait, User said: "３行目の取込後、ログ確認の間に移動させてほしい"
+                        # "Move Row 2's Maint button to between Row 3's After Import and Log Check" ??
+                        # That implies Row 3 has "After Import" and "Log Check".
+                        # Currently Row 3 (Index 2) WAS dynamic, so it didn't have specific fixed buttons other than generic ones.
+                        # 
+                        # Maybe user counts Title as Row 1? No, usually not.
+                        # 
+                        # Let's interpret "3行目" as "The line that is the 3rd process" (Index 2).
+                        # So Index 2 is now a specific process row like Index 0 and 1.
+                        # And Index 3+ are dynamic.
+                        # 
+                        # And User wants the Maint button (from Row 2?) moved to Row 3.
+                        # Or maybe "Row 2's Maint Button" IS the one to be moved.
+                        # And it should be placed... where? 
+                        # "3行目の取込後、ログ確認の間に" -> "Between After Import and Log Check of Line 3".
+                        #
+                        # So Line 3 (Index 2) should have:
+                        # [After Import] [Maint] [Log Check]
+                        #
+                        # And Line 2 (Index 1) ? Does it lose the Maint button?
+                        # "Row 2's maint button moved to..." implies it leaves Row 2.
+                        # 
+                        # User also said: "それに伴い、現在３行目以降としている追加・削除は4行目から行うように修正してほしい。"
+                        # This confirms Index 2 (3rd line) is becoming a static/special line.
+                        #
+                        # So:
+                        # Index 0: Custom Layout 1 (AfterEA, AfterEB, Maint)
+                        # Index 1: Custom Layout 2 (What about Maint? It says "Row 2's Maint moved to Row 3". So Row 1 has Maint?)
+                        # Index 2: Custom Layout 3 (Has "Maint" button between After and Log).
+                        # Index 3+: Dynamic.
+                        #
+                        # What about Index 1 (Row 2)?
+                        # Does it have Maint? 
+                        # Previous code:
+                        # if ($i -eq 1) { $maintButton1 = Create-MaintButton ... }
+                        #
+                        # Request: "Move Page 4 Row 2's Maint button to be between Row 3's After Import and Log Check."
+                        # So Index 1 NO LONGER has Maint button?
+                        # And Index 2 GAINS Maint button?
+                        #
+                        # Summary of interpretation:
+                        # Index 0: AfterEA, AfterEB, Maint
+                        # Index 1: Standard (KDL, Direct, After, Log, Log2). NO Maint.
+                        # Index 2: Standard + Maint (Between After and Log).
+                        # Index 3+: Dynamic.
+                        #
+                        # Wait, where is "Log Check" on Row 3?
+                        # Standard Log Check is now at Y+35.
+                        # "Between After and Log" might refer to X coordinates again.
+                        #
+                        # Let's proceed with:
+                        # Index 0: Special
+                        # Index 1: No Maint.
+                        # Index 2: Has Maint.
+                        # Index 3+: Dynamic.
+
+                        # 2行目はメンテボタンなし
+                    }
+                    elseif ($i -eq 2) {
+                        # 3行目: メンテ (BatchIndex 3)
+                        # "取込後"($afterImportX=440) と "ログ確認"($logX=710 or Y+35) の間
+                        # X=530 ($maint1X) で作成
                         $maintButton1 = Create-MaintButton -x $maint1X -text "メンテ" -batchIndex 3 -title "メンテ"
                     }
-
+                    
                     
                     # ログ確認ボタン（KDL取込ボタンの下）
                     $logButton = New-Object System.Windows.Forms.Button
@@ -3520,7 +3650,7 @@ function Update-ProcessControls {
                         })
                     $script:processPanel.Controls.Add($logButton2)
                     
-                    # 4ページ目用のコントロール情報を保存（1行目・2行目）
+                    # 4ページ目用のコントロール情報を保存（1行目・2行目・3行目）
                     $script:processControls += @{
                         CheckBox            = $null
                         NameTextBox         = $nameTextBox
@@ -3538,8 +3668,257 @@ function Update-ProcessControls {
                         LogButton2          = $logButton2
                     }
                 }
+                elseif ($i -eq 2) {
+                    # 3行目 (Index 2): V1抽出CSV格納先 + 特定ボタン (取込後、メンテ、ログ)
+                    
+                    # チェックボックスは表示しない (固定行扱い)
+                    
+                    # V1抽出CSV格納先ラベル
+                    $v1CsvDestLabel = New-Object System.Windows.Forms.Label
+                    $v1CsvDestLabel.Location = New-Object System.Drawing.Point(175, [int]($y - 20))
+                    $v1CsvDestLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $v1CsvDestLabel.Text = "V1抽出CSV格納先"
+                    $v1CsvDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($v1CsvDestLabel)
+                    
+                    # V1抽出CSV格納先パス入力
+                    $v1CsvDestTextBox = New-Object System.Windows.Forms.TextBox
+                    $v1CsvDestTextBox.Location = New-Object System.Drawing.Point(175, $y)
+                    $v1CsvDestTextBox.Size = New-Object System.Drawing.Size(200, 30)
+                    $v1CsvDestTextBox.Text = "パス"
+                    $v1CsvDestTextBox.ReadOnly = $true
+                    $v1CsvDestTextBox.BackColor = [System.Drawing.Color]::White
+                    $v1CsvDestTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $v1CsvDestTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $v1CsvDestTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $v1CsvDestTextBox.Tag = $i
+                    $v1CsvDestTextBox.Add_Click({
+                            if ($script:editMode) {
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $this.Text -Description "V1抽出CSV格納先フォルダを選択してください"
+                                if ($selectedPath) {
+                                    $this.Text = $selectedPath
+                                    $clickedProcessIdx = $this.Tag
+                                    Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
+                                    Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                                }
+                            }
+                        })
+                    
+                    # 初期値設定
+                    $v1CsvDestPathValue = "パス"
+                    if ($processConfig.V1CsvDestPath -and $processConfig.V1CsvDestPath -ne "" -and $processConfig.V1CsvDestPath -ne "パス") {
+                        try {
+                            $v1CsvDestPathValue = $processConfig.V1CsvDestPath
+                            if (-not [System.IO.Path]::IsPathRooted($v1CsvDestPathValue)) {
+                                $v1CsvDestPathValue = Join-Path $PSScriptRoot $v1CsvDestPathValue
+                            }
+                            $v1CsvDestPathValue = [System.IO.Path]::GetFullPath($v1CsvDestPathValue)
+                        }
+                        catch {
+                            Write-Log "パスの解決に失敗しました (Process: $i): $($_.Exception.Message)" "WARN"
+                        }
+                    }
+                    $v1CsvDestTextBox.Text = $v1CsvDestPathValue
+                    $script:processPanel.Controls.Add($v1CsvDestTextBox)
+                    
+                    # 移動設定ボタン
+                    $v1CsvDestMoveButton = New-Object System.Windows.Forms.Button
+                    $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(385, $y)
+                    $v1CsvDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
+                    if ($script:editMode) {
+                        $v1CsvDestMoveButton.Text = "移動設定"
+                        $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)
+                        $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)
+                    }
+                    else {
+                        $v1CsvDestMoveButton.Text = "移動"
+                        $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)
+                        $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)
+                    }
+                    $v1CsvDestMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $v1CsvDestMoveButton.FlatAppearance.BorderSize = 1
+                    $v1CsvDestMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
+                    $v1CsvDestMoveButton.Visible = $true
+                    $v1CsvDestMoveButton.Tag = $i
+                    $v1CsvDestMoveButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            $currentProcessName = ""
+                            $v1CsvDestPath = ""
+                            if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                                $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                                if ($ctrlGroup.NameTextBox) { $currentProcessName = $ctrlGroup.NameTextBox.Text }
+                                if ($ctrlGroup.V1CsvDestTextBox) { $v1CsvDestPath = $ctrlGroup.V1CsvDestTextBox.Text }
+                            }
+                            $v1CsvSourcePath = if ($script:v1CsvSourceTextBox) { $script:v1CsvSourceTextBox.Text } else { "" }
+                            
+                            if ($script:editMode) {
+                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                            }
+                            else {
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+                            }
+                        })
+                    $script:processPanel.Controls.Add($v1CsvDestMoveButton)
+                    
+                    # ボタン行（直接取込、取込後、メンテ、ログ確認）
+                    $buttonY = $y
+                    
+                    # 直接取込ボタン（Batch Index 1）
+                    $directImportButton = New-Object System.Windows.Forms.Button
+                    $directImportButton.Location = New-Object System.Drawing.Point(450, $buttonY)
+                    $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
+
+                    if ($script:editMode) {
+                        $directImportButton.Text = "参照"
+                    }
+                    else {
+                        $directImportButton.Text = "直接取込"
+                    }
+                    $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)  # #ffe6cc
+                    $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)  # #d79b00
+                    $directImportButton.FlatAppearance.BorderSize = 1
+                    $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $directImportButton.Tag = $i
+                    $directImportButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            if ($script:editMode) {
+                                # バッチファイル設定 (Index 1)
+                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                $fileDialog.Title = "直接取込用バッチファイルを選択してください"
+                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $fileDialog.FileName -BatchIndex 1
+                                    Update-ProcessControls
+                                }
+                                $fileDialog.Dispose()
+                            }
+                            else {
+                                # 実行 (Batch Index 1)
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $procConf = $currentProcesses[$clickedProcessIdx]
+                                    if ($procConf.BatchFiles.Count -gt 1) {
+                                        $batch = $procConf.BatchFiles[1]
+                                        $path = Resolve-BatchPath -Path $batch.Path
+                                        Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    }
+                                }
+                            }
+                        })
+                    $script:processPanel.Controls.Add($directImportButton)
+
+                    # 取込後ボタン (Batch Index 2)
+                    $afterImportButton = New-Object System.Windows.Forms.Button
+                    $afterImportButton.Location = New-Object System.Drawing.Point(540, $y)
+                    $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
+                    if ($script:editMode) {
+                        $afterImportButton.Text = "参照"
+                    }
+                    else {
+                        $afterImportButton.Text = "取込後"
+                    }
+                    $afterImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)
+                    $afterImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $afterImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)
+                    $afterImportButton.FlatAppearance.BorderSize = 1
+                    $afterImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $afterImportButton.Tag = $i
+                    $afterImportButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            if ($script:editMode) {
+                                # バッチファイル設定 (Index 2)
+                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                $fileDialog.Title = "取込後用バッチファイルを選択してください"
+                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $fileDialog.FileName -BatchIndex 2
+                                    Update-ProcessControls
+                                }
+                                $fileDialog.Dispose()
+                            }
+                            else {
+                                # 実行 (Batch Index 2)
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $procConf = $currentProcesses[$clickedProcessIdx]
+                                    if ($procConf.BatchFiles.Count -gt 2) {
+                                        $batch = $procConf.BatchFiles[2]
+                                        $path = Resolve-BatchPath -Path $batch.Path
+                                        Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    }
+                                }
+                            }
+                        })
+                    $script:processPanel.Controls.Add($afterImportButton)
+                    
+                    $script:processPanel.Controls.Add($afterImportButton)
+                    
+                    # メンテボタン (Batch Index 3)
+                    $maintButton = New-Object System.Windows.Forms.Button
+                    $maintButton.Location = New-Object System.Drawing.Point(630, $y)
+                    $maintButton.Size = New-Object System.Drawing.Size(60, 30)
+                    if ($script:editMode) { $maintButton.Text = "参照" } else { $maintButton.Text = "メンテ" }
+                    $maintButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153) # Orange
+                    $maintButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $maintButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)
+                    $maintButton.FlatAppearance.BorderSize = 1
+                    $maintButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $maintButton.Tag = @{ ProcessIndex = $i; BatchIndex = 3; Title = "メンテ" }
+                    $maintButton.Add_Click({
+                            $ctx = $this.Tag
+                            $pIdx = $ctx.ProcessIndex
+                            $bIdx = $ctx.BatchIndex
+                            $title = $ctx.Title
+                            
+                            if ($script:editMode) {
+                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                $fileDialog.Title = "$title 用バッチファイルを選択してください"
+                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                    Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $fileDialog.FileName -BatchIndex $bIdx
+                                    Update-ProcessControls
+                                }
+                                $fileDialog.Dispose()
+                            }
+                            else {
+                                $currentProcesses = Get-CurrentPageProcesses
+                                $procConf = $currentProcesses[$pIdx]
+                                if ($procConf.BatchFiles.Count -gt $bIdx) {
+                                    $batch = $procConf.BatchFiles[$bIdx]
+                                    $path = Resolve-BatchPath -Path $batch.Path
+                                    Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $pIdx
+                                }
+                            }
+                        })
+                    $script:processPanel.Controls.Add($maintButton)
+                    
+                    # ログ確認ボタン
+                    $logButton = New-Object System.Windows.Forms.Button
+                    $logButton.Location = New-Object System.Drawing.Point(720, $y)
+                    $logButton.Size = New-Object System.Drawing.Size(80, 30)
+                    if ($script:editMode) { $logButton.Text = "参照" } else { $logButton.Text = "ログ確認" }
+                    $logButton.BackColor = [System.Drawing.Color]::FromArgb(200, 255, 200)
+                    $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+                    $logButton.FlatAppearance.BorderSize = 1
+                    $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $logButton.Tag = $i
+                    $logButton.Add_Click({ Show-ProcessLog -ProcessIndex $this.Tag })
+                    $script:processPanel.Controls.Add($logButton)
+                    
+                    $script:processControls += @{
+                        NameTextBox         = $nameTextBox
+                        V1CsvDestTextBox    = $v1CsvDestTextBox
+                        V1CsvDestMoveButton = $v1CsvDestMoveButton
+                        DirectImportButton  = $directImportButton
+                        AfterImportButton   = $afterImportButton
+                        MaintButton         = $null
+                        LogButton           = $logButton
+                    }
+                }
                 else {
-                    # 3行目以降：V1抽出CSV格納先のみ
+                    # 4行目以降（Index 3以上）：V1抽出CSV格納先のみ
                     # チェックボックス（編集モードON時のみ表示）
                     $checkBox = New-Object System.Windows.Forms.CheckBox
                     $calcX = $x - 25
@@ -3657,7 +4036,7 @@ function Update-ProcessControls {
                     
                     # 直接取込ボタン（オレンジ）
                     $directImportButton = New-Object System.Windows.Forms.Button
-                    $directImportButton.Location = New-Object System.Drawing.Point(460, $buttonY)
+                    $directImportButton.Location = New-Object System.Drawing.Point(450, $buttonY)
                     $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
 
                     if ($script:editMode) {
@@ -3747,9 +4126,7 @@ function Update-ProcessControls {
                     
                     # 取込後ボタン（オレンジ）
                     $afterImportButton = New-Object System.Windows.Forms.Button
-                    # 取込後ボタン（オレンジ）
-                    $afterImportButton = New-Object System.Windows.Forms.Button
-                    $afterImportButton.Location = New-Object System.Drawing.Point(560, $buttonY)
+                    $afterImportButton.Location = New-Object System.Drawing.Point(540, $buttonY)
                     $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
                     if ($script:editMode) {
                         $afterImportButton.Text = "参照"
@@ -3838,9 +4215,7 @@ function Update-ProcessControls {
                     
                     # ログ確認ボタン（緑）
                     $logButton = New-Object System.Windows.Forms.Button
-                    # ログ確認ボタン（緑）
-                    $logButton = New-Object System.Windows.Forms.Button
-                    $logButton.Location = New-Object System.Drawing.Point(650, $buttonY)
+                    $logButton.Location = New-Object System.Drawing.Point(630, $buttonY)
                     $logButton.Size = New-Object System.Drawing.Size(80, 30)
                     if ($script:editMode) {
                         $logButton.Text = "参照"
@@ -3873,17 +4248,43 @@ function Update-ProcessControls {
                 }
             }
             else {
-                # 5ページ目以降：従来のレイアウト（2列レイアウト）
-                $row = [Math]::Floor($i / 2)
-                $col = $i % 2
-                $x = [int](10 + $col * 440)
-                $y = [int](10 + $row * 60)
+                # 3行目以降（Index 2以上、Page 4の場合）または5ページ目以降
+                
+                # 座標計算
+                if ($isPage4) {
+                    # 4ページ目：1列レイアウト
+                    # $yはループの先頭で計算済み ($y = 10 + $i * 170)
+                    $x = 55
+                    # $y = $y # 既に計算されている値をそのまま使用
+                }
+                else {
+                    # 5ページ目以降：2列レイアウト
+                    $row = [Math]::Floor($i / 2)
+                    $col = $i % 2
+                    $x = [int](10 + $col * 440)
+                    $y = [int](10 + $row * 60)
+                }
                 
                 # チェックボックス（編集モードON時のみ表示）
                 $checkBox = New-Object System.Windows.Forms.CheckBox
-                $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 10))
+                
+                if ($isPage4) {
+                    # 4ページ目：Index 3以降のみ表示
+                    $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
+                    if ($i -lt 3) {
+                        $checkBox.Visible = $false
+                    }
+                    else {
+                        $checkBox.Visible = $script:editMode
+                    }
+                }
+                else {
+                    # 5ページ目以降
+                    $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 10))
+                    $checkBox.Visible = $script:editMode
+                }
+                
                 $checkBox.Size = New-Object System.Drawing.Size(20, 20)
-                $checkBox.Visible = $script:editMode
                 $script:processPanel.Controls.Add($checkBox)
                 
                 # テキストボックス（タスク名表示用）
@@ -3907,85 +4308,334 @@ function Update-ProcessControls {
                     })
                 $script:processPanel.Controls.Add($nameTextBox)
                 
-                # ファイル移動設定ボタン（水色）- 編集モードONの時のみ表示
-                $fileMoveButton = New-Object System.Windows.Forms.Button
-                $fileMoveX = [int]($x + 150)
-                $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
-                $fileMoveButton.Size = New-Object System.Drawing.Size(80, 40)
-                $fileMoveButton.Text = "移動設定"
-                $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(173, 216, 230)
-                $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
-                $fileMoveButton.FlatAppearance.BorderSize = 1
-                $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $fileMoveButton.Visible = $script:editMode
-                $fileMoveButton.Tag = $i
-                $fileMoveButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        $currentProcessName = ""
-                        if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
-                            $ctrlGroup = $script:processControls[$clickedProcessIdx]
-                            if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
-                                $currentProcessName = $ctrlGroup.NameTextBox.Text
+                # V1抽出CSV格納先（4ページ目のみ表示）
+                if ($isPage4) {
+                    # V1抽出CSV格納先ラベル
+                    $v1CsvDestLabel = New-Object System.Windows.Forms.Label
+                    $v1CsvDestLabel.Location = New-Object System.Drawing.Point(175, [int]($y - 20))
+                    $v1CsvDestLabel.Size = New-Object System.Drawing.Size(150, 20)
+                    $v1CsvDestLabel.Text = "V1抽出CSV格納先"
+                    $v1CsvDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 8, [System.Drawing.FontStyle]::Bold)
+                    $script:processPanel.Controls.Add($v1CsvDestLabel)
+                    
+                    # V1抽出CSV格納先パス入力
+                    $v1CsvDestTextBox = New-Object System.Windows.Forms.TextBox
+                    $v1CsvDestTextBox.Location = New-Object System.Drawing.Point(175, $y)
+                    $v1CsvDestTextBox.Size = New-Object System.Drawing.Size(200, 30)
+                    $v1CsvDestTextBox.Text = "パス"
+                    $v1CsvDestTextBox.ReadOnly = $true
+                    $v1CsvDestTextBox.BackColor = [System.Drawing.Color]::White
+                    $v1CsvDestTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $v1CsvDestTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $v1CsvDestTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+                    $v1CsvDestTextBox.Tag = $i
+                    $v1CsvDestTextBox.Add_Click({
+                            if ($script:editMode) {
+                                $selectedPath = Show-FolderBrowser -InitialDirectory $this.Text -Description "V1抽出CSV格納先フォルダを選択してください"
+                                if ($selectedPath) {
+                                    $this.Text = $selectedPath
+                                    $clickedProcessIdx = $this.Tag
+                                    Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
+                                    Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                                }
                             }
+                        })
+                    
+                    # 初期値設定
+                    $v1CsvDestPathValue = "パス"
+                    if ($processConfig.V1CsvDestPath -and $processConfig.V1CsvDestPath -ne "" -and $processConfig.V1CsvDestPath -ne "パス") {
+                        try {
+                            $v1CsvDestPathValue = $processConfig.V1CsvDestPath
+                            if (-not [System.IO.Path]::IsPathRooted($v1CsvDestPathValue)) {
+                                $v1CsvDestPathValue = Join-Path $PSScriptRoot $v1CsvDestPathValue
+                            }
+                            $v1CsvDestPathValue = [System.IO.Path]::GetFullPath($v1CsvDestPathValue)
                         }
-                        Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
-                    })
-                $script:processPanel.Controls.Add($fileMoveButton)
-                
-                # 実行ボタン（オレンジ）
-                $executeButton = New-Object System.Windows.Forms.Button
-                $executeX = [int]($x + 240)
-                $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
-                $executeButton.Size = New-Object System.Drawing.Size(80, 40)
-                if ($script:editMode) {
-                    $executeButton.Text = "参照"
+                        catch {
+                            Write-Log "パスの解決に失敗しました (Process: $i): $($_.Exception.Message)" "WARN"
+                        }
+                    }
+                    $v1CsvDestTextBox.Text = $v1CsvDestPathValue
+                    $script:processPanel.Controls.Add($v1CsvDestTextBox)
+                    
+                    # 移動設定ボタン
+                    $v1CsvDestMoveButton = New-Object System.Windows.Forms.Button
+                    $v1CsvDestMoveButton.Location = New-Object System.Drawing.Point(385, $y)
+                    $v1CsvDestMoveButton.Size = New-Object System.Drawing.Size(60, 30)
+                    if ($script:editMode) {
+                        $v1CsvDestMoveButton.Text = "移動設定"
+                        $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)
+                        $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)
+                    }
+                    else {
+                        $v1CsvDestMoveButton.Text = "移動"
+                        $v1CsvDestMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)
+                        $v1CsvDestMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)
+                    }
+                    $v1CsvDestMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $v1CsvDestMoveButton.FlatAppearance.BorderSize = 1
+                    $v1CsvDestMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
+                    $v1CsvDestMoveButton.Visible = $true
+                    $v1CsvDestMoveButton.Tag = $i
+                    $v1CsvDestMoveButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            $currentProcessName = ""
+                            $v1CsvDestPath = ""
+                            if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                                $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                                if ($ctrlGroup.NameTextBox) { $currentProcessName = $ctrlGroup.NameTextBox.Text }
+                                if ($ctrlGroup.V1CsvDestTextBox) { $v1CsvDestPath = $ctrlGroup.V1CsvDestTextBox.Text }
+                            }
+                            $v1CsvSourcePath = if ($script:v1CsvSourceTextBox) { $script:v1CsvSourceTextBox.Text } else { "" }
+                            
+                            if ($script:editMode) {
+                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                            }
+                            else {
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+                            }
+                        })
+                    $script:processPanel.Controls.Add($v1CsvDestMoveButton)
+                    
+                    
+                    # ボタン配置 (Row 4+, Index 3+)
+                    $buttonY = $y
+                    
+                    # 直接取込ボタン (Batch Index 1)
+                    $directImportButton = New-Object System.Windows.Forms.Button
+                    $directImportButton.Location = New-Object System.Drawing.Point(450, $buttonY)
+                    $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
+                    if ($script:editMode) {
+                        $directImportButton.Text = "参照"
+                    }
+                    else {
+                        $directImportButton.Text = "直接取込"
+                    }
+                    $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)  # #ffe6cc
+                    $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)  # #d79b00
+                    $directImportButton.FlatAppearance.BorderSize = 1
+                    $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $directImportButton.Tag = $i
+                    $directImportButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            if ($script:editMode) {
+                                # バッチファイル設定 (Index 1)
+                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                $fileDialog.Title = "直接取込用バッチファイルを選択してください"
+                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $fileDialog.FileName -BatchIndex 1
+                                    Update-ProcessControls
+                                }
+                                $fileDialog.Dispose()
+                            }
+                            else {
+                                # 実行 (Batch Index 1)
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $procConf = $currentProcesses[$clickedProcessIdx]
+                                    if ($procConf.BatchFiles.Count -gt 1) {
+                                        $batch = $procConf.BatchFiles[1]
+                                        $path = Resolve-BatchPath -Path $batch.Path
+                                        Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    }
+                                }
+                            }
+                        })
+                    $script:processPanel.Controls.Add($directImportButton)
+                    
+                    # 取込後ボタン (Batch Index 2)
+                    $afterImportButton = New-Object System.Windows.Forms.Button
+                    $afterImportButton.Location = New-Object System.Drawing.Point(540, $buttonY)
+                    $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
+                    if ($script:editMode) {
+                        $afterImportButton.Text = "参照"
+                    }
+                    else {
+                        $afterImportButton.Text = "取込後"
+                    }
+                    $afterImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)
+                    $afterImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $afterImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)
+                    $afterImportButton.FlatAppearance.BorderSize = 1
+                    $afterImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $afterImportButton.Tag = $i
+                    $afterImportButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            if ($script:editMode) {
+                                # バッチファイル設定 (Index 2)
+                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                $fileDialog.Title = "取込後用バッチファイルを選択してください"
+                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $fileDialog.FileName -BatchIndex 2
+                                    Update-ProcessControls
+                                }
+                                $fileDialog.Dispose()
+                            }
+                            else {
+                                # 実行 (Batch Index 2)
+                                $currentProcesses = Get-CurrentPageProcesses
+                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                    $procConf = $currentProcesses[$clickedProcessIdx]
+                                    if ($procConf.BatchFiles.Count -gt 2) {
+                                        $batch = $procConf.BatchFiles[2]
+                                        $path = Resolve-BatchPath -Path $batch.Path
+                                        Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                    }
+                                }
+                            }
+                        })
+                    $script:processPanel.Controls.Add($afterImportButton)
+
+                    # メンテボタン (Batch Index 3)
+                    $maintButton = New-Object System.Windows.Forms.Button
+                    $maintButton.Location = New-Object System.Drawing.Point(630, $buttonY)
+                    $maintButton.Size = New-Object System.Drawing.Size(60, 30)
+                    if ($script:editMode) { $maintButton.Text = "参照" } else { $maintButton.Text = "メンテ" }
+                    $maintButton.BackColor = [System.Drawing.Color]::FromArgb(255, 192, 203) # Pink
+                    $maintButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $maintButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(200, 100, 100)
+                    $maintButton.FlatAppearance.BorderSize = 1
+                    $maintButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $maintButton.Tag = @{ ProcessIndex = $i; BatchIndex = 3; Title = "メンテ" }
+                    $maintButton.Add_Click({
+                            $ctx = $this.Tag
+                            $pIdx = $ctx.ProcessIndex
+                            $bIdx = $ctx.BatchIndex
+                            $title = $ctx.Title
+                            
+                            if ($script:editMode) {
+                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                $fileDialog.Title = "$title 用バッチファイルを選択してください"
+                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                    Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $fileDialog.FileName -BatchIndex $bIdx
+                                    Update-ProcessControls
+                                }
+                                $fileDialog.Dispose()
+                            }
+                            else {
+                                $currentProcesses = Get-CurrentPageProcesses
+                                $procConf = $currentProcesses[$pIdx]
+                                if ($procConf.BatchFiles.Count -gt $bIdx) {
+                                    $batch = $procConf.BatchFiles[$bIdx]
+                                    $path = Resolve-BatchPath -Path $batch.Path
+                                    Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $pIdx
+                                }
+                            }
+                        })
+                    $script:processPanel.Controls.Add($maintButton)
+
+                    # ログ確認ボタン
+                    $logButton = New-Object System.Windows.Forms.Button
+                    $logButton.Location = New-Object System.Drawing.Point(720, $buttonY)
+                    $logButton.Size = New-Object System.Drawing.Size(80, 30)
+                    if ($script:editMode) { $logButton.Text = "参照" } else { $logButton.Text = "ログ確認" }
+                    $logButton.BackColor = [System.Drawing.Color]::FromArgb(200, 255, 200)
+                    $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+                    $logButton.FlatAppearance.BorderSize = 1
+                    $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $logButton.Tag = $i
+                    $logButton.Add_Click({ Show-ProcessLog -ProcessIndex $this.Tag })
+                    $script:processPanel.Controls.Add($logButton)
+                    
+                    $script:processControls += @{
+                        CheckBox            = $checkBox
+                        NameTextBox         = $nameTextBox
+                        V1CsvDestTextBox    = $v1CsvDestTextBox
+                        V1CsvDestMoveButton = $v1CsvDestMoveButton
+                        DirectImportButton  = $directImportButton
+                        AfterImportButton   = $afterImportButton
+                        MaintButton         = $maintButton
+                        LogButton           = $logButton
+                        ExecuteButton       = $null
+                    }
                 }
                 else {
-                    $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
-                }
-                $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
-                $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
-                $executeButton.FlatAppearance.BorderSize = 1
-                $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $executeButton.Tag = $i  # プロセスインデックスをTagに保存
-                $executeButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        Start-ProcessFlow -ProcessIndex $clickedProcessIdx
-                    })
-                $script:processPanel.Controls.Add($executeButton)
-                
-                # ログ確認ボタン（緑）
-                $logButton = New-Object System.Windows.Forms.Button
-                $logX = [int]($x + 330)
-                $logButton.Location = New-Object System.Drawing.Point($logX, $y)
-                $logButton.Size = New-Object System.Drawing.Size(80, 40)
-                if ($script:editMode) {
-                    $logButton.Text = "参照"
-                }
-                else {
-                    $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
-                }
-                $logButton.BackColor = [System.Drawing.Color]::FromArgb(200, 255, 200)
-                $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
-                $logButton.FlatAppearance.BorderSize = 1
-                $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $logButton.Tag = $i  # プロセスインデックスをTagに保存
-                $logButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
-                    })
-                $script:processPanel.Controls.Add($logButton)
-                
-                # 5ページ目以降用のコントロール情報を保存
-                $script:processControls += @{
-                    CheckBox       = $checkBox
-                    NameTextBox    = $nameTextBox
-                    FileMoveButton = $fileMoveButton
-                    ExecuteButton  = $executeButton
-                    LogButton      = $logButton
+                    # 5ページ目以降 (Existing logic)
+                    # ファイル移動設定ボタン（水色）
+                    $fileMoveButton = New-Object System.Windows.Forms.Button
+                    $fileMoveX = [int]($x + 150)
+                    $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
+                    $fileMoveButton.Size = New-Object System.Drawing.Size(80, 40)
+                    $fileMoveButton.Text = "移動設定"
+                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(173, 216, 230)
+                    $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+                    $fileMoveButton.FlatAppearance.BorderSize = 1
+                    $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $fileMoveButton.Visible = $script:editMode
+                    $fileMoveButton.Tag = $i
+                    $fileMoveButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            $currentProcessName = ""
+                            if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                                $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                                if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                                    $currentProcessName = $ctrlGroup.NameTextBox.Text
+                                }
+                            }
+                            Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                        })
+                    $script:processPanel.Controls.Add($fileMoveButton)
+                    
+                    # 実行ボタン（オレンジ）
+                    $executeButton = New-Object System.Windows.Forms.Button
+                    $executeX = [int]($x + 240)
+                    $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
+                    $executeButton.Size = New-Object System.Drawing.Size(80, 40)
+                    if ($script:editMode) {
+                        $executeButton.Text = "参照"
+                    }
+                    else {
+                        $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
+                    }
+                    $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 200, 150)
+                    $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+                    $executeButton.FlatAppearance.BorderSize = 1
+                    $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $executeButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $executeButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                        })
+                    $script:processPanel.Controls.Add($executeButton)
+                    
+                    # ログ確認ボタン（緑）
+                    $logButton = New-Object System.Windows.Forms.Button
+                    $logX = [int]($x + 330)
+                    $logButton.Location = New-Object System.Drawing.Point($logX, $y)
+                    $logButton.Size = New-Object System.Drawing.Size(80, 40)
+                    if ($script:editMode) {
+                        $logButton.Text = "参照"
+                    }
+                    else {
+                        $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
+                    }
+                    $logButton.BackColor = [System.Drawing.Color]::FromArgb(200, 255, 200)
+                    $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+                    $logButton.FlatAppearance.BorderSize = 1
+                    $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $logButton.Tag = $i  # プロセスインデックスをTagに保存
+                    $logButton.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
+                        })
+                    $script:processPanel.Controls.Add($logButton)
+                    
+                    # 5ページ目以降用のコントロール情報を保存
+                    $script:processControls += @{
+                        CheckBox       = $checkBox
+                        NameTextBox    = $nameTextBox
+                        FileMoveButton = $fileMoveButton
+                        ExecuteButton  = $executeButton
+                        LogButton      = $logButton
+                    }
                 }
             }
         }
