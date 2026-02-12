@@ -3082,281 +3082,268 @@ function Update-ProcessControls {
                     
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
                     
-                    # ボタン行（KDL取込、直接取込、取込後、メンテEA/EB/メンテ、ログ確認）
+                    # ボタン行
                     $buttonY = [int]($y + 115)
                     
-                    # 各ボタンのX座標定義（左詰めレイアウト）
-                    $kdlImportX = 240      # 元410
-                    $directImportX = 340   # 元535
-                    $afterImportX = 440    # 元635
-                    $maint1X = 530         # 新設
-                    $maint2X = 620         # 新設
-                    $logX = 710            # 元735
+                    # Row 2 (Index 1) 用の標準座標
+                    $kdlImportX = 240
+                    $directImportX = 340
+                    $afterImportX = 440
+                    $maint1X = 530
+                    $logX = 710
                     
-                    # KDL取込ボタン（赤色）
-                    $kdlImportButton = New-Object System.Windows.Forms.Button
-                    $kdlImportButton.Location = New-Object System.Drawing.Point($kdlImportX, $buttonY)
-                    $kdlImportButton.Size = New-Object System.Drawing.Size(90, 30)
-
-                    if ($script:editMode) {
-                        $kdlImportButton.Text = "参照"
-                    }
-                    else {
-                        $kdlImportButton.Text = "KDL取込"
-                    }
-                    $kdlImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
-                    $kdlImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $kdlImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
-                    $kdlImportButton.FlatAppearance.BorderSize = 1
-                    $kdlImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $kdlImportButton.Tag = $i  # プロセスインデックスをTagに保存
-                    $kdlImportButton.Add_Click({
-                            $clickedProcessIdx = $this.Tag
-                            if ($script:editMode) {
-                                # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
-                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                                $fileDialog.Title = "KDL取込用バッチファイルを選択してください"
-                                
-                                # LogStoragePathを初期ディレクトリに設定
-                                $pageConfig = $script:pages[$script:currentPage]
-                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
-                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                    $fileDialog.InitialDirectory = $logStoragePath
-                                }
-                            
-                                # 現在のバッチファイルパスを初期値として設定（BatchIndex = 0）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                        $currentBatch = $processConfig.BatchFiles[0]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                        if (Test-Path $initialPath) {
-                                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                                            $fileDialog.FileName = Split-Path $initialPath -Leaf
-                                        }
-                                    }
-                                }
-                            
-                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedFile = $fileDialog.FileName
-                                    # Save-BatchFilePath内でパス制限チェックが行われる
-                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
-                                        Write-Log "KDL取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("KDL取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                    
-                                        # コントロールを更新して新しい設定を反映
+                    if ($i -eq 0) {
+                        # --- 1行目 (Index 0) 特殊レイアウト ---
+                        # KDL取込(KDB), KDL取込(EB), 直接取込 など
+                        $kdlKdbX = 240
+                        $kdlEbX = 340
+                        $directImportX_Row1 = 440
+                        
+                        # KDL取込(KDB)ボタン (Batch Index 0)
+                        $kdlKdbButton = New-Object System.Windows.Forms.Button
+                        $kdlKdbButton.Location = New-Object System.Drawing.Point($kdlKdbX, $buttonY)
+                        $kdlKdbButton.Size = New-Object System.Drawing.Size(90, 30)
+                        if ($script:editMode) { $kdlKdbButton.Text = "参照" } else { $kdlKdbButton.Text = "KDL取込(KDB)" }
+                        $kdlKdbButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)
+                        $kdlKdbButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                        $kdlKdbButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)
+                        $kdlKdbButton.FlatAppearance.BorderSize = 1
+                        $kdlKdbButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
+                        $kdlKdbButton.Tag = @{ ProcessIndex = $i; BatchIndex = 0; Title = "KDL取込(KDB)" }
+                        $kdlKdbButton.Add_Click({
+                                $ctx = $this.Tag
+                                $pIdx = $ctx.ProcessIndex
+                                $bIdx = $ctx.BatchIndex
+                                $title = $ctx.Title
+                                if ($script:editMode) {
+                                    $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                    $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                    $fileDialog.Title = "$title 用バッチファイルを選択してください"
+                                    if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                        Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $fileDialog.FileName -BatchIndex $bIdx
                                         Update-ProcessControls
                                     }
+                                    $fileDialog.Dispose()
                                 }
-                                $fileDialog.Dispose()
-                            }
-                            else {
-                                # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 0）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                        $batch = $processConfig.BatchFiles[0]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $batchPath = Resolve-BatchPath -Path $batch.Path
-                                        
-                                        $this.Enabled = $false
-                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        $this.Enabled = $true
-                                    }
-                                    else {
-                                        Write-Log "KDL取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("KDL取込用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                else {
+                                    $batchPath = Get-BatchFilePath -ProcessIndex $pIdx -BatchIndex $bIdx
+                                    if ($batchPath) {
+                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx
                                     }
                                 }
-                            }
-                        })
-                    $script:processPanel.Controls.Add($kdlImportButton)
-                    
-                    # 直接取込ボタン（オレンジ）
-                    $directImportButton = New-Object System.Windows.Forms.Button
-                    $directImportButton.Location = New-Object System.Drawing.Point($directImportX, $buttonY)
-                    $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
+                            })
+                        $script:processPanel.Controls.Add($kdlKdbButton)
+                        
+                        # KDL取込(EB)ボタン (Batch Index 1)
+                        $kdlEbButton = New-Object System.Windows.Forms.Button
+                        $kdlEbButton.Location = New-Object System.Drawing.Point($kdlEbX, $buttonY)
+                        $kdlEbButton.Size = New-Object System.Drawing.Size(90, 30)
+                        if ($script:editMode) { $kdlEbButton.Text = "参照" } else { $kdlEbButton.Text = "KDL取込(EB)" }
+                        $kdlEbButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)
+                        $kdlEbButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                        $kdlEbButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)
+                        $kdlEbButton.FlatAppearance.BorderSize = 1
+                        $kdlEbButton.Font = New-Object System.Drawing.Font("メイリオ", 8)
+                        $kdlEbButton.Tag = @{ ProcessIndex = $i; BatchIndex = 1; Title = "KDL取込(EB)" }
+                        $kdlEbButton.Add_Click({
+                                $ctx = $this.Tag
+                                $pIdx = $ctx.ProcessIndex
+                                $bIdx = $ctx.BatchIndex
+                                $title = $ctx.Title
+                                if ($script:editMode) {
+                                    $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                    $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                    $fileDialog.Title = "$title 用バッチファイルを選択してください"
+                                    if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                        Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $fileDialog.FileName -BatchIndex $bIdx
+                                        Update-ProcessControls
+                                    }
+                                    $fileDialog.Dispose()
+                                }
+                                else {
+                                    $batchPath = Get-BatchFilePath -ProcessIndex $pIdx -BatchIndex $bIdx
+                                    if ($batchPath) {
+                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx
+                                    }
+                                }
+                            })
+                        $script:processPanel.Controls.Add($kdlEbButton)
+                        
+                        # 直接取込ボタン (Batch Index 2) - Row 1用
+                        $directImportButton = New-Object System.Windows.Forms.Button
+                        $directImportButton.Location = New-Object System.Drawing.Point($directImportX_Row1, $buttonY)
+                        $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
+                        if ($script:editMode) { $directImportButton.Text = "参照" } else { $directImportButton.Text = "直接取込" }
+                        $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)
+                        $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                        $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)
+                        $directImportButton.FlatAppearance.BorderSize = 1
+                        $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                        $directImportButton.Tag = @{ ProcessIndex = $i; BatchIndex = 2; Title = "直接取込" }
+                        $directImportButton.Add_Click({
+                                $ctx = $this.Tag
+                                $pIdx = $ctx.ProcessIndex
+                                $bIdx = $ctx.BatchIndex
+                                $title = $ctx.Title
+                                if ($script:editMode) {
+                                    $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                    $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                    $fileDialog.Title = "$title 用バッチファイルを選択してください"
+                                    if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                        Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $fileDialog.FileName -BatchIndex $bIdx
+                                        Update-ProcessControls
+                                    }
+                                    $fileDialog.Dispose()
+                                }
+                                else {
+                                    $batchPath = Get-BatchFilePath -ProcessIndex $pIdx -BatchIndex $bIdx
+                                    if ($batchPath) {
+                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx
+                                    }
+                                }
+                            })
+                        $script:processPanel.Controls.Add($directImportButton)
 
-                    if ($script:editMode) {
-                        $directImportButton.Text = "参照"
                     }
                     else {
-                        $directImportButton.Text = "直接取込"
+                        # --- 2行目 (Index 1) 標準レイアウト (変更なし) ---
+                        
+                        # KDL取込ボタン (Batch Index 0)
+                        $kdlImportButton = New-Object System.Windows.Forms.Button
+                        $kdlImportButton.Location = New-Object System.Drawing.Point($kdlImportX, $buttonY)
+                        $kdlImportButton.Size = New-Object System.Drawing.Size(90, 30)
+                        if ($script:editMode) { $kdlImportButton.Text = "参照" } else { $kdlImportButton.Text = "KDL取込" }
+                        $kdlImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)
+                        $kdlImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                        $kdlImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)
+                        $kdlImportButton.FlatAppearance.BorderSize = 1
+                        $kdlImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                        $kdlImportButton.Tag = $i
+                        $kdlImportButton.Add_Click({
+                                $clickedProcessIdx = $this.Tag
+                                if ($script:editMode) {
+                                    $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                    $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                    $fileDialog.Title = "KDL取込用バッチファイルを選択してください"
+                                    
+                                    $pageConfig = $script:pages[$script:currentPage]
+                                    $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                    if ($logStoragePath -and (Test-Path $logStoragePath)) { $fileDialog.InitialDirectory = $logStoragePath }
+                                
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                        $processConfig = $currentProcesses[$clickedProcessIdx]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                            $currentBatch = $processConfig.BatchFiles[0]
+                                            $initialPath = Resolve-BatchPath -Path $currentBatch.Path
+                                            if (Test-Path $initialPath) {
+                                                $fileDialog.InitialDirectory = Split-Path $initialPath
+                                                $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                            }
+                                        }
+                                    }
+                                
+                                    if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                        $selectedFile = $fileDialog.FileName
+                                        if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
+                                            Write-Log "KDL取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                            [System.Windows.Forms.MessageBox]::Show("KDL取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                            Update-ProcessControls
+                                        }
+                                    }
+                                    $fileDialog.Dispose()
+                                }
+                                else {
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                        $processConfig = $currentProcesses[$clickedProcessIdx]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                            $batch = $processConfig.BatchFiles[0]
+                                            $batchPath = Resolve-BatchPath -Path $batch.Path
+                                            $this.Enabled = $false
+                                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                            $this.Enabled = $true
+                                        }
+                                        else {
+                                            Write-Log "KDL取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                            [System.Windows.Forms.MessageBox]::Show("KDL取込用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                        }
+                                    }
+                                }
+                            })
+                        $script:processPanel.Controls.Add($kdlImportButton)
+                        
+                        # 直接取込ボタン (Batch Index 1) - Row 2用
+                        $directImportButton = New-Object System.Windows.Forms.Button
+                        $directImportButton.Location = New-Object System.Drawing.Point($directImportX, $buttonY)
+                        $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
+                        if ($script:editMode) { $directImportButton.Text = "参照" } else { $directImportButton.Text = "直接取込" }
+                        $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)
+                        $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                        $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)
+                        $directImportButton.FlatAppearance.BorderSize = 1
+                        $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                        $directImportButton.Tag = $i
+                        $directImportButton.Add_Click({
+                                $clickedProcessIdx = $this.Tag
+                                if ($script:editMode) {
+                                    $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                    $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                    $fileDialog.Title = "直接取込用バッチファイルを選択してください"
+                                    
+                                    $pageConfig = $script:pages[$script:currentPage]
+                                    $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                    if ($logStoragePath -and (Test-Path $logStoragePath)) { $fileDialog.InitialDirectory = $logStoragePath }
+                                    
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                        $processConfig = $currentProcesses[$clickedProcessIdx]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                            $currentBatch = $processConfig.BatchFiles[1]
+                                            $initialPath = Resolve-BatchPath -Path $currentBatch.Path
+                                            if (Test-Path $initialPath) {
+                                                $fileDialog.InitialDirectory = Split-Path $initialPath
+                                                $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                            }
+                                        }
+                                        elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                            $currentBatch = $processConfig.BatchFiles[0]
+                                            $initialPath = Resolve-BatchPath -Path $currentBatch.Path
+                                            if (Test-Path $initialPath) { $fileDialog.InitialDirectory = Split-Path $initialPath }
+                                        }
+                                    }
+                                    
+                                    if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                        $selectedFile = $fileDialog.FileName
+                                        Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
+                                        Write-Log "直接取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                        [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                        Update-ProcessControls
+                                    }
+                                    $fileDialog.Dispose()
+                                }
+                                else {
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                        $processConfig = $currentProcesses[$clickedProcessIdx]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                                            $batch = $processConfig.BatchFiles[1]
+                                            $batchPath = Resolve-BatchPath -Path $batch.Path
+                                            $this.Enabled = $false
+                                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                            $this.Enabled = $true
+                                        }
+                                        else {
+                                            Write-Log "直接取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                            [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                        }
+                                    }
+                                }
+                            })
+                        $script:processPanel.Controls.Add($directImportButton)
                     }
-                    $directImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 230, 204)  # #ffe6cc
-                    $directImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $directImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(215, 155, 0)  # #d79b00
-                    $directImportButton.FlatAppearance.BorderSize = 1
-                    $directImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $directImportButton.Tag = $i  # プロセスインデックスをTagに保存
-                    $directImportButton.Add_Click({
-                            $clickedProcessIdx = $this.Tag
-                            if ($script:editMode) {
-                                # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
-                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                                $fileDialog.Title = "直接取込用バッチファイルを選択してください"
-                                
-                                # LogStoragePathを初期ディレクトリに設定
-                                $pageConfig = $script:pages[$script:currentPage]
-                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
-                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                    $fileDialog.InitialDirectory = $logStoragePath
-                                }
-                            
-                                # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
-                                        $currentBatch = $processConfig.BatchFiles[1]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                        if (Test-Path $initialPath) {
-                                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                                            $fileDialog.FileName = Split-Path $initialPath -Leaf
-                                        }
-                                    }
-                                    elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                        # BatchFiles[1]が存在しない場合は、BatchFiles[0]を初期値として使用
-                                        $currentBatch = $processConfig.BatchFiles[0]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                        if (Test-Path $initialPath) {
-                                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                                        }
-                                    }
-                                }
-                            
-                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedFile = $fileDialog.FileName
-                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1
-                                    Write-Log "直接取込用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
-                                }
-                                $fileDialog.Dispose()
-                            }
-                            else {
-                                # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 1）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
-                                        $batch = $processConfig.BatchFiles[1]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $batchPath = Resolve-BatchPath -Path $batch.Path
-                                        $this.Enabled = $false
-                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        $this.Enabled = $true
-                                    }
-                                    else {
-                                        Write-Log "直接取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("直接取込用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-                                    }
-                                }
-                            }
-                        })
-                    $script:processPanel.Controls.Add($directImportButton)
                     
-                    # 取込後ボタン（オレンジ）
-                    $afterImportButton = New-Object System.Windows.Forms.Button
-                    $afterImportButton.Location = New-Object System.Drawing.Point($afterImportX, $buttonY)
-                    $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
-
-                    if ($script:editMode) {
-                        $afterImportButton.Text = "参照"
-                    }
-                    else {
-                        $afterImportButton.Text = "取込後"
-                    }
-                    $afterImportButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
-                    $afterImportButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $afterImportButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
-                    $afterImportButton.FlatAppearance.BorderSize = 1
-                    $afterImportButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $afterImportButton.Tag = $i  # プロセスインデックスをTagに保存
-                    $afterImportButton.Add_Click({
-                            $clickedProcessIdx = $this.Tag
-                            if ($script:editMode) {
-                                # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
-                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                                $fileDialog.Title = "取込後用バッチファイルを選択してください"
-                                
-                                # LogStoragePathを初期ディレクトリに設定
-                                $pageConfig = $script:pages[$script:currentPage]
-                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
-                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                    $fileDialog.InitialDirectory = $logStoragePath
-                                }
-                            
-                                # 現在のバッチファイルパスを初期値として設定（BatchIndex = 2）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
-                                        $currentBatch = $processConfig.BatchFiles[2]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                        if (Test-Path $initialPath) {
-                                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                                            $fileDialog.FileName = Split-Path $initialPath -Leaf
-                                        }
-                                    }
-                                    elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                        # BatchFiles[2]が存在しない場合は、BatchFiles[0]を初期値として使用
-                                        $currentBatch = $processConfig.BatchFiles[0]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                        if (Test-Path $initialPath) {
-                                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                                        }
-                                    }
-                                }
-                            
-                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedFile = $fileDialog.FileName
-                                    Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 2
-                                    Write-Log "取込後用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("取込後用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
-                                }
-                                $fileDialog.Dispose()
-                            }
-                            else {
-                                # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 2）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 2) {
-                                        $batch = $processConfig.BatchFiles[2]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $batchPath = Resolve-BatchPath -Path $batch.Path
-                                        $this.Enabled = $false
-                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        $this.Enabled = $true
-                                    }
-                                    else {
-                                        Write-Log "取込後用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("取込後用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-                                    }
-                                }
-                            }
-                        })
-                    $script:processPanel.Controls.Add($afterImportButton)
-                    
-                    # --- メンテボタンの追加（条件付き） ---
-                    
-                    # ヘルパー関数: メンテボタン作成
+                    # --- 共通ヘルパー関数: メンテボタン作成 ---
                     function Create-MaintButton {
                         param($x, $text, $batchIndex, $title)
                         $maintButton = New-Object System.Windows.Forms.Button
@@ -3369,14 +3356,12 @@ function Update-ProcessControls {
                         else {
                             $maintButton.Text = $text
                         }
-                        # 取込後と同じ色設定
                         $maintButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
                         $maintButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                         $maintButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
                         $maintButton.FlatAppearance.BorderSize = 1
                         $maintButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
                         
-                        # コンテキストをTagに保存（ハッシュテーブル）
                         $maintButton.Tag = @{
                             ProcessIndex = $i
                             BatchIndex   = $batchIndex
@@ -3384,7 +3369,6 @@ function Update-ProcessControls {
                         }
                         
                         $maintButton.Add_Click({
-                                # Tagからコンテキストを取得
                                 $ctx = $this.Tag
                                 $clickedProcessIdx = $ctx.ProcessIndex
                                 $targetBatchIdx = $ctx.BatchIndex
@@ -3457,211 +3441,171 @@ function Update-ProcessControls {
                         $script:processPanel.Controls.Add($maintButton)
                         return $maintButton
                     }
+                    
+                    # 取込後ボタン作成ヘルパー (BatchIndex可変対応)
+                    function Create-AfterImportButton {
+                        param($x, $batchIndex, $text)
+                        $afterBtn = New-Object System.Windows.Forms.Button
+                        $afterBtn.Location = New-Object System.Drawing.Point($x, $buttonY)
+                        $afterBtn.Size = New-Object System.Drawing.Size(80, 30)
+                        if ($script:editMode) { $afterBtn.Text = "参照" } else { $afterBtn.Text = $text }
+                        $afterBtn.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)
+                        $afterBtn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                        $afterBtn.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)
+                        $afterBtn.FlatAppearance.BorderSize = 1
+                        $afterBtn.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                        
+                        $afterBtn.Tag = @{ ProcessIndex = $i; BatchIndex = $batchIndex; Title = $text }
+                        $afterBtn.Add_Click({
+                                $ctx = $this.Tag
+                                $pIdx = $ctx.ProcessIndex
+                                $bIdx = $ctx.BatchIndex
+                                $t = $ctx.Title
+                             
+                                if ($script:editMode) {
+                                    # ... (同上のファイル選択ロジック) ...
+                                    # 簡略化のためCreate-MaintButtonと同じロジックを使用するか、ここで再実装
+                                    # ここではCreate-MaintButtonのロジックと同様の処理を行う（コード重複を避けるため、MaintButtonロジックを流用可だが、ボタンオブジェクトが違う）
+                                    # 実際にはMaintButtonのClick Logicと同じなので、共通関数化が望ましいが、今回はインライン展開する
+                                    $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                    $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                    $fileDialog.Title = "${t}用バッチファイルを選択してください"
+                                
+                                    $pageConfig = $script:pages[$script:currentPage]
+                                    $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                    if ($logStoragePath -and (Test-Path $logStoragePath)) { $fileDialog.InitialDirectory = $logStoragePath }
+                                
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
+                                        $processConfig = $currentProcesses[$pIdx]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $bIdx) {
+                                            $currentBatch = $processConfig.BatchFiles[$bIdx]
+                                            $initialPath = Resolve-BatchPath -Path $currentBatch.Path
+                                            if ($initialPath -and (Test-Path $initialPath)) {
+                                                $fileDialog.InitialDirectory = Split-Path $initialPath
+                                                $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                            }
+                                        }
+                                        elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                            $currentBatch = $processConfig.BatchFiles[0]
+                                            $initialPath = Resolve-BatchPath -Path $currentBatch.Path
+                                            if ($initialPath -and (Test-Path $initialPath)) { $fileDialog.InitialDirectory = Split-Path $initialPath }
+                                        }
+                                    }
+                                
+                                    if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                        $selectedFile = $fileDialog.FileName
+                                        if (Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $selectedFile -BatchIndex $bIdx) {
+                                            Write-Log "${t}用バッチファイルを設定しました: $selectedFile" "INFO" $pIdx
+                                            [System.Windows.Forms.MessageBox]::Show("${t}用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                            Update-ProcessControls
+                                        }
+                                    }
+                                    $fileDialog.Dispose()
+                                }
+                                else {
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
+                                        $processConfig = $currentProcesses[$pIdx]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $bIdx) {
+                                            $batch = $processConfig.BatchFiles[$bIdx]
+                                            $batchPath = Resolve-BatchPath -Path $batch.Path
+                                            $this.Enabled = $false
+                                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $pIdx
+                                            $this.Enabled = $true
+                                        }
+                                        else {
+                                            Write-Log "${t}用バッチファイルが設定されていません" "ERROR" $pIdx
+                                            [System.Windows.Forms.MessageBox]::Show("${t}用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                        }
+                                    }
+                                }
+                            })
+                        $script:processPanel.Controls.Add($afterBtn)
+                        return $afterBtn
+                    }
 
                     $maintButton1 = $null
                     $maintButton2 = $null
+                    $afterImportButton = $null # Initialize for scope
 
                     if ($i -eq 0) {
-                        # 1行目: 取込後(2) -> 取込後EA, メンテEA(3) -> 取込後EB, メンテEB(4) -> メンテ
+                        # --- 1行目 (Index 0) ---
+                        # 取込後 (Batch 3), メンテEA (Batch 4), メンテEB (Batch 5)
                         
-                        # 既存の「取込後」ボタンのテキストを「取込後EA」に変更（編集モード以外）
-                        if (-not $script:editMode) {
-                            $afterImportButton.Text = "取込後EA"
-                        }
+                        # 取込後 (X=540)
+                        $afterImportButton = Create-AfterImportButton -x 540 -batchIndex 3 -text "取込後"
                         
-                        # ボタン幅調整（必要なら）
-                        # $afterImportButton.Size = New-Object System.Drawing.Size(90, 30) 
-
-                        # 追加ボタン1: 取込後EB (BatchIndex 3)
-                        $maintButton1 = Create-MaintButton -x $maint1X -text "取込後EB" -batchIndex 3 -title "取込後EB"
+                        # メンテEA (X=630)
+                        $maintButton1 = Create-MaintButton -x 630 -text "メンテEA" -batchIndex 4 -title "メンテEA"
                         
-                        # 追加ボタン2: メンテ (BatchIndex 4)
-                        $maintButton2 = Create-MaintButton -x $maint2X -text "メンテ" -batchIndex 4 -title "メンテ"
-                    }
-                    elseif ($i -eq 1) {
-                        # 2行目: メンテ (BatchIndex 3)
-                        # 配置: 取込後 (440) と ログ確認 (710? -> 240/340に移動済み) の間？
-                        # 元のコードでは $maint1X = 530 だった。
-                        # "取込後" ($afterImportX = 440, Width=90 -> Right=530)
-                        # "ログ確認" はRow 2では $kdlImportX (240) の下 ($logY) に移動している。
-                        # 元のレイアウトではログ確認は右にあったが、前回変更で下に移動した。
-                        # 
-                        # ユーザー要望: 「取込後、ログ確認の間に移動」
-                        # 今のレイアウト:
-                        # [KDL] [Direct] [After] [   ] [   ]
-                        # [Log] [Log2]
-                        #
-                        # ユーザーの言う「ログ確認」は元の位置(右側)を指している可能性もあるが、
-                        # 前回の変更でログ確認は2段目に移った。
-                        # "３行目の取込後、ログ確認の間に移動させてほしい" -> User said "4ページ2行目のメンテボタンを、３行目の取込後、ログ確認の間に移動させてほしい。"
-                        # !!! Wait. The user request says: "4ページ2行目のメンテボタンを、３行目の取込後、ログ確認の間に移動させてほしい。"
-                        # This implies moving the button FROM Row 2 TO Row 3 ?? Or moving it within Row 2 to be between "After Import" and "Log Check"?
-                        # And "3行目" might mean "Index 2"? 
-                        #
-                        # Let's re-read carefully: "４ページ2行目のメンテボタンを、３行目の取込後、ログ確認の間に移動させてほしい。"
-                        # Literally: "Move the maintenance button of Page 4 Row 2 to between After Import and Log Check of Row 3."
-                        # This sounds like merging Row 2's maintenance button into Row 3 ?? 
-                        # Or maybe user counts rows 1-based.
-                        # Row 1 (Index 0). Row 2 (Index 1). Row 3 (Index 2).
-                        # User wants `Maint` button of Row 2 (Index 1) moved to Row 3 (Index 2) ??
-                        # "Three line's After Import and Log Check between"
-                        # 
-                        # Let's assume User means:
-                        # Row 1: Modified as requested.
-                        # Row 2 (Index 1): Use "Maint" button.
-                        # Button Position: Between "After Import" and "Log Check".
-                        # 
-                        # NOTE: In previous step, "Log Check" was moved to next line (Y+35).
-                        # So "Between After Import and Log Check" might mean physically between them ?
-                        # If Log Check is below, "Between" is ambiguous.
-                        #
-                        # UNLESS "Log Check" on Row 2 wasn't moved?
-                        # My previous edit moved Log buttons for BOTH Row 1 and Row 2.
-                        # 
-                        # Perhaps user wants the Maint button on Row 2 to be placed at X coordinate between After Import (X=440) and Log Check (X=710 - original position).
-                        # But Log Check is now at X=240, Y+35.
-                        #
-                        # However, since user approved the plan which said:
-                        # "Row 2 (2行目): 「メンテ」ボタンを「取込後」と「ログ確認」の間に移動"
-                        # I will assume standard horizontal layout flow if they were on same line, or just X-coordinate wise.
-                        #
-                        # Let's look at Row 3 (Index 2) - previously "Dynamic".
-                        # Now Dynamic starts from Row 4 (Index 3).
-                        # So Row 3 (Index 2) is now a Static row?
-                        # Or user means: Row 2's maintenance button should be moved to Row 3?
-                        # 
-                        # Let's assume Row 2 (Index 1) is the target row.
-                        # And we place "Maint" at $maint1X (530). 
-                        # After Import is 440. 
-                        # Log Check (Original) was 710.
-                        # So 530 is largely between 440 and 710.
-                        #
-                        # But wait, User said: "３行目の取込後、ログ確認の間に移動させてほしい"
-                        # "Move Row 2's Maint button to between Row 3's After Import and Log Check" ??
-                        # That implies Row 3 has "After Import" and "Log Check".
-                        # Currently Row 3 (Index 2) WAS dynamic, so it didn't have specific fixed buttons other than generic ones.
-                        # 
-                        # Maybe user counts Title as Row 1? No, usually not.
-                        # 
-                        # Let's interpret "3行目" as "The line that is the 3rd process" (Index 2).
-                        # So Index 2 is now a specific process row like Index 0 and 1.
-                        # And Index 3+ are dynamic.
-                        # 
-                        # And User wants the Maint button (from Row 2?) moved to Row 3.
-                        # Or maybe "Row 2's Maint Button" IS the one to be moved.
-                        # And it should be placed... where? 
-                        # "3行目の取込後、ログ確認の間に" -> "Between After Import and Log Check of Line 3".
-                        #
-                        # So Line 3 (Index 2) should have:
-                        # [After Import] [Maint] [Log Check]
-                        #
-                        # And Line 2 (Index 1) ? Does it lose the Maint button?
-                        # "Row 2's maint button moved to..." implies it leaves Row 2.
-                        # 
-                        # User also said: "それに伴い、現在３行目以降としている追加・削除は4行目から行うように修正してほしい。"
-                        # This confirms Index 2 (3rd line) is becoming a static/special line.
-                        #
-                        # So:
-                        # Index 0: Custom Layout 1 (AfterEA, AfterEB, Maint)
-                        # Index 1: Custom Layout 2 (What about Maint? It says "Row 2's Maint moved to Row 3". So Row 1 has Maint?)
-                        # Index 2: Custom Layout 3 (Has "Maint" button between After and Log).
-                        # Index 3+: Dynamic.
-                        #
-                        # What about Index 1 (Row 2)?
-                        # Does it have Maint? 
-                        # Previous code:
-                        # if ($i -eq 1) { $maintButton1 = Create-MaintButton ... }
-                        #
-                        # Request: "Move Page 4 Row 2's Maint button to be between Row 3's After Import and Log Check."
-                        # So Index 1 NO LONGER has Maint button?
-                        # And Index 2 GAINS Maint button?
-                        #
-                        # Summary of interpretation:
-                        # Index 0: AfterEA, AfterEB, Maint
-                        # Index 1: Standard (KDL, Direct, After, Log, Log2). NO Maint.
-                        # Index 2: Standard + Maint (Between After and Log).
-                        # Index 3+: Dynamic.
-                        #
-                        # Wait, where is "Log Check" on Row 3?
-                        # Standard Log Check is now at Y+35.
-                        # "Between After and Log" might refer to X coordinates again.
-                        #
-                        # Let's proceed with:
-                        # Index 0: Special
-                        # Index 1: No Maint.
-                        # Index 2: Has Maint.
-                        # Index 3+: Dynamic.
-
-                        # 2行目はメンテボタンなし
-                    }
-                    elseif ($i -eq 2) {
-                        # 3行目: メンテ (BatchIndex 3)
-                        # "取込後"($afterImportX=440) と "ログ確認"($logX=710 or Y+35) の間
-                        # X=530 ($maint1X) で作成
-                        $maintButton1 = Create-MaintButton -x $maint1X -text "メンテ" -batchIndex 3 -title "メンテ"
-                    }
-                    
-                    
-                    # ログ確認ボタン（KDL取込ボタンの下）
-                    $logButton = New-Object System.Windows.Forms.Button
-                    $logY = $buttonY + 35
-                    $logButton.Location = New-Object System.Drawing.Point($kdlImportX, $logY)
-                    $logButton.Size = New-Object System.Drawing.Size(90, 30)
-
-                    if ($script:editMode) {
-                        $logButton.Text = "参照"
+                        # メンテEB (X=720)
+                        $maintButton2 = Create-MaintButton -x 720 -text "メンテEB" -batchIndex 5 -title "メンテEB"
+                        
+                        # ログ確認 (Y+35)
+                        # Log1 @ 240, Log2 @ 440 (Direct Import X)
+                        $logY = $buttonY + 35
+                        $log1X = 240
+                        $log2X = 440
                     }
                     else {
-                        $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
+                        # --- 2行目 (Index 1) & 3行目 (Index 2) ---
+                        # 取込後 (Batch 2)
+                        
+                        # 取込後 (X=440)
+                        $afterImportButton = Create-AfterImportButton -x 440 -batchIndex 2 -text "取込後"
+                        
+                        # メンテ (X=530) - 3行目のみ
+                        if ($i -eq 2) {
+                            $maintButton1 = Create-MaintButton -x 530 -text "メンテ" -batchIndex 3 -title "メンテ"
+                        }
+                        
+                        # ログ確認 (Y+35)
+                        # Log1 @ 240, Log2 @ 340 (Direct Import X)
+                        $logY = $buttonY + 35
+                        $log1X = 240
+                        $log2X = 340
                     }
-                    $logButton.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
+                    
+                    # ログ確認ボタン1 (KDL列)
+                    $logButton = New-Object System.Windows.Forms.Button
+                    $logButton.Location = New-Object System.Drawing.Point($log1X, $logY)
+                    $logButton.Size = New-Object System.Drawing.Size(90, 30)
+                    if ($script:editMode) { $logButton.Text = "参照" } else { $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" } }
+                    $logButton.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)
                     $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
+                    $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)
                     $logButton.FlatAppearance.BorderSize = 1
                     $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $logButton.Tag = $i
-                    $logButton.Add_Click({
-                            $clickedProcessIdx = $this.Tag
-                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
-                        })
+                    $logButton.Add_Click({ $clickedProcessIdx = $this.Tag; Show-ProcessLog -ProcessIndex $clickedProcessIdx })
                     $script:processPanel.Controls.Add($logButton)
                     
-                    # 新規ログ確認ボタン（直接取込ボタンの下）
+                    # ログ確認ボタン2 (Direct列)
                     $logButton2 = New-Object System.Windows.Forms.Button
-                    $logButton2.Location = New-Object System.Drawing.Point($directImportX, $logY)
+                    $logButton2.Location = New-Object System.Drawing.Point($log2X, $logY)
                     $logButton2.Size = New-Object System.Drawing.Size(90, 30)
-                    
-                    if ($script:editMode) {
-                        $logButton2.Text = "参照"
-                    }
-                    else {
-                        $logButton2.Text = "ログ確認"
-                    }
-
-                    $logButton2.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
+                    if ($script:editMode) { $logButton2.Text = "参照" } else { $logButton2.Text = "ログ確認" }
+                    $logButton2.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)
                     $logButton2.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                    $logButton2.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
+                    $logButton2.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)
                     $logButton2.FlatAppearance.BorderSize = 1
                     $logButton2.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $logButton2.Tag = $i
-                    $logButton2.Add_Click({
-                            $clickedProcessIdx = $this.Tag
-                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
-                        })
+                    $logButton2.Add_Click({ $clickedProcessIdx = $this.Tag; Show-ProcessLog -ProcessIndex $clickedProcessIdx })
                     $script:processPanel.Controls.Add($logButton2)
-                    
-                    # 4ページ目用のコントロール情報を保存（1行目・2行目・3行目）
+
+                    # 4ページ目用のコントロール情報を保存
                     $script:processControls += @{
                         CheckBox            = $null
                         NameTextBox         = $nameTextBox
                         KdlSourceTextBox    = $kdlSourceTextBox
-
                         KdlSourceMoveButton = $null
                         KdlDestTextBox      = $kdlDestTextBox
                         KdlDestMoveButton   = $kdlDestMoveButton
                         V1CsvDestTextBox    = $v1CsvDestTextBox
                         V1CsvDestMoveButton = $v1CsvDestMoveButton
-                        KdlImportButton     = $kdlImportButton
+                        KdlImportButton     = $kdlImportButton       # Row 1ではKDB/EBのどちらかを割り当てるか、null? (要検討) - ここでは旧変数を使っているが、Row 1ではnullになる可能性。
                         DirectImportButton  = $directImportButton
                         AfterImportButton   = $afterImportButton
                         LogButton           = $logButton
