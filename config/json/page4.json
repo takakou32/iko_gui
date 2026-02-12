@@ -1,77 +1,83 @@
 ﻿{
-    "Title":  "4.SQLLOADER 実行",
-    "SourcePath":  "C:\\a5m2",
-    "DestinationPath":  "",
-    "LogStoragePath":  "C:\\work",
-    "Processes":  [
-                      {
-                          "Name":  "1.EB SQLLOADER実行",
-                          "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "KdlSourcePath":  "log2",
-                          "KdlDestPath":  "eb",
-                          "V1CsvDestPath":  "logs",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル1",
-                                                 "Path":  "sample2.bat"
-                                             },
-                                             {
-                                                 "Path":  "sample2.bat",
-                                                 "Name":  "バッチファイル"
-                                             },
-                                             {
-                                                 "Path":  "sample2.bat",
-                                                 "Name":  "バッチファイル"
-                                             }
-                                         ],
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "ExecutionDelay":  1
-                      },
-                      {
-                          "Name":  "1.EE SQLLOADER実行",
-                          "ExecuteButtonText":  "実行",
-                          "LogButtonText":  "ログ確認",
-                          "KdlSourcePath":  "C:\\work\\新しいフォルダー",
-                          "KdlDestPath":  "summary",
-                          "V1CsvDestPath":  "C:\\work",
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "サンプル2",
-                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat"
-                                             },
-                                             {
-                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat",
-                                                 "Name":  "バッチファイル"
-                                             },
-                                             {
-                                                 "Path":  "run.bat",
-                                                 "Name":  "バッチファイル"
-                                             }
-                                         ],
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "ExecutionDelay":  1
-                      },
-                      {
-                          "ExecuteButtonText":  "実行",
-                          "Name":  "新規プロセスd",
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "LogButtonText":  "ログ確認",
-                          "ExecutionDelay":  1,
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "バッチファイル",
-                                                 "Path":  ""
-                                             }
-                                         ],
-                          "V1CsvDestPath":  "logs\\eb"
-                      }
-                  ],
-    "LogStoragePath2":  ""
+    "Title": "4.SQLLOADER 実行",
+    "SourcePath": "C:\\a5m2",
+    "DestinationPath": "",
+    "LogStoragePath": "C:\\work",
+    "Processes": [
+        {
+            "Name": "1.EB SQLLOADER実行",
+            "ExecuteButtonText": "実行",
+            "LogButtonText": "ログ確認",
+            "KdlSourcePath": "log2",
+            "KdlDestPath": "eb",
+            "V1CsvDestPath": "logs",
+            "BatchFiles": [
+                {
+                    "Name": "サンプル1",
+                    "Path": "sample2.bat"
+                },
+                {
+                    "Path": "sample2.bat",
+                    "Name": "バッチファイル"
+                },
+                {
+                    "Path": "sample2.bat",
+                    "Name": "バッチファイル"
+                },
+                {
+                    "Name": "メンテEA",
+                    "Path": ""
+                },
+                {
+                    "Name": "メンテEB",
+                    "Path": ""
+                }
+            ],
+            "CsvMoveOperations": [],
+            "ExecutionDelay": 1
+        },
+        {
+            "Name": "1.EE SQLLOADER実行",
+            "ExecuteButtonText": "実行",
+            "LogButtonText": "ログ確認",
+            "KdlSourcePath": "C:\\work\\新しいフォルダー",
+            "KdlDestPath": "summary",
+            "V1CsvDestPath": "C:\\work",
+            "BatchFiles": [
+                {
+                    "Name": "サンプル2",
+                    "Path": "C:\\work\\SpringSample\\gradlew.bat"
+                },
+                {
+                    "Path": "C:\\work\\SpringSample\\gradlew.bat",
+                    "Name": "バッチファイル"
+                },
+                {
+                    "Path": "run.bat",
+                    "Name": "バッチファイル"
+                },
+                {
+                    "Name": "メンテ",
+                    "Path": ""
+                }
+            ],
+            "CsvMoveOperations": [],
+            "ExecutionDelay": 1
+        },
+        {
+            "ExecuteButtonText": "実行",
+            "Name": "新規プロセスd",
+            "CsvMoveOperations": [],
+            "LogButtonText": "ログ確認",
+            "ExecutionDelay": 1,
+            "BatchFiles": [
+                {
+                    "Name": "バッチファイル",
+                    "Path": ""
+                }
+            ],
+            "V1CsvDestPath": "logs\\eb"
+        }
+    ],
+    "LogStoragePath2": ""
 }

@@ -3080,12 +3080,22 @@ function Update-ProcessControls {
                         })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
                     
-                    # ボタン行（KDL取込、直接取込、取込後、ログ確認）
+                    $script:processPanel.Controls.Add($v1CsvDestMoveButton)
+                    
+                    # ボタン行（KDL取込、直接取込、取込後、メンテEA/EB/メンテ、ログ確認）
                     $buttonY = [int]($y + 115)
+                    
+                    # 各ボタンのX座標定義（左詰めレイアウト）
+                    $kdlImportX = 240      # 元410
+                    $directImportX = 340   # 元535
+                    $afterImportX = 440    # 元635
+                    $maint1X = 530         # 新設
+                    $maint2X = 620         # 新設
+                    $logX = 710            # 元735
                     
                     # KDL取込ボタン（赤色）
                     $kdlImportButton = New-Object System.Windows.Forms.Button
-                    $kdlImportButton.Location = New-Object System.Drawing.Point(410, $buttonY)
+                    $kdlImportButton.Location = New-Object System.Drawing.Point($kdlImportX, $buttonY)
                     $kdlImportButton.Size = New-Object System.Drawing.Size(90, 30)
 
                     if ($script:editMode) {
@@ -3168,7 +3178,7 @@ function Update-ProcessControls {
                     
                     # 直接取込ボタン（オレンジ）
                     $directImportButton = New-Object System.Windows.Forms.Button
-                    $directImportButton.Location = New-Object System.Drawing.Point(535, $buttonY)
+                    $directImportButton.Location = New-Object System.Drawing.Point($directImportX, $buttonY)
                     $directImportButton.Size = New-Object System.Drawing.Size(90, 30)
 
                     if ($script:editMode) {
@@ -3257,7 +3267,7 @@ function Update-ProcessControls {
                     
                     # 取込後ボタン（オレンジ）
                     $afterImportButton = New-Object System.Windows.Forms.Button
-                    $afterImportButton.Location = New-Object System.Drawing.Point(635, $buttonY)
+                    $afterImportButton.Location = New-Object System.Drawing.Point($afterImportX, $buttonY)
                     $afterImportButton.Size = New-Object System.Drawing.Size(80, 30)
 
                     if ($script:editMode) {
@@ -3344,10 +3354,114 @@ function Update-ProcessControls {
                         })
                     $script:processPanel.Controls.Add($afterImportButton)
                     
-                    # ログ確認ボタン（緑）
+                    # --- メンテボタンの追加（条件付き） ---
+                    
+                    # ヘルパー関数: メンテボタン作成
+                    function Create-MaintButton {
+                        param($x, $text, $batchIndex, $title)
+                        $maintButton = New-Object System.Windows.Forms.Button
+                        $maintButton.Location = New-Object System.Drawing.Point($x, $buttonY)
+                        $maintButton.Size = New-Object System.Drawing.Size(80, 30)
+
+                        if ($script:editMode) {
+                            $maintButton.Text = "参照"
+                        }
+                        else {
+                            $maintButton.Text = $text
+                        }
+                        # 取込後と同じ色設定
+                        $maintButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
+                        $maintButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                        $maintButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
+                        $maintButton.FlatAppearance.BorderSize = 1
+                        $maintButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                        $maintButton.Tag = $i
+                        $maintButton.Add_Click({
+                                $clickedProcessIdx = $this.Tag
+                                if ($script:editMode) {
+                                    $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+                                    $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+                                    $fileDialog.Title = "${title}用バッチファイルを選択してください"
+                                    
+                                    $pageConfig = $script:pages[$script:currentPage]
+                                    $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                    if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                        $fileDialog.InitialDirectory = $logStoragePath
+                                    }
+                                    
+                                    # 初期値設定
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                        $processConfig = $currentProcesses[$clickedProcessIdx]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $batchIndex) {
+                                            $currentBatch = $processConfig.BatchFiles[$batchIndex]
+                                            $initialPath = Resolve-BatchPath -Path $currentBatch.Path
+                                            if (Test-Path $initialPath) {
+                                                $fileDialog.InitialDirectory = Split-Path $initialPath
+                                                $fileDialog.FileName = Split-Path $initialPath -Leaf
+                                            }
+                                        }
+                                        elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                                            $currentBatch = $processConfig.BatchFiles[0]
+                                            $initialPath = Resolve-BatchPath -Path $currentBatch.Path
+                                            if (Test-Path $initialPath) {
+                                                $fileDialog.InitialDirectory = Split-Path $initialPath
+                                            }
+                                        }
+                                    }
+                                    
+                                    if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                                        $selectedFile = $fileDialog.FileName
+                                        if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex $batchIndex) {
+                                            Write-Log "${title}用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                            [System.Windows.Forms.MessageBox]::Show("${title}用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                            Update-ProcessControls
+                                        }
+                                    }
+                                    $fileDialog.Dispose()
+                                }
+                                else {
+                                    # 実行
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                                        $processConfig = $currentProcesses[$clickedProcessIdx]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $batchIndex) {
+                                            $batch = $processConfig.BatchFiles[$batchIndex]
+                                            $batchPath = Resolve-BatchPath -Path $batch.Path
+                                            $this.Enabled = $false
+                                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                            $this.Enabled = $true
+                                        }
+                                        else {
+                                            Write-Log "${title}用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                            [System.Windows.Forms.MessageBox]::Show("${title}用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                        }
+                                    }
+                                }
+                            })
+                        $script:processPanel.Controls.Add($maintButton)
+                        return $maintButton
+                    }
+
+                    $maintButton1 = $null
+                    $maintButton2 = $null
+
+                    if ($i -eq 0) {
+                        # 1行目: メンテEA, メンテEB
+                        $maintButton1 = Create-MaintButton -x $maint1X -text "メンテEA" -batchIndex 3 -title "メンテEA"
+                        $maintButton2 = Create-MaintButton -x $maint2X -text "メンテEB" -batchIndex 4 -title "メンテEB"
+                    }
+                    elseif ($i -eq 1) {
+                        # 2行目: メンテ（位置はメンテEAと同じ）
+                        $maintButton1 = Create-MaintButton -x $maint1X -text "メンテ" -batchIndex 3 -title "メンテ"
+                    }
+
+                    
+                    # ログ確認ボタン（KDL取込ボタンの下）
                     $logButton = New-Object System.Windows.Forms.Button
-                    $logButton.Location = New-Object System.Drawing.Point(735, $buttonY)
-                    $logButton.Size = New-Object System.Drawing.Size(80, 30)
+                    $logY = $buttonY + 35
+                    $logButton.Location = New-Object System.Drawing.Point($kdlImportX, $logY)
+                    $logButton.Size = New-Object System.Drawing.Size(90, 30)
 
                     if ($script:editMode) {
                         $logButton.Text = "参照"
@@ -3360,11 +3474,36 @@ function Update-ProcessControls {
                     $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
                     $logButton.FlatAppearance.BorderSize = 1
                     $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $processIdx = $i
+                    $logButton.Tag = $i
                     $logButton.Add_Click({
-                            Show-ProcessLog -ProcessIndex $processIdx
+                            $clickedProcessIdx = $this.Tag
+                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
                         })
                     $script:processPanel.Controls.Add($logButton)
+                    
+                    # 新規ログ確認ボタン（直接取込ボタンの下）
+                    $logButton2 = New-Object System.Windows.Forms.Button
+                    $logButton2.Location = New-Object System.Drawing.Point($directImportX, $logY)
+                    $logButton2.Size = New-Object System.Drawing.Size(90, 30)
+                    
+                    if ($script:editMode) {
+                        $logButton2.Text = "参照"
+                    }
+                    else {
+                        $logButton2.Text = "ログ確認"
+                    }
+
+                    $logButton2.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
+                    $logButton2.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+                    $logButton2.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
+                    $logButton2.FlatAppearance.BorderSize = 1
+                    $logButton2.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                    $logButton2.Tag = $i
+                    $logButton2.Add_Click({
+                            $clickedProcessIdx = $this.Tag
+                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
+                        })
+                    $script:processPanel.Controls.Add($logButton2)
                     
                     # 4ページ目用のコントロール情報を保存（1行目・2行目）
                     $script:processControls += @{
@@ -3381,6 +3520,7 @@ function Update-ProcessControls {
                         DirectImportButton  = $directImportButton
                         AfterImportButton   = $afterImportButton
                         LogButton           = $logButton
+                        LogButton2          = $logButton2
                     }
                 }
                 else {
