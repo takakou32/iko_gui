@@ -3375,13 +3375,25 @@ function Update-ProcessControls {
                         $maintButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
                         $maintButton.FlatAppearance.BorderSize = 1
                         $maintButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                        $maintButton.Tag = $i
+                        
+                        # コンテキストをTagに保存（ハッシュテーブル）
+                        $maintButton.Tag = @{
+                            ProcessIndex = $i
+                            BatchIndex   = $batchIndex
+                            Title        = $title
+                        }
+                        
                         $maintButton.Add_Click({
-                                $clickedProcessIdx = $this.Tag
+                                # Tagからコンテキストを取得
+                                $ctx = $this.Tag
+                                $clickedProcessIdx = $ctx.ProcessIndex
+                                $targetBatchIdx = $ctx.BatchIndex
+                                $targetTitle = $ctx.Title
+
                                 if ($script:editMode) {
                                     $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                     $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                                    $fileDialog.Title = "${title}用バッチファイルを選択してください"
+                                    $fileDialog.Title = "${targetTitle}用バッチファイルを選択してください"
                                     
                                     $pageConfig = $script:pages[$script:currentPage]
                                     $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
@@ -3393,10 +3405,11 @@ function Update-ProcessControls {
                                     $currentProcesses = Get-CurrentPageProcesses
                                     if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
                                         $processConfig = $currentProcesses[$clickedProcessIdx]
-                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $batchIndex) {
-                                            $currentBatch = $processConfig.BatchFiles[$batchIndex]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $targetBatchIdx) {
+                                            $currentBatch = $processConfig.BatchFiles[$targetBatchIdx]
                                             $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                            if (Test-Path $initialPath) {
+                                            # パスが有効かチェック（空文字でのTest-Pathエラー防止）
+                                            if ($initialPath -and (Test-Path $initialPath)) {
                                                 $fileDialog.InitialDirectory = Split-Path $initialPath
                                                 $fileDialog.FileName = Split-Path $initialPath -Leaf
                                             }
@@ -3404,7 +3417,8 @@ function Update-ProcessControls {
                                         elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                             $currentBatch = $processConfig.BatchFiles[0]
                                             $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                            if (Test-Path $initialPath) {
+                                            # パスが有効かチェック
+                                            if ($initialPath -and (Test-Path $initialPath)) {
                                                 $fileDialog.InitialDirectory = Split-Path $initialPath
                                             }
                                         }
@@ -3412,9 +3426,9 @@ function Update-ProcessControls {
                                     
                                     if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                         $selectedFile = $fileDialog.FileName
-                                        if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex $batchIndex) {
-                                            Write-Log "${title}用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                            [System.Windows.Forms.MessageBox]::Show("${title}用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                                        if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex $targetBatchIdx) {
+                                            Write-Log "${targetTitle}用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                                            [System.Windows.Forms.MessageBox]::Show("${targetTitle}用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
                                             Update-ProcessControls
                                         }
                                     }
@@ -3425,16 +3439,17 @@ function Update-ProcessControls {
                                     $currentProcesses = Get-CurrentPageProcesses
                                     if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
                                         $processConfig = $currentProcesses[$clickedProcessIdx]
-                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $batchIndex) {
-                                            $batch = $processConfig.BatchFiles[$batchIndex]
+                                        if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $targetBatchIdx) {
+                                            $batch = $processConfig.BatchFiles[$targetBatchIdx]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
+                                            
                                             $this.Enabled = $false
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                             $this.Enabled = $true
                                         }
                                         else {
-                                            Write-Log "${title}用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                            [System.Windows.Forms.MessageBox]::Show("${title}用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                                            Write-Log "${targetTitle}用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                                            [System.Windows.Forms.MessageBox]::Show("${targetTitle}用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
                                         }
                                     }
                                 }
