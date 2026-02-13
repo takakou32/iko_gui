@@ -368,6 +368,16 @@ function Invoke-BatchFile {
             Write-Log "バッチファイル実行完了 (ExitCode: 0)" "INFO" $ProcessIndex
             return $true
         }
+        elseif ($exitCode -eq -1073741510) {
+            # 0xC000013A (STATUS_CONTROL_C_EXIT): ユーザーによるウィンドウ「×」ボタンクローズ
+            Write-Log "バッチファイル実行完了 (ウィンドウ切断: $exitCode)" "INFO" $ProcessIndex
+            return $true
+        }
+        elseif ($exitCode -eq 3) {
+            # ExitCode 3: ユーザー申告による正常終了値
+            Write-Log "バッチファイル実行完了 (ExitCode: 3)" "INFO" $ProcessIndex
+            return $true
+        }
         else {
             Write-Log "バッチファイル実行エラー (ExitCode: $exitCode)" "ERROR" $ProcessIndex
             [System.Windows.Forms.MessageBox]::Show("バッチファイルの実行中にエラーが発生しました。`nログを確認してください。", "実行エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
@@ -1252,33 +1262,36 @@ function Save-PagePaths {
             }
             $pageJson.SourcePath = $relativeSourcePath
         }
-        
+
         # DestinationPath（V1抽出CSV格納先など）
-        if ($DestinationPath) {
-            $relativeDestPath = try {
-                # ユーザー要望により、Page 3の場合は共通基準パスを使用
-                $basePath = if ($script:currentPage -eq 2) {
-                    Get-CommonBasePath
+        if ($script:currentPage -ne 2) {
+            if ($DestinationPath) {
+                $relativeDestPath = try {
+                    # ユーザー要望により、Page 3の場合は共通基準パスを使用
+                    $basePath = if ($script:currentPage -eq 2) {
+                        Get-CommonBasePath
+                    }
+                    else {
+                        [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+                    }
+                    
+                    $targetPath = [System.IO.Path]::GetFullPath($DestinationPath).TrimEnd('\', '/')
+                    
+                    if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                        $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+                        $relative
+                    }
+                    else {
+                        $DestinationPath
+                    }
                 }
-                else {
-                    [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
-                }
-                
-                $targetPath = [System.IO.Path]::GetFullPath($DestinationPath).TrimEnd('\', '/')
-                
-                if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                    $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                    $relative
-                }
-                else {
+                catch {
                     $DestinationPath
                 }
+                $pageJson.DestinationPath = $relativeDestPath
             }
-            catch {
-                $DestinationPath
-            }
-            $pageJson.DestinationPath = $relativeDestPath
         }
+        "DEBUG: After DestinationPath LogStoragePath2: '$($pageJson.LogStoragePath2)'" | Out-File "c:\work\iko_gui\debug_log.txt" -Append
         
         if ($LogStoragePath) {
             $relativeLogPath = try {
@@ -1299,10 +1312,20 @@ function Save-PagePaths {
             catch {
                 $LogStoragePath
             }
-            $pageJson.LogStoragePath = $relativeLogPath
+            
+            if (-not $pageJson.PSObject.Properties['LogStoragePath']) {
+                $pageJson | Add-Member -MemberType NoteProperty -Name "LogStoragePath" -Value $relativeLogPath
+            }
+            else {
+                $pageJson.LogStoragePath = $relativeLogPath
+            }
         }
-        
-        if ($LogStoragePath2 -ne $null) {
+        else {
+            if (-not $pageJson.PSObject.Properties['LogStoragePath']) {
+                $pageJson | Add-Member -MemberType NoteProperty -Name "LogStoragePath" -Value ""
+            }
+        }
+        if ($LogStoragePath2) {
             $relativeLogPath2 = try {
                 $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
                 $targetPath = [System.IO.Path]::GetFullPath($LogStoragePath2).TrimEnd('\', '/')
@@ -1322,12 +1345,10 @@ function Save-PagePaths {
                 $LogStoragePath2
             }
             # LogStoragePath2プロパティが存在しない場合は追加
-            if (-not (Get-Member -InputObject $pageJson -Name "LogStoragePath2" -MemberType NoteProperty)) {
+            if (-not $pageJson.PSObject.Properties['LogStoragePath2']) {
                 $pageJson | Add-Member -MemberType NoteProperty -Name "LogStoragePath2" -Value $relativeLogPath2
             }
-            else {
-                $pageJson.LogStoragePath2 = $relativeLogPath2
-            }
+            $pageJson.LogStoragePath2 = $relativeLogPath2
         }
         
         # ページJSONファイルに保存（UTF-8 BOM付き）
@@ -3105,9 +3126,30 @@ function Update-ProcessControls {
                                     $fileDialog.Dispose()
                                 }
                                 else {
-                                    $batchPath = Get-BatchFilePath -ProcessIndex $pIdx -BatchIndex $bIdx
+                                    # 引数の準備 (KdlSourcePath, KdlDestPath)
+                                    $batchArgs = @()
+                                    if ($script:processControls -and $pIdx -lt $script:processControls.Count) {
+                                        $ctrls = $script:processControls[$pIdx]
+                                        $src = if ($ctrls.KdlSourceTextBox) { $ctrls.KdlSourceTextBox.Text } else { "" }
+                                        $dst = if ($ctrls.KdlDestTextBox) { $ctrls.KdlDestTextBox.Text } else { "" }
+                                        if ($src -eq "パス") { $src = "" }
+                                        if ($dst -eq "パス") { $dst = "" }
+                                        $batchArgs = @($src, $dst)
+                                    }
+
+                                    # Get-BatchFilePathの代わり: インラインでパスを取得して解決
+                                    $batchPath = $null
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
+                                        $procConf = $currentProcesses[$pIdx]
+                                        if ($procConf.BatchFiles -and $procConf.BatchFiles.Count -gt $bIdx) {
+                                            $batch = $procConf.BatchFiles[$bIdx]
+                                            $batchPath = Resolve-BatchPath -Path $batch.Path
+                                        }
+                                    }
+
                                     if ($batchPath) {
-                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx
+                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
                                     }
                                 }
                             })
@@ -3140,9 +3182,30 @@ function Update-ProcessControls {
                                     $fileDialog.Dispose()
                                 }
                                 else {
-                                    $batchPath = Get-BatchFilePath -ProcessIndex $pIdx -BatchIndex $bIdx
+                                    # 引数の準備 (KdlSourcePath, KdlDestPath)
+                                    $batchArgs = @()
+                                    if ($script:processControls -and $pIdx -lt $script:processControls.Count) {
+                                        $ctrls = $script:processControls[$pIdx]
+                                        $src = if ($ctrls.KdlSourceTextBox) { $ctrls.KdlSourceTextBox.Text } else { "" }
+                                        $dst = if ($ctrls.KdlDestTextBox) { $ctrls.KdlDestTextBox.Text } else { "" }
+                                        if ($src -eq "パス") { $src = "" }
+                                        if ($dst -eq "パス") { $dst = "" }
+                                        $batchArgs = @($src, $dst)
+                                    }
+
+                                    # Get-BatchFilePathの代わり: インラインでパスを取得して解決
+                                    $batchPath = $null
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
+                                        $procConf = $currentProcesses[$pIdx]
+                                        if ($procConf.BatchFiles -and $procConf.BatchFiles.Count -gt $bIdx) {
+                                            $batch = $procConf.BatchFiles[$bIdx]
+                                            $batchPath = Resolve-BatchPath -Path $batch.Path
+                                        }
+                                    }
+
                                     if ($batchPath) {
-                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx
+                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
                                     }
                                 }
                             })
@@ -3175,9 +3238,30 @@ function Update-ProcessControls {
                                     $fileDialog.Dispose()
                                 }
                                 else {
-                                    $batchPath = Get-BatchFilePath -ProcessIndex $pIdx -BatchIndex $bIdx
+                                    # 引数の準備 (KdlSourcePath, KdlDestPath)
+                                    $batchArgs = @()
+                                    if ($script:processControls -and $pIdx -lt $script:processControls.Count) {
+                                        $ctrls = $script:processControls[$pIdx]
+                                        $src = if ($ctrls.KdlSourceTextBox) { $ctrls.KdlSourceTextBox.Text } else { "" }
+                                        $dst = if ($ctrls.KdlDestTextBox) { $ctrls.KdlDestTextBox.Text } else { "" }
+                                        if ($src -eq "パス") { $src = "" }
+                                        if ($dst -eq "パス") { $dst = "" }
+                                        $batchArgs = @($src, $dst)
+                                    }
+
+                                    # Get-BatchFilePathの代わり: インラインでパスを取得して解決
+                                    $batchPath = $null
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
+                                        $procConf = $currentProcesses[$pIdx]
+                                        if ($procConf.BatchFiles -and $procConf.BatchFiles.Count -gt $bIdx) {
+                                            $batch = $procConf.BatchFiles[$bIdx]
+                                            $batchPath = Resolve-BatchPath -Path $batch.Path
+                                        }
+                                    }
+
                                     if ($batchPath) {
-                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx
+                                        Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
                                     }
                                 }
                             })
