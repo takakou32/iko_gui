@@ -1,8 +1,0 @@
-Session Started at 20260210_144019
-[2026-02-10 14:40:20] [INFO] ページ 1 のプロセスを読み込みました (プロセス数: 2)
-[2026-02-10 14:40:20] [INFO] アプリケーションを起動しました
-[2026-02-10 14:40:20] [INFO] 設定ファイル: C:\work\iko_gui\config\json\config.json
-[2026-02-10 14:40:20] [INFO] ページ数: 4
-[2026-02-10 14:40:23] [INFO] [Page:1 Process:1] バッチファイル実行開始: チェック用バッチ (C:\work\iko_gui\run.bat)
-[2026-02-10 14:40:27] [INFO] [Page:1 Process:1] バッチファイル実行完了 (ExitCode: 0)
-[2026-02-10 14:40:36] [INFO] [Page:1 Process:1] バッチファイル実行開始: 実行用バッチ (C:\work\iko_gui\run.bat)
