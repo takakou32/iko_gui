@@ -48,5 +48,9 @@
                                 "Path":  "upload\\log_upload.bat",
                                 "Name":  "ログ格納用バッチファイル"
                             },
-    "LogStoragePath2":  "C:\\work\\iko_gui"
+    "LogStoragePath2":  "C:\\work\\iko_gui",
+    "LogAggregationBatchFile":  {
+                                    "Name":  "run.bat",
+                                    "Path":  "run.bat"
+                                }
 }

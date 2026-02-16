@@ -539,7 +539,7 @@ $logStoragePanel.Controls.Add($logStorageLabel2)
 # ログ格納先パス入力（2つ目）
 $logStoragePath2TextBox = New-Object System.Windows.Forms.TextBox
 $logStoragePath2TextBox.Location = New-Object System.Drawing.Point(370, 35)
-$logStoragePath2TextBox.Size = New-Object System.Drawing.Size(355, 30)
+$logStoragePath2TextBox.Size = New-Object System.Drawing.Size(300, 30)
 $logStoragePath2TextBox.Text = "パス"
 $logStoragePath2TextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
 $logStoragePath2TextBox.ReadOnly = $true
@@ -572,9 +572,125 @@ $logStoragePath2TextBox.Add_Click({
 $logStoragePanel.Controls.Add($logStoragePath2TextBox)
 $script:logStoragePath2TextBox = $logStoragePath2TextBox
 
+# ログ集約ボタン
+$logAggregationButton = New-Object System.Windows.Forms.Button
+$logAggregationButton.Location = New-Object System.Drawing.Point(680, 35)
+$logAggregationButton.Size = New-Object System.Drawing.Size(80, 30)
+if ($script:editMode) {
+    $logAggregationButton.Text = "参照"
+}
+else {
+    $logAggregationButton.Text = "集約"
+}
+$logAggregationButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 0) # ログ格納ボタンと同じ色? or change? User didn't specify. Assume same style.
+$logAggregationButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$logAggregationButton.FlatAppearance.BorderColor = [System.Drawing.Color]::Black
+$logAggregationButton.FlatAppearance.BorderSize = 1
+$logAggregationButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+$logAggregationButton.Add_Click({
+        if ($script:editMode) {
+            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存
+            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
+            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
+            $fileDialog.Title = "ログ集約用バッチファイルを選択してください"
+        
+            # 現在のログ集約用バッチファイルパスを初期値として設定
+            $pageConfig = $script:pages[$script:currentPage]
+            if ($pageConfig.JsonPath) {
+                $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                    $pageConfig.JsonPath
+                }
+                else {
+                    Join-Path $PSScriptRoot $pageConfig.JsonPath
+                }
+            
+                if (Test-Path $jsonPath) {
+                    try {
+                        $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                        if ($pageJson.LogAggregationBatchFile -and $pageJson.LogAggregationBatchFile.Path) {
+                            $currentBatchPath = $pageJson.LogAggregationBatchFile.Path
+                            $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatchPath)) {
+                                $currentBatchPath
+                            }
+                            else {
+                                Join-Path $PSScriptRoot $currentBatchPath
+                            }
+                            if (Test-Path $initialPath) {
+                                $fileDialog.InitialDirectory = Split-Path $initialPath
+                                $fileDialog.FileName = Split-Path $initialPath -Leaf
+                            }
+                        }
+                    }
+                    catch {}
+                }
+            }
+        
+            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $selectedFile = $fileDialog.FileName
+                if (Save-LogAggregationBatchFile -BatchFilePath $selectedFile) {
+                    Write-Log "ログ集約用バッチファイルを設定しました: $selectedFile" "INFO"
+                    [System.Windows.Forms.MessageBox]::Show("ログ集約用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                
+                    # コントロールを更新して新しい設定を反映
+                    Update-ProcessControls
+                }
+            }
+            $fileDialog.Dispose()
+        }
+        else {
+            # 編集モードOFF：実行
+            $pageConfig = $script:pages[$script:currentPage]
+            if ($pageConfig.JsonPath) {
+                $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                    $pageConfig.JsonPath
+                }
+                else {
+                    Join-Path $PSScriptRoot $pageConfig.JsonPath
+                }
+            
+                if (Test-Path $jsonPath) {
+                    try {
+                        $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                        if ($pageJson.LogAggregationBatchFile -and $pageJson.LogAggregationBatchFile.Path) {
+                            $batchPath = $pageJson.LogAggregationBatchFile.Path
+                            if ([System.IO.Path]::IsPathRooted($batchPath)) {
+                                $batchPath = $batchPath
+                            }
+                            else {
+                                $batchPath = Join-Path $PSScriptRoot $batchPath
+                            }
+                        
+                            $logAggregationButton.Enabled = $false
+                            $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName ($pageJson.LogAggregationBatchFile.Name) -ProcessIndex -1
+                            $logAggregationButton.Enabled = $true
+                        
+                            if ($result) {
+                                Write-Log "ログ集約処理が正常に完了しました" "INFO"
+                            }
+                            else {
+                                Write-Log "ログ集約処理でエラーが発生しました" "ERROR"
+                            }
+                        }
+                        else {
+                            Write-Log "ログ集約用バッチファイルが設定されていません" "ERROR"
+                            [System.Windows.Forms.MessageBox]::Show("ログ集約用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                        }
+                    }
+                    catch {
+                        Write-Log "ログ集約処理の実行に失敗しました: $($_.Exception.Message)" "ERROR"
+                        [System.Windows.Forms.MessageBox]::Show("ログ集約処理の実行に失敗しました。`n$($_.Exception.Message)", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                        $logAggregationButton.Enabled = $true
+                    }
+                }
+            }
+        }
+    })
+$logStoragePanel.Controls.Add($logAggregationButton)
+$script:logAggregationButton = $logAggregationButton
+
 # ログ格納ボタン
 $logStorageButton = New-Object System.Windows.Forms.Button
-$logStorageButton.Location = New-Object System.Drawing.Point(735, 35)
+$logStorageButton.Location = New-Object System.Drawing.Point(770, 35)
 $logStorageButton.Size = New-Object System.Drawing.Size(80, 30)
 if ($script:editMode) {
     $logStorageButton.Text = "参照"

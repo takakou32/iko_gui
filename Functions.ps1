@@ -4996,6 +4996,16 @@ function Update-ProcessControls {
     # ページパスの読み込み
     Update-PagePaths
     
+    # ログ集約ボタンのテキストを編集モードに応じて更新
+    if ($script:logAggregationButton) {
+        if ($script:editMode) {
+            $script:logAggregationButton.Text = "参照"
+        }
+        else {
+            $script:logAggregationButton.Text = "集約"
+        }
+    }
+    
     # ログ格納ボタンのテキストを編集モードに応じて更新
     if ($script:logStorageButton) {
         if ($script:editMode) {
@@ -5160,5 +5170,97 @@ function Update-ProcessControls {
         if ($script:processPanel) {
             $script:processPanel.Size = New-Object System.Drawing.Size(900, 320)
         }
+    }
+}
+
+# ログ集約用バッチファイル保存関数
+function Save-LogAggregationBatchFile {
+    param(
+        [string]$BatchFilePath
+    )
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    
+    # JSONファイルパスの決定
+    $jsonPath = if ($pageConfig.JsonPath) {
+        if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+            $pageConfig.JsonPath
+        }
+        else {
+            Join-Path $PSScriptRoot $pageConfig.JsonPath
+        }
+    }
+    else {
+        $null
+    }
+    
+    if (-not $jsonPath) {
+        Write-Log "JSONファイルパスが設定されていません" "ERROR"
+        return $false
+    }
+    
+    # ディレクトリ作成
+    $jsonDir = Split-Path $jsonPath -Parent
+    if (-not (Test-Path $jsonDir)) {
+        New-Item -ItemType Directory -Path $jsonDir -Force | Out-Null
+    }
+    
+    # 既存のJSON読み込み or 新規作成
+    $jsonContent = if (Test-Path $jsonPath) {
+        try {
+            Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        }
+        catch {
+            New-Object PSObject
+        }
+    }
+    else {
+        New-Object PSObject
+    }
+    
+    # 相対パス変換
+    $relativeBatchPath = try {
+        $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+        $targetPath = [System.IO.Path]::GetFullPath($BatchFilePath).TrimEnd('\', '/')
+        
+        if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
+            if ([string]::IsNullOrEmpty($relative)) {
+                $relative = Split-Path $targetPath -Leaf
+            }
+            $relative
+        }
+        else {
+            $BatchFilePath
+        }
+    }
+    catch {
+        $BatchFilePath
+    }
+    
+    # LogAggregationBatchFileオブジェクト作成
+    $batchObj = New-Object PSObject
+    $batchObj | Add-Member -MemberType NoteProperty -Name "Name" -Value (Split-Path $BatchFilePath -Leaf)
+    $batchObj | Add-Member -MemberType NoteProperty -Name "Path" -Value $relativeBatchPath
+    
+    # プロパティ追加/更新
+    if (-not $jsonContent.PSObject.Properties['LogAggregationBatchFile']) {
+        $jsonContent | Add-Member -MemberType NoteProperty -Name "LogAggregationBatchFile" -Value $batchObj
+    }
+    else {
+        $jsonContent.LogAggregationBatchFile = $batchObj
+    }
+    
+    try {
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        Write-Log "ログ集約用バッチファイルを設定しました: $BatchFilePath" "INFO"
+        return $true
+    }
+    catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR"
+        return $false
     }
 }
