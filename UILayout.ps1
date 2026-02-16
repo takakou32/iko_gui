@@ -488,7 +488,7 @@ $script:logStoragePanel = $logStoragePanel
 $logStorageLabel = New-Object System.Windows.Forms.Label
 $logStorageLabel.Location = New-Object System.Drawing.Point(10, 10)
 $logStorageLabel.Size = New-Object System.Drawing.Size(100, 20)
-$logStorageLabel.Text = "ログ格納先"
+$logStorageLabel.Text = "ログ格納元"
 $logStorageLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
 $logStoragePanel.Controls.Add($logStorageLabel)
 
@@ -527,6 +527,14 @@ $logStoragePathTextBox.Add_Click({
     })
 $logStoragePanel.Controls.Add($logStoragePathTextBox)
 $script:logStoragePathTextBox = $logStoragePathTextBox
+
+# ログ格納先ラベル（右側）
+$logStorageLabel2 = New-Object System.Windows.Forms.Label
+$logStorageLabel2.Location = New-Object System.Drawing.Point(370, 10)
+$logStorageLabel2.Size = New-Object System.Drawing.Size(100, 20)
+$logStorageLabel2.Text = "ログ格納先"
+$logStorageLabel2.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
+$logStoragePanel.Controls.Add($logStorageLabel2)
 
 # ログ格納先パス入力（2つ目）
 $logStoragePath2TextBox = New-Object System.Windows.Forms.TextBox

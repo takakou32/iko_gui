@@ -3119,6 +3119,65 @@ function Update-ProcessControls {
                                     $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                     $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                     $fileDialog.Title = "$title 用バッチファイルを選択してください"
+                                    
+                                    # 初期ディレクトリの設定
+                                    $initDir = ""
+                                    
+                                    # 既存の設定を確認
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
+                                        $procConf = $currentProcesses[$pIdx]
+                                        if ($procConf.BatchFiles -and $procConf.BatchFiles.Count -gt $bIdx) {
+                                            $currentBatch = $procConf.BatchFiles[$bIdx]
+                                            if ($currentBatch.Path) {
+                                                $resolvedPath = Resolve-BatchPath -Path $currentBatch.Path
+                                                if (Test-Path $resolvedPath) {
+                                                    $initDir = Split-Path $resolvedPath -Parent
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    # 既存がない、または無効な場合はGlobalLogPath/LogStoragePath
+                                    if (-not $initDir -or -not (Test-Path $initDir)) {
+                                        $logStoragePath = if ($script:globalLogPath) { $script:globalLogPath } else { "" }
+                                        
+                                        if (-not $logStoragePath) {
+                                            $pageConfig = $script:pages[$script:currentPage]
+                                            $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                            
+                                            # メモリ上にない場合、JSONファイルから直接読み込む試み
+                                            if (-not $logStoragePath -and $pageConfig.JsonPath) {
+                                                $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                                                    $pageConfig.JsonPath
+                                                }
+                                                else {
+                                                    Join-Path $PSScriptRoot $pageConfig.JsonPath
+                                                }
+                                                
+                                                if (Test-Path $jsonPath) {
+                                                    try {
+                                                        $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                                                        if ($pageJson.LogStoragePath) {
+                                                            $logStoragePath = $pageJson.LogStoragePath
+                                                            # メモリ上の設定も更新
+                                                            $pageConfig.LogStoragePath = $logStoragePath
+                                                        }
+                                                    }
+                                                    catch {}
+                                                }
+                                            }
+                                        }
+
+                                        if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                            $initDir = $logStoragePath
+                                        }
+                                    }
+                                    
+                                    if ($initDir -and (Test-Path $initDir)) {
+                                        $fileDialog.InitialDirectory = $initDir
+                                    }
+
                                     if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                         Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $fileDialog.FileName -BatchIndex $bIdx
                                         Update-ProcessControls
@@ -3175,6 +3234,65 @@ function Update-ProcessControls {
                                     $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                     $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                     $fileDialog.Title = "$title 用バッチファイルを選択してください"
+
+                                    # 初期ディレクトリの設定
+                                    $initDir = ""
+                                    
+                                    # 既存の設定を確認
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
+                                        $procConf = $currentProcesses[$pIdx]
+                                        if ($procConf.BatchFiles -and $procConf.BatchFiles.Count -gt $bIdx) {
+                                            $currentBatch = $procConf.BatchFiles[$bIdx]
+                                            if ($currentBatch.Path) {
+                                                $resolvedPath = Resolve-BatchPath -Path $currentBatch.Path
+                                                if (Test-Path $resolvedPath) {
+                                                    $initDir = Split-Path $resolvedPath -Parent
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    # 既存がない、または無効な場合はGlobalLogPath/LogStoragePath
+                                    if (-not $initDir -or -not (Test-Path $initDir)) {
+                                        $logStoragePath = if ($script:globalLogPath) { $script:globalLogPath } else { "" }
+                                        
+                                        if (-not $logStoragePath) {
+                                            $pageConfig = $script:pages[$script:currentPage]
+                                            $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                            
+                                            # メモリ上にない場合、JSONファイルから直接読み込む試み
+                                            if (-not $logStoragePath -and $pageConfig.JsonPath) {
+                                                $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                                                    $pageConfig.JsonPath
+                                                }
+                                                else {
+                                                    Join-Path $PSScriptRoot $pageConfig.JsonPath
+                                                }
+                                                
+                                                if (Test-Path $jsonPath) {
+                                                    try {
+                                                        $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                                                        if ($pageJson.LogStoragePath) {
+                                                            $logStoragePath = $pageJson.LogStoragePath
+                                                            # メモリ上の設定も更新
+                                                            $pageConfig.LogStoragePath = $logStoragePath
+                                                        }
+                                                    }
+                                                    catch {}
+                                                }
+                                            }
+                                        }
+
+                                        if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                            $initDir = $logStoragePath
+                                        }
+                                    }
+                                    
+                                    if ($initDir -and (Test-Path $initDir)) {
+                                        $fileDialog.InitialDirectory = $initDir
+                                    }
+
                                     if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                         Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $fileDialog.FileName -BatchIndex $bIdx
                                         Update-ProcessControls
@@ -3231,6 +3349,65 @@ function Update-ProcessControls {
                                     $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                                     $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
                                     $fileDialog.Title = "$title 用バッチファイルを選択してください"
+
+                                    # 初期ディレクトリの設定
+                                    $initDir = ""
+                                    
+                                    # 既存の設定を確認
+                                    $currentProcesses = Get-CurrentPageProcesses
+                                    if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
+                                        $procConf = $currentProcesses[$pIdx]
+                                        if ($procConf.BatchFiles -and $procConf.BatchFiles.Count -gt $bIdx) {
+                                            $currentBatch = $procConf.BatchFiles[$bIdx]
+                                            if ($currentBatch.Path) {
+                                                $resolvedPath = Resolve-BatchPath -Path $currentBatch.Path
+                                                if (Test-Path $resolvedPath) {
+                                                    $initDir = Split-Path $resolvedPath -Parent
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    # 既存がない、または無効な場合はGlobalLogPath/LogStoragePath
+                                    if (-not $initDir -or -not (Test-Path $initDir)) {
+                                        $logStoragePath = if ($script:globalLogPath) { $script:globalLogPath } else { "" }
+                                        
+                                        if (-not $logStoragePath) {
+                                            $pageConfig = $script:pages[$script:currentPage]
+                                            $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
+                                            
+                                            # メモリ上にない場合、JSONファイルから直接読み込む試み
+                                            if (-not $logStoragePath -and $pageConfig.JsonPath) {
+                                                $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+                                                    $pageConfig.JsonPath
+                                                }
+                                                else {
+                                                    Join-Path $PSScriptRoot $pageConfig.JsonPath
+                                                }
+                                                
+                                                if (Test-Path $jsonPath) {
+                                                    try {
+                                                        $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
+                                                        if ($pageJson.LogStoragePath) {
+                                                            $logStoragePath = $pageJson.LogStoragePath
+                                                            # メモリ上の設定も更新
+                                                            $pageConfig.LogStoragePath = $logStoragePath
+                                                        }
+                                                    }
+                                                    catch {}
+                                                }
+                                            }
+                                        }
+
+                                        if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                                            $initDir = $logStoragePath
+                                        }
+                                    }
+                                    
+                                    if ($initDir -and (Test-Path $initDir)) {
+                                        $fileDialog.InitialDirectory = $initDir
+                                    }
+
                                     if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                                         Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $fileDialog.FileName -BatchIndex $bIdx
                                         Update-ProcessControls
