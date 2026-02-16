@@ -1151,10 +1151,11 @@ function Update-PagePaths {
     
     # ログ格納先（1つ目）
     if ($logStoragePath -and $logStoragePath -ne "パス" -and $logStoragePath -ne "") {
-        # 相対パスの場合は絶対パスに変換
+        # 相対パスの場合はGlobalLogPath（なければPSScriptRoot）と結合して絶対パスに変換
         try {
             if (-not [System.IO.Path]::IsPathRooted($logStoragePath)) {
-                $logStoragePath = Join-Path $PSScriptRoot $logStoragePath
+                $basePath = if ($script:globalLogPath) { $script:globalLogPath } else { $PSScriptRoot }
+                $logStoragePath = Join-Path $basePath $logStoragePath
             }
             $logStoragePath = [System.IO.Path]::GetFullPath($logStoragePath)
             $script:logStoragePathTextBox.Text = $logStoragePath
@@ -1169,20 +1170,8 @@ function Update-PagePaths {
     
     # ログ格納先（2つ目）
     if ($null -ne $logStoragePath2 -and $logStoragePath2 -ne "" -and $logStoragePath2 -ne "パス") {
-        # 相対パスの場合は絶対パスに変換
-        try {
-            if (-not [System.IO.Path]::IsPathRooted($logStoragePath2)) {
-                $logStoragePath2 = Join-Path $PSScriptRoot $logStoragePath2
-            }
-            $logStoragePath2 = [System.IO.Path]::GetFullPath($logStoragePath2)
-            if ($script:logStoragePath2TextBox) {
-                $script:logStoragePath2TextBox.Text = $logStoragePath2
-            }
-        }
-        catch {
-            if ($script:logStoragePath2TextBox) {
-                $script:logStoragePath2TextBox.Text = "パス"
-            }
+        if ($script:logStoragePath2TextBox) {
+            $script:logStoragePath2TextBox.Text = $logStoragePath2
         }
     }
     else {
@@ -1295,13 +1284,19 @@ function Save-PagePaths {
         
         if ($LogStoragePath) {
             $relativeLogPath = try {
-                $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+                # ユーザー要望により、GlobalLogPath（ツール格納場所）からの相対パスとして保存
+                $basePath = if ($script:globalLogPath) {
+                    [System.IO.Path]::GetFullPath($script:globalLogPath).TrimEnd('\', '/')
+                }
+                else {
+                    [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
+                }
                 $targetPath = [System.IO.Path]::GetFullPath($LogStoragePath).TrimEnd('\', '/')
                 
                 if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
                     $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
                     if ([string]::IsNullOrEmpty($relative)) {
-                        $relative = Split-Path $targetPath -Leaf
+                        $relative = "."
                     }
                     $relative
                 }
@@ -1326,29 +1321,13 @@ function Save-PagePaths {
             }
         }
         if ($LogStoragePath2) {
-            $relativeLogPath2 = try {
-                $basePath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\', '/')
-                $targetPath = [System.IO.Path]::GetFullPath($LogStoragePath2).TrimEnd('\', '/')
-                
-                if ($targetPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                    $relative = $targetPath.Substring($basePath.Length).TrimStart('\', '/')
-                    if ([string]::IsNullOrEmpty($relative)) {
-                        $relative = Split-Path $targetPath -Leaf
-                    }
-                    $relative
-                }
-                else {
-                    $LogStoragePath2
-                }
-            }
-            catch {
-                $LogStoragePath2
-            }
+            # ユーザー要望により、LogStoragePath2（ログ格納先）はフルパス（ネットワークパス対応）のまま保存
+            $pageJson.LogStoragePath2 = $LogStoragePath2
+            
             # LogStoragePath2プロパティが存在しない場合は追加
             if (-not $pageJson.PSObject.Properties['LogStoragePath2']) {
-                $pageJson | Add-Member -MemberType NoteProperty -Name "LogStoragePath2" -Value $relativeLogPath2
+                $pageJson | Add-Member -MemberType NoteProperty -Name "LogStoragePath2" -Value $LogStoragePath2
             }
-            $pageJson.LogStoragePath2 = $relativeLogPath2
         }
         
         # ページJSONファイルに保存（UTF-8 BOM付き）

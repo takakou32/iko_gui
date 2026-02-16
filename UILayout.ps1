@@ -665,7 +665,15 @@ $logStorageButton.Add_Click({
                             # ログ格納先パスを引数として取得（第一引数：左側、第二引数：右側）
                             $logStoragePath = ""
                             if ($script:logStoragePathTextBox -and $script:logStoragePathTextBox.Text -and $script:logStoragePathTextBox.Text -ne "パス") {
-                                $logStoragePath = $script:logStoragePathTextBox.Text
+                                $rawPath = $script:logStoragePathTextBox.Text
+                                # 相対パスの場合はGlobalLogPath（なければPSScriptRoot）と結合
+                                if (-not [System.IO.Path]::IsPathRooted($rawPath)) {
+                                    $basePath = if ($script:globalLogPath) { $script:globalLogPath } else { $PSScriptRoot }
+                                    $logStoragePath = Join-Path $basePath $rawPath
+                                }
+                                else {
+                                    $logStoragePath = $rawPath
+                                }
                             }
                         
                             $logStoragePath2 = ""
