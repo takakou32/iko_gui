@@ -2387,6 +2387,20 @@ function Update-ProcessControls {
                                     Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
                                 }
                             }
+                            else {
+                                $path = $this.Text
+                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                        $path = Join-Path $PSScriptRoot $path
+                                    }
+                                    if (Test-Path $path) {
+                                        Invoke-Item $path
+                                    }
+                                    else {
+                                        Write-Log "パスが存在しません: $path" "WARN"
+                                    }
+                                }
+                            }
                         })
                     $script:processPanel.Controls.Add($v1CsvSourceTextBox)
                     $script:v1CsvSourceTextBox = $v1CsvSourceTextBox
@@ -2476,6 +2490,20 @@ function Update-ProcessControls {
                                 $clickedProcessIdx = $this.Tag
                                 Save-ProcessDestinationPath -ProcessIndex $clickedProcessIdx -DestinationPath $selectedPath
                                 Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                            }
+                        }
+                        else {
+                            $path = $this.Text
+                            if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                    $path = Join-Path $PSScriptRoot $path
+                                }
+                                if (Test-Path $path) {
+                                    Invoke-Item $path
+                                }
+                                else {
+                                    Write-Log "パスが存在しません: $path" "WARN"
+                                }
                             }
                         }
                     })
@@ -2777,6 +2805,20 @@ function Update-ProcessControls {
                                     Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
                                 }
                             }
+                            else {
+                                $path = $this.Text
+                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                        $path = Join-Path $PSScriptRoot $path
+                                    }
+                                    if (Test-Path $path) {
+                                        Invoke-Item $path
+                                    }
+                                    else {
+                                        Write-Log "パスが存在しません: $path" "WARN"
+                                    }
+                                }
+                            }
                         })
                     # V1抽出CSV格納元の初期値はLoad-PagePathsで設定される（ページ4の場合も対応済み）
                     $script:processPanel.Controls.Add($v1CsvSourceTextBox)
@@ -2864,6 +2906,20 @@ function Update-ProcessControls {
                                 }
 
                             }
+                            else {
+                                $path = $this.Text
+                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                        $path = Join-Path $PSScriptRoot $path
+                                    }
+                                    if (Test-Path $path) {
+                                        Invoke-Item $path
+                                    }
+                                    else {
+                                        Write-Log "パスが存在しません: $path" "WARN"
+                                    }
+                                }
+                            }
                         })
                     # KDL変換CSV格納元の初期値を設定
                     $kdlSourcePathValue = "パス"
@@ -2917,6 +2973,20 @@ function Update-ProcessControls {
                                     Write-Log "KDL変換CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                                 }
 
+                            }
+                            else {
+                                $path = $this.Text
+                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                        $path = Join-Path $PSScriptRoot $path
+                                    }
+                                    if (Test-Path $path) {
+                                        Invoke-Item $path
+                                    }
+                                    else {
+                                        Write-Log "パスが存在しません: $path" "WARN"
+                                    }
+                                }
                             }
                         })
                     # KDL変換CSV格納先の初期値を設定
@@ -3022,6 +3092,20 @@ function Update-ProcessControls {
                                     $clickedProcessIdx = $this.Tag
                                     Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
                                     Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                                }
+                            }
+                            else {
+                                $path = $this.Text
+                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                        $path = Join-Path $PSScriptRoot $path
+                                    }
+                                    if (Test-Path $path) {
+                                        Invoke-Item $path
+                                    }
+                                    else {
+                                        Write-Log "パスが存在しません: $path" "WARN"
+                                    }
                                 }
                             }
                         })

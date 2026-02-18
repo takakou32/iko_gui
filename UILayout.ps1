@@ -529,6 +529,21 @@ $logStoragePathTextBox.Add_Click({
                 Update-ProcessControls
             }
         }
+        else {
+            # エクスプローラで開く
+            $path = $logStoragePathTextBox.Text
+            if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                if (-not [System.IO.Path]::IsPathRooted($path)) {
+                    $path = Join-Path $PSScriptRoot $path
+                }
+                if (Test-Path $path) {
+                    Invoke-Item $path
+                }
+                else {
+                    Write-Log "パスが存在しません: $path" "WARN"
+                }
+            }
+        }
     })
 $logStoragePanel.Controls.Add($logStoragePathTextBox)
 $script:logStoragePathTextBox = $logStoragePathTextBox
@@ -571,6 +586,21 @@ $logStoragePath2TextBox.Add_Click({
                 
                 # 画面を更新
                 Update-ProcessControls
+            }
+        }
+        else {
+            # エクスプローラで開く
+            $path = $logStoragePath2TextBox.Text
+            if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                if (-not [System.IO.Path]::IsPathRooted($path)) {
+                    $path = Join-Path $PSScriptRoot $path
+                }
+                if (Test-Path $path) {
+                    Invoke-Item $path
+                }
+                else {
+                    Write-Log "パスが存在しません: $path" "WARN"
+                }
             }
         }
     })
