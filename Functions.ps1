@@ -2011,6 +2011,12 @@ function Update-ProcessControls {
         if ($i -lt $currentProcesses.Count) {
             $processConfig = $currentProcesses[$i]
             
+            # 有効状態の取得（デフォルトtrue）
+            $isEnabled = $true
+            if ($processConfig.PSObject.Properties['Enabled']) {
+                $isEnabled = $processConfig.Enabled
+            }
+            
             if ($useDrawioLayout) {
                 # ページ1・2：2列レイアウト
                 $row = [Math]::Floor($i / 2)
@@ -2019,7 +2025,7 @@ function Update-ProcessControls {
                 # drawioの座標: タスク名(60, 100+), セット/チェック(200, 100+), 実行(280, 100+), ログ確認(350, 100+)
                 # プロセスパネルのy座標は50なので、実際のy座標は50から（100-50=50）
                 $x = if ($col -eq 0) { 60 } else { 440 }
-                $y = 50 + $row * 40
+                $y = 50 + $row * 60
                 
                 # テキストボックス（タスク名表示用）
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
@@ -2029,6 +2035,21 @@ function Update-ProcessControls {
                 $checkBox.Size = New-Object System.Drawing.Size(20, 20)
                 $checkBox.Visible = $script:editMode
                 $script:processPanel.Controls.Add($checkBox)
+
+                # 有効/無効切り替え用チェックボックス（新規）
+                $enableCheckBox = New-Object System.Windows.Forms.CheckBox
+                $enableCheckBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 30))
+                $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
+                $enableCheckBox.Checked = $isEnabled
+                $enableCheckBox.Visible = $script:editMode
+                $enableCheckBox.Tag = $i
+                $enableCheckBox.Add_Click({
+                        $idx = $this.Tag
+                        $enabled = $this.Checked
+                        Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
+                        Update-ProcessControls
+                    })
+                $script:processPanel.Controls.Add($enableCheckBox)
                 
                 $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
                 $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
@@ -2587,6 +2608,8 @@ function Update-ProcessControls {
                                     $this.Enabled = $false
                                     $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                     $this.Enabled = $true
+                                    Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                    Update-ProcessControls
                                 }
                                 else {
                                     Write-Log "CSV名変換用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -2668,6 +2691,8 @@ function Update-ProcessControls {
                                     $this.Enabled = $false
                                     $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                     $this.Enabled = $true
+                                    Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                    Update-ProcessControls
                                 }
                                 else {
                                     Write-Log "実行用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -2764,8 +2789,8 @@ function Update-ProcessControls {
                     $y = [int](140 + $row * 220)
                 }
                 else {
-                    # 3行目以降は行間を詰める（前の行までの高さ580px + 60pxずつ）
-                    $y = [int](580 + ($row - 2) * 60)
+                    # 3行目以降は行間を詰める（前の行までの高さ580px + 80pxずつ）
+                    $y = [int](580 + ($row - 2) * 80)
                 }
                 
 
@@ -2790,6 +2815,21 @@ function Update-ProcessControls {
                         }
                     })
                 $script:processPanel.Controls.Add($nameTextBox)
+
+                # 有効/無効切り替え用チェックボックス（Page 4 Index 0-1 用）
+                $enableCheckBox = New-Object System.Windows.Forms.CheckBox
+                $enableCheckBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
+                $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
+                $enableCheckBox.Checked = $isEnabled
+                $enableCheckBox.Visible = $script:editMode
+                $enableCheckBox.Tag = $i
+                $enableCheckBox.Add_Click({
+                        $idx = $this.Tag
+                        $enabled = $this.Checked
+                        Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
+                        Update-ProcessControls
+                    })
+                $script:processPanel.Controls.Add($enableCheckBox)
                 
                 if ($i -lt 2) {
 
@@ -3188,6 +3228,8 @@ function Update-ProcessControls {
 
                                     if ($batchPath) {
                                         Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
+                                        Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                        Update-ProcessControls
                                     }
                                 }
                             })
@@ -3303,6 +3345,8 @@ function Update-ProcessControls {
 
                                     if ($batchPath) {
                                         Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
+                                        Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                        Update-ProcessControls
                                     }
                                 }
                             })
@@ -3418,6 +3462,8 @@ function Update-ProcessControls {
 
                                     if ($batchPath) {
                                         Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
+                                        Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                        Update-ProcessControls
                                     }
                                 }
                             })
@@ -4052,6 +4098,8 @@ function Update-ProcessControls {
                                     $batch = $procConf.BatchFiles[$bIdx]
                                     $path = Resolve-BatchPath -Path $batch.Path
                                     Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $pIdx
+                                    Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                    Update-ProcessControls
                                 }
                             }
                         })
@@ -4077,7 +4125,7 @@ function Update-ProcessControls {
                         V1CsvDestMoveButton = $v1CsvDestMoveButton
                         DirectImportButton  = $directImportButton
                         AfterImportButton   = $afterImportButton
-                        MaintButton         = $null
+                        MaintButton         = $maintButton
                         LogButton           = $logButton
                     }
                 }
@@ -4091,6 +4139,21 @@ function Update-ProcessControls {
                     $checkBox.Size = New-Object System.Drawing.Size(20, 20)
                     $checkBox.Visible = $script:editMode
                     $script:processPanel.Controls.Add($checkBox)
+                    
+                    # 有効/無効切り替え用チェックボックス（Page 4 Index 2+ 用）
+                    $enableCheckBox = New-Object System.Windows.Forms.CheckBox
+                    $enableCheckBox.Location = New-Object System.Drawing.Point($calcX, [int]($calcY + 25))
+                    $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
+                    $enableCheckBox.Checked = $isEnabled
+                    $enableCheckBox.Visible = $script:editMode
+                    $enableCheckBox.Tag = $i
+                    $enableCheckBox.Add_Click({
+                            $idx = $this.Tag
+                            $enabled = $this.Checked
+                            Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
+                            Update-ProcessControls
+                        })
+                    $script:processPanel.Controls.Add($enableCheckBox)
                     
                     # V1抽出CSV格納先ラベル
                     $v1CsvDestLabel = New-Object System.Windows.Forms.Label
@@ -4689,6 +4752,8 @@ function Update-ProcessControls {
                                     $batch = $procConf.BatchFiles[$bIdx]
                                     $path = Resolve-BatchPath -Path $batch.Path
                                     Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $pIdx
+                                    Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                    Update-ProcessControls
                                 }
                             }
                         })
@@ -4768,6 +4833,8 @@ function Update-ProcessControls {
                     $executeButton.Add_Click({
                             $clickedProcessIdx = $this.Tag
                             Start-ProcessFlow -ProcessIndex $clickedProcessIdx
+                            Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                            Update-ProcessControls
                         })
                     $script:processPanel.Controls.Add($executeButton)
                     
@@ -4990,6 +5057,37 @@ function Update-ProcessControls {
                     $ctrlGroup.AfterImportButton.Text = "取込後"
                 }
             }
+        }
+        
+        # ---------------------------------------------------------
+        # プロセス無効時の表示制御 (Gray-out)
+        # ---------------------------------------------------------
+        $procEnabled = $true
+        if ($i -lt $currentProcesses.Count) {
+            $pConfig = $currentProcesses[$i]
+            if ($pConfig.PSObject.Properties['Enabled']) {
+                $procEnabled = $pConfig.Enabled
+            }
+        }
+        
+        if (-not $script:editMode -and -not $procEnabled) {
+            $grayColor = [System.Drawing.Color]::LightGray
+            
+            # テキストボックス
+            if ($ctrlGroup.NameTextBox) { $ctrlGroup.NameTextBox.BackColor = $grayColor }
+            if ($ctrlGroup.PathTextBox) { $ctrlGroup.PathTextBox.BackColor = $grayColor }
+            if ($ctrlGroup.V1CsvSourceTextBox) { $ctrlGroup.V1CsvSourceTextBox.BackColor = $grayColor }
+            if ($ctrlGroup.V1CsvDestTextBox) { $ctrlGroup.V1CsvDestTextBox.BackColor = $grayColor }
+            if ($ctrlGroup.KdlSourceTextBox) { $ctrlGroup.KdlSourceTextBox.BackColor = $grayColor }
+            if ($ctrlGroup.KdlDestTextBox) { $ctrlGroup.KdlDestTextBox.BackColor = $grayColor }
+            
+            # 実行系ボタン (ユーティリティ系は除外)
+            if ($ctrlGroup.ExecuteButton) { $ctrlGroup.ExecuteButton.Enabled = $false; $ctrlGroup.ExecuteButton.BackColor = $grayColor }
+            if ($ctrlGroup.CsvConvertButton) { $ctrlGroup.CsvConvertButton.Enabled = $false; $ctrlGroup.CsvConvertButton.BackColor = $grayColor }
+            if ($ctrlGroup.KdlImportButton) { $ctrlGroup.KdlImportButton.Enabled = $false; $ctrlGroup.KdlImportButton.BackColor = $grayColor }
+            if ($ctrlGroup.DirectImportButton) { $ctrlGroup.DirectImportButton.Enabled = $false; $ctrlGroup.DirectImportButton.BackColor = $grayColor }
+            if ($ctrlGroup.AfterImportButton) { $ctrlGroup.AfterImportButton.Enabled = $false; $ctrlGroup.AfterImportButton.BackColor = $grayColor }
+            if ($ctrlGroup.MaintButton) { $ctrlGroup.MaintButton.Enabled = $false; $ctrlGroup.MaintButton.BackColor = $grayColor }
         }
     }
     
@@ -5261,6 +5359,73 @@ function Save-LogAggregationBatchFile {
     }
     catch {
         Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+# プロセス有効/無効保存関数
+function Save-ProcessEnabled {
+    param(
+        [int]$ProcessIndex,
+        [bool]$Enabled
+    )
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) {
+        Write-Log "このページはJSONファイルを使用していません" "WARN" $ProcessIndex
+        return $false
+    }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
+        $pageConfig.JsonPath
+    }
+    else {
+        Join-Path $PSScriptRoot $pageConfig.JsonPath
+    }
+    
+    if (-not (Test-Path $jsonPath)) {
+        Write-Log "JSONファイルが見つかりません: $jsonPath" "ERROR" $ProcessIndex
+        return $false
+    }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) {
+            Write-Log "プロセスインデックスが範囲外です" "ERROR" $ProcessIndex
+            return $false
+        }
+        
+        $procObj = $jsonContent.Processes[$ProcessIndex]
+        
+        # Enabledプロパティがなければ追加、あれば更新
+        if (-not (Get-Member -InputObject $procObj -Name "Enabled" -MemberType NoteProperty)) {
+            Add-Member -InputObject $procObj -MemberType NoteProperty -Name "Enabled" -Value $Enabled
+        }
+        else {
+            $procObj.Enabled = $Enabled
+        }
+        
+        # JSONファイルに保存（UTF-8 BOM付き）
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        
+        # メモリ上の設定も更新（重要：UI再描画時のため）
+        if ($script:pages[$script:currentPage].Processes -and $ProcessIndex -lt $script:pages[$script:currentPage].Processes.Count) {
+            $memProc = $script:pages[$script:currentPage].Processes[$ProcessIndex]
+            if (-not (Get-Member -InputObject $memProc -Name "Enabled" -MemberType NoteProperty)) {
+                Add-Member -InputObject $memProc -MemberType NoteProperty -Name "Enabled" -Value $Enabled
+            }
+            else {
+                $memProc.Enabled = $Enabled
+            }
+        }
+        
+        Write-Log "プロセス有効状態を保存しました: $Enabled" "INFO" $ProcessIndex
+        return $true
+    }
+    catch {
+        Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
         return $false
     }
 }
