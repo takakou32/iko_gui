@@ -3,7 +3,12 @@
 
 # GUIフォームの作成
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "プロセス実行GUI"
+if ($script:config.Version) {
+    $form.Text = "データ移行ツール実行GUI ver.$($script:config.Version)"
+}
+else {
+    $form.Text = "データ移行ツール実行GUI"
+}
 # 初期状態は1ページ目なので、drawioのレイアウトに合わせて高さを調整（drawioのレイアウト: 580px + マージン）
 $form.Size = New-Object System.Drawing.Size(900, 600)
 $form.StartPosition = "CenterScreen"
