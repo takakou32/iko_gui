@@ -687,13 +687,7 @@ $logAggregationButton.Add_Click({
                     try {
                         $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
                         if ($pageJson.LogAggregationBatchFile -and $pageJson.LogAggregationBatchFile.Path) {
-                            $batchPath = $pageJson.LogAggregationBatchFile.Path
-                            if ([System.IO.Path]::IsPathRooted($batchPath)) {
-                                $batchPath = $batchPath
-                            }
-                            else {
-                                $batchPath = Join-Path $PSScriptRoot $batchPath
-                            }
+                            $batchPath = Resolve-BatchPath -Path $pageJson.LogAggregationBatchFile.Path
                         
                             $logAggregationButton.Enabled = $false
                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName ($pageJson.LogAggregationBatchFile.Name) -ProcessIndex -1
@@ -805,13 +799,7 @@ $logStorageButton.Add_Click({
                     try {
                         $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
                         if ($pageJson.LogStorageBatchFile -and $pageJson.LogStorageBatchFile.Path) {
-                            $batchPath = $pageJson.LogStorageBatchFile.Path
-                            if ([System.IO.Path]::IsPathRooted($batchPath)) {
-                                $batchPath = $batchPath
-                            }
-                            else {
-                                $batchPath = Join-Path $PSScriptRoot $batchPath
-                            }
+                            $batchPath = Resolve-BatchPath -Path $pageJson.LogStorageBatchFile.Path
                         
                             # ログ格納先パスを引数として取得（第一引数：左側、第二引数：右側）
                             $logStoragePath = ""

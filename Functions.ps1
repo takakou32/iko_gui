@@ -1364,62 +1364,16 @@ function Resolve-BatchPath {
         return $Path
     }
     
-    # ページ設定からLogStoragePath（共通パス）を取得
-    # ユーザー要望により、GlobalLogPath（ツール格納場所）を優先使用する
-    $logStoragePath = if ($script:globalLogPath) { $script:globalLogPath } else { "" }
+    # ユーザー指示:
+    # 1. psscriptrootではなく、globallogpathを使用すること
+    # 2. GlobalLogPathの親ディレクトリからの解決（パス重複回避）は不要
     
-    if (-not $logStoragePath) {
-        $pageConfig = $script:pages[$script:currentPage]
-        $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
-        
-        # メモリ上にない場合、JSONファイルから直接読み込む試み
-        if (-not $logStoragePath -and $pageConfig.JsonPath) {
-            $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) {
-                $pageConfig.JsonPath
-            }
-            else {
-                $path1 = Join-Path $PSScriptRoot $pageConfig.JsonPath
-                if (Test-Path $path1) {
-                    $path1
-                }
-                elseif ($script:configDir -and (Test-Path (Join-Path $script:configDir $pageConfig.JsonPath))) {
-                    Join-Path $script:configDir $pageConfig.JsonPath
-                }
-                else {
-                    $path1
-                }
-            }
-            
-            if (Test-Path $jsonPath) {
-                try {
-                    $pageJson = Get-Content $jsonPath -Encoding UTF8 | ConvertFrom-Json
-                    if ($pageJson.LogStoragePath) {
-                        $logStoragePath = $pageJson.LogStoragePath
-                        # メモリ上の設定も更新（次回以降のためにキャッシュ）
-                        $pageConfig.LogStoragePath = $logStoragePath
-                    }
-                }
-                catch {}
-            }
-        }
+    if ($script:globalLogPath) {
+        return Join-Path $script:globalLogPath $Path
     }
     
-    # LogStoragePathからの解決を試みる
-    if ($logStoragePath) {
-        $resolved = Join-Path $logStoragePath $Path
-        if (Test-Path $resolved) { return $resolved }
-    }
-    
-    # PSScriptRootからの解決を試みる（後方互換性）
-    $resolved = Join-Path $PSScriptRoot $Path
-    if (Test-Path $resolved) { return $resolved }
-    
-    # 見つからない場合は、LogStoragePathがあればそれを優先したパスを返す（エラー表示用）
-    if ($logStoragePath) {
-        return Join-Path $logStoragePath $Path
-    }
-    
-    return $resolved
+    # GlobalLogPathが未設定の場合は、パスをそのまま返す（もしくは空文字）
+    return $Path
 }
 
 # プロセス実行関数
