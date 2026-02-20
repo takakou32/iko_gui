@@ -40,7 +40,10 @@
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
+                          "ExecutionDelay":  1,
+                          "LogOutputDir":  "coverage",
+                          "LogOutputDir2":  "test",
+                          "Enabled":  false
                       },
                       {
                           "Name":  "1.EE SQLLOADER実行",

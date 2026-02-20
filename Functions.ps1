@@ -968,7 +968,11 @@ function Save-ProcessV1CsvDestPath {
 
 # ログ出力フォルダパス保存関数
 function Save-ProcessLogOutputDir {
-    param([int]$ProcessIndex, [string]$LogOutputDir)
+    param(
+        [int]$ProcessIndex, 
+        [string]$LogOutputDir,
+        [int]$LogIndex = 1
+    )
     
     $pageConfig = $script:pages[$script:currentPage]
     if (-not $pageConfig.JsonPath) {
@@ -996,20 +1000,21 @@ function Save-ProcessLogOutputDir {
         }
         
         $process = $jsonContent.Processes[$ProcessIndex]
+        $propName = if ($LogIndex -eq 2) { "LogOutputDir2" } else { "LogOutputDir" }
         
         # LogOutputDirプロパティが存在しない場合は追加
-        if (-not (Get-Member -InputObject $process -Name "LogOutputDir" -MemberType NoteProperty)) {
-            Add-Member -InputObject $process -MemberType NoteProperty -Name "LogOutputDir" -Value $LogOutputDir
+        if (-not (Get-Member -InputObject $process -Name $propName -MemberType NoteProperty)) {
+            Add-Member -InputObject $process -MemberType NoteProperty -Name $propName -Value $LogOutputDir
         }
         else {
-            $process.LogOutputDir = $LogOutputDir
+            $process.$propName = $LogOutputDir
         }
         
         # JSONファイルに保存（UTF-8 BOM付き）
         $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
         $utf8WithBom = New-Object System.Text.UTF8Encoding $true
         [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
-        Write-Log "ログ出力フォルダパスを保存しました: $LogOutputDir" "INFO" $ProcessIndex
+        Write-Log "ログ出力フォルダパス($propName)を保存しました: $LogOutputDir" "INFO" $ProcessIndex
         return $true
     }
     catch {
@@ -1742,7 +1747,10 @@ function Invoke-FileMoveOperation {
 
 # ログ確認関数
 function Show-ProcessLog {
-    param([int]$ProcessIndex)
+    param(
+        [int]$ProcessIndex,
+        [int]$LogIndex = 1
+    )
     
     # 編集モード中はフォルダ選択ダイアログを表示
     if ($script:editMode) {
@@ -1757,8 +1765,9 @@ function Show-ProcessLog {
         $currentProcesses = Get-CurrentPageProcesses
         if ($currentProcesses -and $ProcessIndex -lt $currentProcesses.Count) {
             $processConfig = $currentProcesses[$ProcessIndex]
-            if ($processConfig.LogOutputDir) {
-                $initialDirectory = Resolve-LogPath -SubPath $processConfig.LogOutputDir
+            $propName = if ($LogIndex -eq 2) { "LogOutputDir2" } else { "LogOutputDir" }
+            if ($processConfig.$propName) {
+                $initialDirectory = Resolve-LogPath -SubPath $processConfig.$propName
             }
         }
 
@@ -1793,7 +1802,7 @@ function Show-ProcessLog {
             }
 
             # JSONファイルを更新
-            if (Save-ProcessLogOutputDir -ProcessIndex $ProcessIndex -LogOutputDir $relativePath) {
+            if (Save-ProcessLogOutputDir -ProcessIndex $ProcessIndex -LogOutputDir $relativePath -LogIndex $LogIndex) {
                 Write-Log "ログ出力フォルダを設定しました: $relativePath (共通パスからの相対)" "INFO" $ProcessIndex
                 [System.Windows.Forms.MessageBox]::Show("ログ出力フォルダを設定しました。`n$relativePath", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
             }
@@ -1815,12 +1824,19 @@ function Show-ProcessLog {
     
     $processConfig = $currentProcesses[$ProcessIndex]
     
-    # JSONファイルで設定されているLogOutputDirを取得
-    $processLogDir = $logDir  # デフォルト値
-    if ($processConfig.LogOutputDir) {
-        # LogOutputDirが設定されている場合はそれを使用
-        # LogOutputDirが設定されている場合はそれを使用
-        $processLogDir = Resolve-LogPath -SubPath $processConfig.LogOutputDir
+    # JSONファイルで設定されているLogOutputDir(2)を取得
+    $processLogDir = $null
+    $propName = if ($LogIndex -eq 2) { "LogOutputDir2" } else { "LogOutputDir" }
+    if ($processConfig.$propName) {
+        # LogOutputDir(2)が設定されている場合はそれを使用
+        $processLogDir = Resolve-LogPath -SubPath $processConfig.$propName
+    }
+    
+    # 個別設定がない場合は警告を出して終了する
+    if (-not $processLogDir) {
+        [System.Windows.Forms.MessageBox]::Show("このプロセスのログ出力フォルダが設定されていません。`n編集モードから「参照」ボタンをクリックして、個別のフォルダを設定してください。", "未設定", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+        Write-Log "ログ出力フォルダが未設定のため開けません: ProcessIndex=$ProcessIndex" "WARN" $ProcessIndex
+        return
     }
     
     # ログ出力フォルダをエクスプローラで開く
@@ -3895,7 +3911,7 @@ function Update-ProcessControls {
                     $logButton2.FlatAppearance.BorderSize = 1
                     $logButton2.Font = New-Object System.Drawing.Font("メイリオ", 9)
                     $logButton2.Tag = $i
-                    $logButton2.Add_Click({ $clickedProcessIdx = $this.Tag; Show-ProcessLog -ProcessIndex $clickedProcessIdx })
+                    $logButton2.Add_Click({ $clickedProcessIdx = $this.Tag; Show-ProcessLog -ProcessIndex $clickedProcessIdx -LogIndex 2 })
                     $script:processPanel.Controls.Add($logButton2)
 
                     # 4ページ目用のコントロール情報を保存
