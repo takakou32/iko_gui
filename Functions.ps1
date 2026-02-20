@@ -1499,7 +1499,11 @@ function Start-ProcessFlow {
 
 # ファイル移動設定ダイアログ表示関数
 function Show-FileMoveSettingsDialog {
-    param([int]$ProcessIndex, [string]$ProcessName)
+    param(
+        [int]$ProcessIndex, 
+        [string]$ProcessName,
+        [string]$FileSuffix = ""
+    )
     
     # 現在のプロセス設定を取得
     $currentProcesses = Get-CurrentPageProcesses
@@ -1518,6 +1522,8 @@ function Show-FileMoveSettingsDialog {
         $fileNameRaw = "process_${script:currentPage + 1}_${ProcessIndex + 1}"
     }
     $safeFileName = [regex]::Replace($fileNameRaw, '[<>:"/\\|?*\r\n\t]', '_')
+    $safeFileName += $FileSuffix
+    
     $moveFilesDir = Join-Path $PSScriptRoot "config\movefiles"
     if (Test-Path $moveFilesDir) {
         $candidatePath = Join-Path $moveFilesDir ($safeFileName + ".txt")
@@ -1603,6 +1609,8 @@ function Show-FileMoveSettingsDialog {
         }
         # ファイル名として使えない文字を置換（改行やタブも除去）
         $safeFileName = [regex]::Replace($fileNameRaw, '[<>:"/\\|?*\r\n\t]', '_')
+        $safeFileName += $FileSuffix
+        
         $moveFilesDir = Join-Path $PSScriptRoot "config\movefiles"
         if (-not (Test-Path $moveFilesDir)) {
             New-Item -ItemType Directory -Path $moveFilesDir -Force | Out-Null
@@ -3021,11 +3029,11 @@ function Update-ProcessControls {
                             # 編集モードと非編集モードで動作を分岐
                             if ($script:editMode) {
                                 # 編集モード：移動設定ダイアログを表示
-                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -FileSuffix "_1"
                             }
                             else {
                                 # 非編集モード：ファイルコピーを実行（KDL格納元 -> KDL格納先）
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $kdlSourcePath -V1CsvDestinationPath $kdlDestPath -IsCopy $true
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $kdlSourcePath -V1CsvDestinationPath $kdlDestPath -FileSuffix "_1" -IsCopy $true
                             }
                         })
                     $script:processPanel.Controls.Add($kdlDestMoveButton)
@@ -3144,11 +3152,11 @@ function Update-ProcessControls {
                             # 編集モードと非編集モードで動作を分岐
                             if ($script:editMode) {
                                 # 編集モード：移動設定ダイアログを表示
-                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -FileSuffix "_2"
                             }
                             else {
                                 # 非編集モード：ファイルコピーを実行（V1格納元 -> V1格納先）
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath -IsCopy $true
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath -FileSuffix "_2" -IsCopy $true
                             }
                         })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
@@ -4016,10 +4024,10 @@ function Update-ProcessControls {
                             $v1CsvSourcePath = if ($script:v1CsvSourceTextBox) { $script:v1CsvSourceTextBox.Text } else { "" }
                             
                             if ($script:editMode) {
-                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -FileSuffix "_1"
                             }
                             else {
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath -FileSuffix "_1"
                             }
                         })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
@@ -4304,11 +4312,11 @@ function Update-ProcessControls {
                             # 編集モードと非編集モードで動作を分岐
                             if ($script:editMode) {
                                 # 編集モード：移動設定ダイアログを表示
-                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -FileSuffix "_2"
                             }
                             else {
                                 # 非編集モード：ファイル移動を実行
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath -FileSuffix "_2"
                             }
                         })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
