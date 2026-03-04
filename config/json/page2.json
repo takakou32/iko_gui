@@ -22,7 +22,8 @@
 
                                                 ],
                           "ExecutionDelay":  1,
-                          "LogOutputDir":  "C:\\work\\iko_gui\\logs"
+                          "LogOutputDir":  "C:\\work\\iko_gui\\logs",
+                          "Enabled":  true
                       },
                       {
                           "ExecuteButtonText":  "実行",

@@ -2398,12 +2398,27 @@ function Update-ProcessControls {
                 $x = 60
                 $y = 160 + $row * 40
                 
-                # チェックボックス（編集モードON時のみ表示）
+                # チェックボックス（編集モードON時のみ表示: 消去用など）
                 $checkBox = New-Object System.Windows.Forms.CheckBox
                 $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
                 $checkBox.Size = New-Object System.Drawing.Size(20, 20)
                 $checkBox.Visible = $script:editMode
                 $script:processPanel.Controls.Add($checkBox)
+                
+                # 有効/無効切り替え用チェックボックス
+                $enableCheckBox = New-Object System.Windows.Forms.CheckBox
+                $enableCheckBox.Location = New-Object System.Drawing.Point([int]($x - 45), [int]($y + 5))
+                $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
+                $enableCheckBox.Checked = $isEnabled
+                $enableCheckBox.Visible = $script:editMode
+                $enableCheckBox.Tag = $i
+                $enableCheckBox.Add_Click({
+                        $idx = $this.Tag
+                        $enabled = $this.Checked
+                        Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
+                        Update-ProcessControls
+                    })
+                $script:processPanel.Controls.Add($enableCheckBox)
                 
                 # テキストボックス（タスク名表示用）
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
@@ -2735,6 +2750,7 @@ function Update-ProcessControls {
                 # 3ページ目用のコントロール情報を保存
                 $script:processControls += @{
                     CheckBox         = $checkBox
+                    EnableCheckBox   = $enableCheckBox
                     NameTextBox      = $nameTextBox
                     PathTextBox      = $pathTextBox
                     FileMoveButton   = $fileMoveButton
@@ -5460,13 +5476,8 @@ function Save-ProcessEnabled {
         
         $procObj = $jsonContent.Processes[$ProcessIndex]
         
-        # Enabledプロパティがなければ追加、あれば更新
-        if (-not (Get-Member -InputObject $procObj -Name "Enabled" -MemberType NoteProperty)) {
-            Add-Member -InputObject $procObj -MemberType NoteProperty -Name "Enabled" -Value $Enabled
-        }
-        else {
-            $procObj.Enabled = $Enabled
-        }
+        # Enabledプロパティを強制的に追加/更新
+        $procObj | Add-Member -MemberType NoteProperty -Name "Enabled" -Value $Enabled -Force
         
         # JSONファイルに保存（UTF-8 BOM付き）
         $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
@@ -5476,12 +5487,7 @@ function Save-ProcessEnabled {
         # メモリ上の設定も更新（重要：UI再描画時のため）
         if ($script:pages[$script:currentPage].Processes -and $ProcessIndex -lt $script:pages[$script:currentPage].Processes.Count) {
             $memProc = $script:pages[$script:currentPage].Processes[$ProcessIndex]
-            if (-not (Get-Member -InputObject $memProc -Name "Enabled" -MemberType NoteProperty)) {
-                Add-Member -InputObject $memProc -MemberType NoteProperty -Name "Enabled" -Value $Enabled
-            }
-            else {
-                $memProc.Enabled = $Enabled
-            }
+            $memProc | Add-Member -MemberType NoteProperty -Name "Enabled" -Value $Enabled -Force
         }
         
         Write-Log "プロセス有効状態を保存しました: $Enabled" "INFO" $ProcessIndex

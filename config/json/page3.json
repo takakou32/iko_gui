@@ -22,7 +22,8 @@
 
                                                 ],
                           "ExecutionDelay":  1,
-                          "LogOutputDir":  "C:\\work\\test\\fizz-buzz\\test"
+                          "LogOutputDir":  "C:\\work\\test\\fizz-buzz\\test",
+                          "Enabled":  false
                       },
                       {
                           "Name":  "2.EB移行ツール適用（ページ2）",
@@ -38,7 +39,8 @@
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
+                          "ExecutionDelay":  1,
+                          "Enabled":  false
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -53,8 +55,9 @@
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
                                              }
-                                         ]
+                                         ],
+                          "Enabled":  false
                       }
                   ],
-    "LogStoragePath2":  "C:\\work\\iko_gui"
+    "LogStoragePath2":  "C:\\work\\iko_gui\\upload\\eb"
 }
