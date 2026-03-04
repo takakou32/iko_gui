@@ -2,7 +2,7 @@
     "Title":  "2.V1 移行ツール実行",
     "SourcePath":  "",
     "DestinationPath":  "",
-    "LogStoragePath":  "C:\\",
+    "LogStoragePath":  "iko_gui\\logs",
     "Processes":  [
                       {
                           "Name":  "①",
@@ -64,5 +64,5 @@
                                          ]
                       }
                   ],
-    "LogStoragePath2":  "C:\\GnuWin32"
+    "LogStoragePath2":  "C:\\GnuWin32\\man"
 }

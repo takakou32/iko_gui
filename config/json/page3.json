@@ -1,7 +1,7 @@
 ﻿{
     "Title":  "3.java移行ツール実行",
-    "SourcePath":  "C:\\MELSEC\\NNavi",
-    "LogStoragePath":  "C:\\PerfLogs",
+    "SourcePath":  "C:\\MELSEC\\NNavi\\DataAbsorber",
+    "LogStoragePath":  "keycloak-quickstarts\\.github\\workflows",
     "Processes":  [
                       {
                           "Name":  "1.EB移行ツール適用（ページ2）",
@@ -56,5 +56,5 @@
                                          ]
                       }
                   ],
-    "LogStoragePath2":  "iko_gui"
+    "LogStoragePath2":  "C:\\work\\iko_gui"
 }

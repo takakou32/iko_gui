@@ -2,7 +2,7 @@
     "Title":  "4.SQLLOADER 実行",
     "SourcePath":  "C:\\a5m2",
     "DestinationPath":  "",
-    "LogStoragePath":  "C:\\work",
+    "LogStoragePath":  "SpringSample\\gradle",
     "Processes":  [
                       {
                           "Name":  "1.EB SQLLOADER実行",
@@ -41,7 +41,7 @@
 
                                                 ],
                           "ExecutionDelay":  1,
-                          "LogOutputDir":  "coverage",
+                          "LogOutputDir":  "node_modules",
                           "LogOutputDir2":  "test",
                           "Enabled":  false
                       },
@@ -55,10 +55,10 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "サンプル2",
-                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat"
+                                                 "Path":  "SpringSample\\gradlew.bat"
                                              },
                                              {
-                                                 "Path":  "C:\\work\\SpringSample\\gradlew.bat",
+                                                 "Path":  "iko_gui\\run.bat",
                                                  "Name":  "バッチファイル"
                                              },
                                              {
@@ -73,7 +73,9 @@
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
+                          "ExecutionDelay":  1,
+                          "LogOutputDir2":  "coverage",
+                          "LogOutputDir":  "node_modules"
                       },
                       {
                           "Name":  "1.EC SQLLOADER実行",
@@ -107,7 +109,8 @@
                           "CsvMoveOperations":  [
 
                                                 ],
-                          "ExecutionDelay":  1
+                          "ExecutionDelay":  1,
+                          "LogOutputDir":  "node_modules"
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -122,7 +125,8 @@
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
                                              }
-                                         ]
+                                         ],
+                          "LogOutputDir":  "node_modules"
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -137,7 +141,9 @@
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
                                              }
-                                         ]
+                                         ],
+                          "Enabled":  true,
+                          "LogOutputDir":  "coverage"
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -152,7 +158,8 @@
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
                                              }
-                                         ]
+                                         ],
+                          "LogOutputDir":  ""
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -167,7 +174,8 @@
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
                                              }
-                                         ]
+                                         ],
+                          "LogOutputDir":  ""
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -182,10 +190,11 @@
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
                                              }
-                                         ]
+                                         ],
+                          "LogOutputDir":  ""
                       }
                   ],
-    "LogStoragePath2":  "",
+    "LogStoragePath2":  "C:\\work\\iko_gui\\config",
     "LogStorageBatchFile":  {
                                 "Path":  "新しいフォルダー\\新しいフォルダー\\sample.bat",
                                 "Name":  "ログ格納用バッチファイル"

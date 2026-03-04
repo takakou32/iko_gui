@@ -1343,10 +1343,10 @@ function Save-PagePaths {
         Write-Log "ページパスを保存しました: $pageJsonPath" "INFO"
 
         # メモリ上の設定も更新（動的なUI更新のため）
-        if ($SourcePath) { $pageConfig.SourcePath = $pageJson.SourcePath }
-        if ($DestinationPath) { $pageConfig.DestinationPath = $pageJson.DestinationPath }
-        if ($LogStoragePath) { $pageConfig.LogStoragePath = $pageJson.LogStoragePath }
-        if ($LogStoragePath2) { $pageConfig.LogStoragePath2 = $pageJson.LogStoragePath2 }
+        if ($SourcePath) { $pageConfig | Add-Member -MemberType NoteProperty -Name "SourcePath" -Value $pageJson.SourcePath -Force }
+        if ($DestinationPath) { $pageConfig | Add-Member -MemberType NoteProperty -Name "DestinationPath" -Value $pageJson.DestinationPath -Force }
+        if ($LogStoragePath) { $pageConfig | Add-Member -MemberType NoteProperty -Name "LogStoragePath" -Value $pageJson.LogStoragePath -Force }
+        if ($LogStoragePath2) { $pageConfig | Add-Member -MemberType NoteProperty -Name "LogStoragePath2" -Value $pageJson.LogStoragePath2 -Force }
         
         return $true
     }
@@ -4518,9 +4518,10 @@ function Update-ProcessControls {
                     $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
                     $logButton.FlatAppearance.BorderSize = 1
                     $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $processIdx = $i
+                    $logButton.Tag = $i
                     $logButton.Add_Click({
-                            Show-ProcessLog -ProcessIndex $processIdx
+                            $clickedProcessIdx = $this.Tag
+                            Show-ProcessLog -ProcessIndex $clickedProcessIdx
                         })
                     $script:processPanel.Controls.Add($logButton)
                     
