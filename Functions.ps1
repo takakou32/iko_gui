@@ -2116,9 +2116,9 @@ function Update-ProcessControls {
                                         # Resolve-BatchPathを使用してパスを解決
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
-                                        $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        $this.Enabled = $true
+                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Update-ProcessControls
                                     }
                                     else {
                                         Write-Log "チェック用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -2190,9 +2190,9 @@ function Update-ProcessControls {
                                         # Resolve-BatchPathを使用してパスを解決
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
-                                        $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        $this.Enabled = $true
+                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Update-ProcessControls
                                     }
                                     else {
                                         Write-Log "チェック用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -2208,6 +2208,10 @@ function Update-ProcessControls {
                 $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                 $fileMoveButton.FlatAppearance.BorderSize = 1
                 $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+                # 編集モードOFF時：Enabledフラグをボタンに反映
+                if (-not $script:editMode -and -not $isEnabled) {
+                    $fileMoveButton.Enabled = $false
+                }
                 $script:processPanel.Controls.Add($fileMoveButton)
                 
                 # 実行ボタン（オレンジ）
@@ -2281,9 +2285,9 @@ function Update-ProcessControls {
                                         # Resolve-BatchPathを使用してパスを解決
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
-                                        $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        $this.Enabled = $true
+                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Update-ProcessControls
                                     }
                                     else {
                                         Write-Log "実行用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -2296,6 +2300,10 @@ function Update-ProcessControls {
                             Start-ProcessFlow -ProcessIndex $clickedProcessIdx
                         }
                     })
+                # 編集モードOFF時：Enabledフラグをexecuteボタンに反映
+                if (-not $script:editMode -and -not $isEnabled) {
+                    $executeButton.Enabled = $false
+                }
                 $script:processPanel.Controls.Add($executeButton)
                 
                 # ログ確認ボタン（緑）
@@ -2626,9 +2634,7 @@ function Update-ProcessControls {
                                     # Resolve-BatchPathを使用してパスを解決
                                     $batchPath = Resolve-BatchPath -Path $batch.Path
                                     
-                                    $this.Enabled = $false
                                     $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                    $this.Enabled = $true
                                     Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
                                     Update-ProcessControls
                                 }
@@ -2639,6 +2645,10 @@ function Update-ProcessControls {
                             }
                         }
                     })
+                # 編集モードOFF時：Enabledフラグをcsvconvertボタンに反映
+                if (-not $script:editMode -and -not $isEnabled) {
+                    $csvConvertButton.Enabled = $false
+                }
                 $script:processPanel.Controls.Add($csvConvertButton)
                 
                 # 実行ボタン（オレンジ）
@@ -3311,6 +3321,10 @@ function Update-ProcessControls {
                                     }
                                 }
                             })
+                        # 編集モードOFF時：EnabledフラグをkdlKdbボタンに反映
+                        if (-not $script:editMode -and -not $isEnabled) {
+                            $kdlKdbButton.Enabled = $false
+                        }
                         $script:processPanel.Controls.Add($kdlKdbButton)
                         
                         # KDL取込(EB)ボタン (Batch Index 1)
@@ -3428,6 +3442,10 @@ function Update-ProcessControls {
                                     }
                                 }
                             })
+                        # 編集モードOFF時：EnabledフラグをkdlEbボタンに反映
+                        if (-not $script:editMode -and -not $isEnabled) {
+                            $kdlEbButton.Enabled = $false
+                        }
                         $script:processPanel.Controls.Add($kdlEbButton)
                         
                         # 直接取込ボタン (Batch Index 2) - Row 1用
@@ -3545,6 +3563,10 @@ function Update-ProcessControls {
                                     }
                                 }
                             })
+                        # 編集モードOFF時：EnabledフラグをdirectImportボタン（行1）に反映
+                        if (-not $script:editMode -and -not $isEnabled) {
+                            $directImportButton.Enabled = $false
+                        }
                         $script:processPanel.Controls.Add($directImportButton)
 
                     }
@@ -3603,9 +3625,9 @@ function Update-ProcessControls {
                                         if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
                                             $batch = $processConfig.BatchFiles[0]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
-                                            $this.Enabled = $false
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                            $this.Enabled = $true
+                                            Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                            Update-ProcessControls
                                         }
                                         else {
                                             Write-Log "KDL取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -3614,6 +3636,10 @@ function Update-ProcessControls {
                                     }
                                 }
                             })
+                        # 編集モードOFF時：EnabledフラグをkdlImportボタン（行2）に反映
+                        if (-not $script:editMode -and -not $isEnabled) {
+                            $kdlImportButton.Enabled = $false
+                        }
                         $script:processPanel.Controls.Add($kdlImportButton)
                         
                         # 直接取込ボタン (Batch Index 1) - Row 2用
@@ -3672,9 +3698,9 @@ function Update-ProcessControls {
                                         if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
                                             $batch = $processConfig.BatchFiles[1]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
-                                            $this.Enabled = $false
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                            $this.Enabled = $true
+                                            Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                            Update-ProcessControls
                                         }
                                         else {
                                             Write-Log "直接取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -3683,6 +3709,10 @@ function Update-ProcessControls {
                                     }
                                 }
                             })
+                        # 編集モードOFF時：EnabledフラグをdirectImportボタン（行2）に反映
+                        if (-not $script:editMode -and -not $isEnabled) {
+                            $directImportButton.Enabled = $false
+                        }
                         $script:processPanel.Controls.Add($directImportButton)
                     }
                     
@@ -3770,9 +3800,9 @@ function Update-ProcessControls {
                                             $batch = $processConfig.BatchFiles[$targetBatchIdx]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
                                             
-                                            $this.Enabled = $false
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                            $this.Enabled = $true
+                                            Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                            Update-ProcessControls
                                         }
                                         else {
                                             Write-Log "${targetTitle}用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -3781,6 +3811,10 @@ function Update-ProcessControls {
                                     }
                                 }
                             })
+                        # 編集モードOFF時：Enabledフラグをmaintボタンに反映
+                        if (-not $script:editMode -and -not $isEnabled) {
+                            $maintButton.Enabled = $false
+                        }
                         $script:processPanel.Controls.Add($maintButton)
                         return $maintButton
                     }
@@ -3853,9 +3887,9 @@ function Update-ProcessControls {
                                         if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $bIdx) {
                                             $batch = $processConfig.BatchFiles[$bIdx]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
-                                            $this.Enabled = $false
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $pIdx
-                                            $this.Enabled = $true
+                                            Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                            Update-ProcessControls
                                         }
                                         else {
                                             Write-Log "${t}用バッチファイルが設定されていません" "ERROR" $pIdx
@@ -3864,6 +3898,10 @@ function Update-ProcessControls {
                                     }
                                 }
                             })
+                        # 編集モードOFF時：EnabledフラグをafterBtnに反映
+                        if (-not $script:editMode -and -not $isEnabled) {
+                            $afterBtn.Enabled = $false
+                        }
                         $script:processPanel.Controls.Add($afterBtn)
                         return $afterBtn
                     }
@@ -4417,9 +4455,9 @@ function Update-ProcessControls {
                                         $batch = $processConfig.BatchFiles[1]
                                         # Resolve-BatchPathを使用してパスを解決
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
-                                        $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        $this.Enabled = $true
+                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Update-ProcessControls
                                     }
                                     else {
                                         Write-Log "直接取込用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -4428,6 +4466,10 @@ function Update-ProcessControls {
                                 }
                             }
                         })
+                    # 編集モードOFF時：EnabledフラグをdirectImportボタン（行3以降）に反映
+                    if (-not $script:editMode -and -not $isEnabled) {
+                        $directImportButton.Enabled = $false
+                    }
                     $script:processPanel.Controls.Add($directImportButton)
                     
                     # 取込後ボタン（オレンジ）
@@ -4506,9 +4548,9 @@ function Update-ProcessControls {
                                         $batch = $processConfig.BatchFiles[2]
                                         # Resolve-BatchPathを使用してパスを解決
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
-                                        $this.Enabled = $false
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        $this.Enabled = $true
+                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Update-ProcessControls
                                     }
                                     else {
                                         Write-Log "取込後用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
@@ -4517,6 +4559,10 @@ function Update-ProcessControls {
                                 }
                             }
                         })
+                    # 編集モードOFF時：EnabledフラグをafterImportボタン（行3以降）に反映
+                    if (-not $script:editMode -and -not $isEnabled) {
+                        $afterImportButton.Enabled = $false
+                    }
                     $script:processPanel.Controls.Add($afterImportButton)
                     
                     # ログ確認ボタン（緑）
