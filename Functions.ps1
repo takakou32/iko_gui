@@ -1665,7 +1665,9 @@ function Invoke-FileMoveOperation {
         [int]$ProcessIndex,
         [string]$ProcessName,
         [string]$V1CsvSourcePath,
-        [string]$V1CsvDestinationPath
+        [string]$V1CsvDestinationPath,
+        [string]$FileSuffix = "",
+        [bool]$IsCopy = $false
     )
     
     # パラメータの検証
@@ -1696,6 +1698,7 @@ function Invoke-FileMoveOperation {
     
     # movefileフォルダからファイルリストを読み込み
     $safeFileName = [regex]::Replace($ProcessName.Trim(), '[<>:"/\\|?*\r\n\t]', '_')
+    $safeFileName += $FileSuffix
     $moveFilesDir = Join-Path $PSScriptRoot "config\movefiles"
     $moveFilePath = Join-Path $moveFilesDir ($safeFileName + ".txt")
     
@@ -4078,10 +4081,10 @@ function Update-ProcessControls {
                             $v1CsvSourcePath = if ($script:v1CsvSourceTextBox) { $script:v1CsvSourceTextBox.Text } else { "" }
                             
                             if ($script:editMode) {
-                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -FileSuffix "_1"
+                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
                             }
                             else {
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath -FileSuffix "_1"
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
                             }
                         })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)
@@ -4366,11 +4369,11 @@ function Update-ProcessControls {
                             # 編集モードと非編集モードで動作を分岐
                             if ($script:editMode) {
                                 # 編集モード：移動設定ダイアログを表示
-                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -FileSuffix "_2"
+                                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
                             }
                             else {
                                 # 非編集モード：ファイル移動を実行
-                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath -FileSuffix "_2"
+                                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
                             }
                         })
                     $script:processPanel.Controls.Add($v1CsvDestMoveButton)

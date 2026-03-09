@@ -8,8 +8,8 @@
                           "Name":  "1.EB SQLLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
-                          "KdlSourcePath":  "log2",
-                          "KdlDestPath":  "eb",
+                          "KdlSourcePath":  "iko_gui\\logs",
+                          "KdlDestPath":  "iko_gui\\UI",
                           "V1CsvDestPath":  "logs",
                           "BatchFiles":  [
                                              {
