@@ -23,7 +23,9 @@
                                                 ],
                           "ExecutionDelay":  1,
                           "LogOutputDir":  "C:\\work\\test\\fizz-buzz\\test",
-                          "Enabled":  false
+                          "Enabled":  true,
+                          "CsvConvertButton_Executed":  true,
+                          "ExecuteButton_Executed":  true
                       },
                       {
                           "Name":  "2.EB移行ツール適用（ページ2）",
@@ -34,13 +36,19 @@
                                              {
                                                  "Name":  "サンプル2",
                                                  "Path":  "sample.bat"
+                                             },
+                                             {
+                                                 "Path":  "iko_gui\\run.bat",
+                                                 "Name":  "バッチファイル"
                                              }
                                          ],
                           "CsvMoveOperations":  [
 
                                                 ],
                           "ExecutionDelay":  1,
-                          "Enabled":  true
+                          "Enabled":  true,
+                          "CsvConvertButton_Executed":  false,
+                          "ExecuteButton_Executed":  false
                       },
                       {
                           "ExecuteButtonText":  "実行",

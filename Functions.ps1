@@ -1489,6 +1489,8 @@ function Start-ProcessFlow {
     
     if ($allSuccess) {
         Write-Log "プロセスが正常に完了しました: $($processConfig.Name)" "INFO" $ProcessIndex
+        Save-ProcessComponentExecuted -ProcessIndex $ProcessIndex -ComponentKey "ExecuteButton_Executed"
+        Update-ProcessControls
     }
     else {
         Write-Log "プロセスでエラーが発生しました: $($processConfig.Name)" "ERROR" $ProcessIndex
@@ -2120,7 +2122,7 @@ function Update-ProcessControls {
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "FileMoveButton_Executed"
                                         Update-ProcessControls
                                     }
                                     else {
@@ -2194,7 +2196,7 @@ function Update-ProcessControls {
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "FileMoveButton_Executed"
                                         Update-ProcessControls
                                     }
                                     else {
@@ -2289,7 +2291,7 @@ function Update-ProcessControls {
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
                                         
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "ExecuteButton_Executed"
                                         Update-ProcessControls
                                     }
                                     else {
@@ -2638,7 +2640,7 @@ function Update-ProcessControls {
                                     $batchPath = Resolve-BatchPath -Path $batch.Path
                                     
                                     $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                    Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                    Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "CsvConvertButton_Executed"
                                     Update-ProcessControls
                                 }
                                 else {
@@ -2725,7 +2727,7 @@ function Update-ProcessControls {
                                     $this.Enabled = $false
                                     $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
                                     $this.Enabled = $true
-                                    Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                    Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "ExecuteButton_Executed"
                                     Update-ProcessControls
                                 }
                                 else {
@@ -3319,7 +3321,7 @@ function Update-ProcessControls {
 
                                     if ($batchPath) {
                                         Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
-                                        Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                        Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey "KdlKdbButton_Executed"
                                         Update-ProcessControls
                                     }
                                 }
@@ -3440,7 +3442,7 @@ function Update-ProcessControls {
 
                                     if ($batchPath) {
                                         Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
-                                        Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                        Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey "KdlEbButton_Executed"
                                         Update-ProcessControls
                                     }
                                 }
@@ -3561,7 +3563,7 @@ function Update-ProcessControls {
 
                                     if ($batchPath) {
                                         Invoke-BatchFile -BatchPath $batchPath -DisplayName $title -ProcessIndex $pIdx -Arguments $batchArgs
-                                        Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                        Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey "DirectImportButton_Executed"
                                         Update-ProcessControls
                                     }
                                 }
@@ -3629,7 +3631,7 @@ function Update-ProcessControls {
                                             $batch = $processConfig.BatchFiles[0]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                            Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                            Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "KdlImportButton_Executed"
                                             Update-ProcessControls
                                         }
                                         else {
@@ -3702,7 +3704,7 @@ function Update-ProcessControls {
                                             $batch = $processConfig.BatchFiles[1]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                            Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                            Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "DirectImportButton_Executed"
                                             Update-ProcessControls
                                         }
                                         else {
@@ -3721,7 +3723,7 @@ function Update-ProcessControls {
                     
                     # --- 共通ヘルパー関数: メンテボタン作成 ---
                     function Create-MaintButton {
-                        param($x, $text, $batchIndex, $title)
+                        param($x, $text, $batchIndex, $title, $componentKey = "MaintButton_Executed")
                         $maintButton = New-Object System.Windows.Forms.Button
                         $maintButton.Location = New-Object System.Drawing.Point($x, $buttonY)
                         $maintButton.Size = New-Object System.Drawing.Size(80, 30)
@@ -3804,7 +3806,7 @@ function Update-ProcessControls {
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
                                             
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                            Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                            Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey $componentKey
                                             Update-ProcessControls
                                         }
                                         else {
@@ -3824,7 +3826,7 @@ function Update-ProcessControls {
                     
                     # 取込後ボタン作成ヘルパー (BatchIndex可変対応)
                     function Create-AfterImportButton {
-                        param($x, $batchIndex, $text)
+                        param($x, $batchIndex, $text, $componentKey = "AfterImportButton_Executed")
                         $afterBtn = New-Object System.Windows.Forms.Button
                         $afterBtn.Location = New-Object System.Drawing.Point($x, $buttonY)
                         $afterBtn.Size = New-Object System.Drawing.Size(80, 30)
@@ -3891,7 +3893,7 @@ function Update-ProcessControls {
                                             $batch = $processConfig.BatchFiles[$bIdx]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $pIdx
-                                            Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                            Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey $componentKey
                                             Update-ProcessControls
                                         }
                                         else {
@@ -3921,10 +3923,10 @@ function Update-ProcessControls {
                         $afterImportButton = Create-AfterImportButton -x 540 -batchIndex 3 -text "取込後"
                         
                         # メンテEA (X=630)
-                        $maintButton1 = Create-MaintButton -x 630 -text "メンテEA" -batchIndex 4 -title "メンテEA"
+                        $maintButton1 = Create-MaintButton -x 630 -text "メンテEA" -batchIndex 4 -title "メンテEA" -componentKey "MaintButton1_Executed"
                         
                         # メンテEB (X=720)
-                        $maintButton2 = Create-MaintButton -x 720 -text "メンテEB" -batchIndex 5 -title "メンテEB"
+                        $maintButton2 = Create-MaintButton -x 720 -text "メンテEB" -batchIndex 5 -title "メンテEB" -componentKey "MaintButton2_Executed"
                         
                         # ログ確認 (Y+35)
                         # Log1 @ 240, Log2 @ 440 (Direct Import X)
@@ -4217,7 +4219,7 @@ function Update-ProcessControls {
                                     $batch = $procConf.BatchFiles[$bIdx]
                                     $path = Resolve-BatchPath -Path $batch.Path
                                     Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $pIdx
-                                    Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                    Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey "MaintButton_Executed"
                                     Update-ProcessControls
                                 }
                             }
@@ -4459,7 +4461,7 @@ function Update-ProcessControls {
                                         # Resolve-BatchPathを使用してパスを解決
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "DirectImportButton_Executed"
                                         Update-ProcessControls
                                     }
                                     else {
@@ -4552,7 +4554,7 @@ function Update-ProcessControls {
                                         # Resolve-BatchPathを使用してパスを解決
                                         $batchPath = Resolve-BatchPath -Path $batch.Path
                                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "AfterImportButton_Executed"
                                         Update-ProcessControls
                                     }
                                     else {
@@ -4880,7 +4882,7 @@ function Update-ProcessControls {
                                     $batch = $procConf.BatchFiles[$bIdx]
                                     $path = Resolve-BatchPath -Path $batch.Path
                                     Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $pIdx
-                                    Save-ProcessEnabled -ProcessIndex $pIdx -Enabled $false
+                                    Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey "MaintButton_Executed"
                                     Update-ProcessControls
                                 }
                             }
@@ -4961,7 +4963,8 @@ function Update-ProcessControls {
                     $executeButton.Add_Click({
                             $clickedProcessIdx = $this.Tag
                             Start-ProcessFlow -ProcessIndex $clickedProcessIdx
-                            Save-ProcessEnabled -ProcessIndex $clickedProcessIdx -Enabled $false
+                            # Start-ProcessFlow内で個別ボタンの処理を行うため、ここでは全体非活性化を削除
+                            # Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "FileMoveButton_Executed"
                             Update-ProcessControls
                         })
                     $script:processPanel.Controls.Add($executeButton)
@@ -5188,19 +5191,27 @@ function Update-ProcessControls {
         }
         
         # ---------------------------------------------------------
-        # プロセス無効時の表示制御 (Gray-out)
+        # プロセス無効時・実行済みボタンの表示制御 (Gray-out)
         # ---------------------------------------------------------
         $procEnabled = $true
+        $execFlags = @{}
         if ($i -lt $currentProcesses.Count) {
             $pConfig = $currentProcesses[$i]
             if ($pConfig.PSObject.Properties['Enabled']) {
                 $procEnabled = $pConfig.Enabled
             }
+            # 個別ボタンの実行済みフラグを収集
+            foreach ($prop in $pConfig.PSObject.Properties) {
+                if ($prop.Name -like "*_Executed") {
+                    $execFlags[$prop.Name] = $prop.Value
+                }
+            }
         }
         
+        $grayColor = [System.Drawing.Color]::LightGray
+        
+        # 1. プロセス全体が無効な場合（編集モードOFF時）
         if (-not $script:editMode -and -not $procEnabled) {
-            $grayColor = [System.Drawing.Color]::LightGray
-            
             # テキストボックス
             if ($ctrlGroup.NameTextBox) { $ctrlGroup.NameTextBox.BackColor = $grayColor }
             if ($ctrlGroup.PathTextBox) { $ctrlGroup.PathTextBox.BackColor = $grayColor }
@@ -5209,13 +5220,34 @@ function Update-ProcessControls {
             if ($ctrlGroup.KdlSourceTextBox) { $ctrlGroup.KdlSourceTextBox.BackColor = $grayColor }
             if ($ctrlGroup.KdlDestTextBox) { $ctrlGroup.KdlDestTextBox.BackColor = $grayColor }
             
-            # 実行系ボタン (ユーティリティ系は除外)
+            # 実行系ボタン
             if ($ctrlGroup.ExecuteButton) { $ctrlGroup.ExecuteButton.Enabled = $false; $ctrlGroup.ExecuteButton.BackColor = $grayColor }
             if ($ctrlGroup.CsvConvertButton) { $ctrlGroup.CsvConvertButton.Enabled = $false; $ctrlGroup.CsvConvertButton.BackColor = $grayColor }
             if ($ctrlGroup.KdlImportButton) { $ctrlGroup.KdlImportButton.Enabled = $false; $ctrlGroup.KdlImportButton.BackColor = $grayColor }
             if ($ctrlGroup.DirectImportButton) { $ctrlGroup.DirectImportButton.Enabled = $false; $ctrlGroup.DirectImportButton.BackColor = $grayColor }
             if ($ctrlGroup.AfterImportButton) { $ctrlGroup.AfterImportButton.Enabled = $false; $ctrlGroup.AfterImportButton.BackColor = $grayColor }
             if ($ctrlGroup.MaintButton) { $ctrlGroup.MaintButton.Enabled = $false; $ctrlGroup.MaintButton.BackColor = $grayColor }
+        }
+        # 2. 個別ボタンが実行済みの場合（プロセスが有効であっても非活性化）
+        elseif (-not $script:editMode) {
+            if ($ctrlGroup.ExecuteButton -and $execFlags["ExecuteButton_Executed"]) { 
+                $ctrlGroup.ExecuteButton.Enabled = $false; $ctrlGroup.ExecuteButton.BackColor = $grayColor 
+            }
+            if ($ctrlGroup.CsvConvertButton -and $execFlags["CsvConvertButton_Executed"]) { 
+                $ctrlGroup.CsvConvertButton.Enabled = $false; $ctrlGroup.CsvConvertButton.BackColor = $grayColor 
+            }
+            if ($ctrlGroup.KdlImportButton -and $execFlags["KdlImportButton_Executed"]) { 
+                $ctrlGroup.KdlImportButton.Enabled = $false; $ctrlGroup.KdlImportButton.BackColor = $grayColor 
+            }
+            if ($ctrlGroup.DirectImportButton -and $execFlags["DirectImportButton_Executed"]) { 
+                $ctrlGroup.DirectImportButton.Enabled = $false; $ctrlGroup.DirectImportButton.BackColor = $grayColor 
+            }
+            if ($ctrlGroup.AfterImportButton -and $execFlags["AfterImportButton_Executed"]) { 
+                $ctrlGroup.AfterImportButton.Enabled = $false; $ctrlGroup.AfterImportButton.BackColor = $grayColor 
+            }
+            if ($ctrlGroup.MaintButton -and $execFlags["MaintButton_Executed"]) { 
+                $ctrlGroup.MaintButton.Enabled = $false; $ctrlGroup.MaintButton.BackColor = $grayColor 
+            }
         }
     }
     
@@ -5528,6 +5560,14 @@ function Save-ProcessEnabled {
         # Enabledプロパティを強制的に追加/更新
         $procObj | Add-Member -MemberType NoteProperty -Name "Enabled" -Value $Enabled -Force
         
+        # プロセスが有効化された場合、個別ボタンの実行済みフラグもリセットする
+        if ($Enabled) {
+            $executedProperties = $procObj.PSObject.Properties | Where-Object { $_.Name -like "*_Executed" }
+            foreach ($prop in $executedProperties) {
+                $procObj | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $false -Force
+            }
+        }
+        
         # JSONファイルに保存（UTF-8 BOM付き）
         $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
         $utf8WithBom = New-Object System.Text.UTF8Encoding $true
@@ -5537,6 +5577,12 @@ function Save-ProcessEnabled {
         if ($script:pages[$script:currentPage].Processes -and $ProcessIndex -lt $script:pages[$script:currentPage].Processes.Count) {
             $memProc = $script:pages[$script:currentPage].Processes[$ProcessIndex]
             $memProc | Add-Member -MemberType NoteProperty -Name "Enabled" -Value $Enabled -Force
+            if ($Enabled) {
+                $mExecutedProperties = $memProc.PSObject.Properties | Where-Object { $_.Name -like "*_Executed" }
+                foreach ($mProp in $mExecutedProperties) {
+                    $memProc | Add-Member -MemberType NoteProperty -Name $mProp.Name -Value $false -Force
+                }
+            }
         }
         
         Write-Log "プロセス有効状態を保存しました: $Enabled" "INFO" $ProcessIndex
@@ -5544,6 +5590,49 @@ function Save-ProcessEnabled {
     }
     catch {
         Write-Log "JSONファイルの保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
+        return $false
+    }
+}
+
+# プロセス内コンポーネントの実行済み状態保存関数
+function Save-ProcessComponentExecuted {
+    param(
+        [int]$ProcessIndex,
+        [string]$ComponentKey,
+        [bool]$Executed = $true
+    )
+    
+    $pageConfig = $script:pages[$script:currentPage]
+    if (-not $pageConfig.JsonPath) { return $false }
+    
+    $jsonPath = if ([System.IO.Path]::IsPathRooted($pageConfig.JsonPath)) { $pageConfig.JsonPath } else { Join-Path $PSScriptRoot $pageConfig.JsonPath }
+    if (-not (Test-Path $jsonPath)) { return $false }
+    
+    try {
+        $jsonContent = Get-Content $jsonPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if (-not $jsonContent.Processes -or $ProcessIndex -ge $jsonContent.Processes.Count) { return $false }
+        
+        $procObj = $jsonContent.Processes[$ProcessIndex]
+        
+        # 実行済みフラグを更新
+        $procObj | Add-Member -MemberType NoteProperty -Name $ComponentKey -Value $Executed -Force
+        
+        # JSONファイルに保存
+        $jsonContentStr = $jsonContent | ConvertTo-Json -Depth 10
+        $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+        [System.IO.File]::WriteAllText($jsonPath, $jsonContentStr, $utf8WithBom)
+        
+        # メモリ上の設定も更新
+        if ($script:pages[$script:currentPage].Processes -and $ProcessIndex -lt $script:pages[$script:currentPage].Processes.Count) {
+            $memProc = $script:pages[$script:currentPage].Processes[$ProcessIndex]
+            $memProc | Add-Member -MemberType NoteProperty -Name $ComponentKey -Value $Executed -Force
+        }
+        
+        Write-Log "コンポーネント実行状態を保存しました: $ComponentKey = $Executed" "INFO" $ProcessIndex
+        return $true
+    }
+    catch {
+        Write-Log "コンポーネント実行状態の保存に失敗しました: $($_.Exception.Message)" "ERROR" $ProcessIndex
         return $false
     }
 }
