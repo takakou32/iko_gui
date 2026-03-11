@@ -521,12 +521,13 @@ $logStoragePathTextBox.Add_Click({
             $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "ログ格納先フォルダを選択してください"
 
             if ($selectedPath) {
-                $logStoragePathTextBox.Text = $selectedPath
-                Save-PagePaths -LogStoragePath $selectedPath
-                Write-Log "ログ格納先を設定しました: $selectedPath" "INFO"
-                
-                # 画面を更新（相対パス表示の再計算のため）
-                Update-ProcessControls
+                if (Save-PagePaths -LogStoragePath $selectedPath) {
+                    $logStoragePathTextBox.Text = $selectedPath
+                    Write-Log "ログ格納先を設定しました: $selectedPath" "INFO"
+                    
+                    # 画面を更新（相対パス表示の再計算のため）
+                    Update-ProcessControls
+                }
             }
         }
         else {

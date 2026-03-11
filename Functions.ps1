@@ -1306,10 +1306,14 @@ function Save-PagePaths {
                     $relative
                 }
                 else {
-                    $LogStoragePath
+                    # ユーザー要望：共通パス外の場合は保存させない（エラーメッセージを出力し、関数を中断）
+                    Write-Log "ログ格納先は共通パス（$basePath）配下に配置する必要があります: $targetPath" "ERROR"
+                    [void][System.Windows.Forms.MessageBox]::Show("ログ格納先は共通パス（ツール格納場所）配下に配置する必要があります。`n共通パス: $basePath`n選択されたパス: $targetPath", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+                    return $false
                 }
             }
             catch {
+                Write-Log "パス変換エラー: $($_.Exception.Message)" "ERROR"
                 $LogStoragePath
             }
             
@@ -4032,6 +4036,20 @@ function Update-ProcessControls {
                                     Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
                                 }
                             }
+                            else {
+                                $path = $this.Text
+                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                        $path = Join-Path $PSScriptRoot $path
+                                    }
+                                    if (Test-Path $path) {
+                                        Invoke-Item $path
+                                    }
+                                    else {
+                                        Write-Log "パスが存在しません: $path" "WARN"
+                                    }
+                                }
+                            }
                         })
                     
                     # 初期値設定
@@ -4304,6 +4322,20 @@ function Update-ProcessControls {
                                     $clickedProcessIdx = $this.Tag
                                     Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
                                     Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                                }
+                            }
+                            else {
+                                $path = $this.Text
+                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                        $path = Join-Path $PSScriptRoot $path
+                                    }
+                                    if (Test-Path $path) {
+                                        Invoke-Item $path
+                                    }
+                                    else {
+                                        Write-Log "パスが存在しません: $path" "WARN"
+                                    }
                                 }
                             }
                         })
@@ -4695,6 +4727,20 @@ function Update-ProcessControls {
                                     $clickedProcessIdx = $this.Tag
                                     Save-ProcessV1CsvDestPath -ProcessIndex $clickedProcessIdx -V1CsvDestPath $selectedPath
                                     Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                                }
+                            }
+                            else {
+                                $path = $this.Text
+                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                                        $path = Join-Path $PSScriptRoot $path
+                                    }
+                                    if (Test-Path $path) {
+                                        Invoke-Item $path
+                                    }
+                                    else {
+                                        Write-Log "パスが存在しません: $path" "WARN"
+                                    }
                                 }
                             }
                         })

@@ -2,7 +2,7 @@
     "Title":  "4.SQLLOADER 実行",
     "SourcePath":  "C:\\a5m2",
     "DestinationPath":  "",
-    "LogStoragePath":  "SpringSample\\gradle",
+    "LogStoragePath":  "coverage",
     "Processes":  [
                       {
                           "Name":  "1.EB SQLLOADER実行",
@@ -83,7 +83,7 @@
                           "LogButtonText":  "ログ確認",
                           "KdlSourcePath":  "",
                           "KdlDestPath":  "",
-                          "V1CsvDestPath":  "logs\\ec",
+                          "V1CsvDestPath":  "iko_gui\\doc",
                           "BatchFiles":  [
                                              {
                                                  "Name":  "KDL取込",
