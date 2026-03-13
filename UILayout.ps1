@@ -426,6 +426,21 @@ $sourcePathTextBox.Add_Click({
                 Write-Log "移行データファイル移動元を設定しました: $selectedPath" "INFO"
             }
         }
+        else {
+            # エクスプローラで開く
+            $path = $sourcePathTextBox.Text
+            if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                if (-not [System.IO.Path]::IsPathRooted($path)) {
+                    $path = Join-Path $PSScriptRoot $path
+                }
+                if (Test-Path $path) {
+                    Open-PathInExplorer -Path $path
+                }
+                else {
+                    Write-Log "パスが存在しません: $path" "WARN"
+                }
+            }
+        }
     })
 $fileMovePanel.Controls.Add($sourcePathTextBox)
 $script:sourcePathTextBox = $sourcePathTextBox
@@ -462,6 +477,21 @@ $destPathTextBox.Add_Click({
                 $destPathTextBox.Text = $selectedPath
                 Save-PagePaths -DestinationPath $selectedPath
                 Write-Log "移行データファイル移動先を設定しました: $selectedPath" "INFO"
+            }
+        }
+        else {
+            # エクスプローラで開く
+            $path = $destPathTextBox.Text
+            if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                if (-not [System.IO.Path]::IsPathRooted($path)) {
+                    $path = Join-Path $PSScriptRoot $path
+                }
+                if (Test-Path $path) {
+                    Open-PathInExplorer -Path $path
+                }
+                else {
+                    Write-Log "パスが存在しません: $path" "WARN"
+                }
             }
         }
     })
@@ -538,7 +568,7 @@ $logStoragePathTextBox.Add_Click({
                     $path = Join-Path $PSScriptRoot $path
                 }
                 if (Test-Path $path) {
-                    Invoke-Item $path
+                    Open-PathInExplorer -Path $path
                 }
                 else {
                     Write-Log "パスが存在しません: $path" "WARN"
@@ -597,7 +627,7 @@ $logStoragePath2TextBox.Add_Click({
                     $path = Join-Path $PSScriptRoot $path
                 }
                 if (Test-Path $path) {
-                    Invoke-Item $path
+                    Open-PathInExplorer -Path $path
                 }
                 else {
                     Write-Log "パスが存在しません: $path" "WARN"
