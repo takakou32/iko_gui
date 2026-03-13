@@ -2,7 +2,7 @@
     "Title":  "4.SQLLOADER 実行",
     "SourcePath":  "C:\\a5m2",
     "DestinationPath":  "",
-    "LogStoragePath":  "iko_gui",
+    "LogStoragePath":  "iko_gui\\doc",
     "Processes":  [
                       {
                           "Name":  "1.EB SQLLOADER実行",
