@@ -162,7 +162,7 @@ function Open-PathInExplorer {
     param([string]$Path)
     if (-not $Path -or -not (Test-Path $Path)) { return }
     if (Test-Path $Path -PathType Container) {
-        Invoke-Item $Path
+        Start-Process explorer -ArgumentList "`"$Path`""
     }
     else {
         Start-Process explorer -ArgumentList "/select,`"$Path`""
