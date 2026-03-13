@@ -1,23 +1,23 @@
 ﻿{
-    "Title":  "1.V1 移行ツール適用",
-    "Version":  "0.1.4",
-    "Pages":  [
-                  {
-                      "Title":  "1.V1 移行ツール適用",
-                      "JsonPath":  "config/json/page1.json"
-                  },
-                  {
-                      "Title":  "2.V2 移行ツール実行",
-                      "JsonPath":  "config/json/page2.json"
-                  },
-                  {
-                      "Title":  "3.java移行ツール実行",
-                      "JsonPath":  "config/json/page3.json"
-                  },
-                  {
-                      "Title":  "4.SQLLOADER 実行",
-                      "JsonPath":  "config/json/page4.json"
-                  }
-              ],
-    "GlobalLogPath":  "C:\\work"
+    "Title": "1.V1 移行ツール適用",
+    "Version": "0.1.5",
+    "Pages": [
+        {
+            "Title": "1.V1 移行ツール適用",
+            "JsonPath": "config/json/page1.json"
+        },
+        {
+            "Title": "2.V2 移行ツール実行",
+            "JsonPath": "config/json/page2.json"
+        },
+        {
+            "Title": "3.java移行ツール実行",
+            "JsonPath": "config/json/page3.json"
+        },
+        {
+            "Title": "4.SQLLOADER 実行",
+            "JsonPath": "config/json/page4.json"
+        }
+    ],
+    "GlobalLogPath": "C:\\work"
 }
