@@ -3758,6 +3758,7 @@ function Update-ProcessControls {
                             ProcessIndex = $i
                             BatchIndex   = $batchIndex
                             Title        = $title
+                            ComponentKey = $componentKey
                         }
                         
                         $maintButton.Add_Click({
@@ -3765,6 +3766,7 @@ function Update-ProcessControls {
                                 $clickedProcessIdx = $ctx.ProcessIndex
                                 $targetBatchIdx = $ctx.BatchIndex
                                 $targetTitle = $ctx.Title
+                                $cKey = $ctx.ComponentKey
 
                                 if ($script:editMode) {
                                     $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
@@ -3820,7 +3822,7 @@ function Update-ProcessControls {
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
                                             
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                            Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey $componentKey
+                                            Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey $cKey
                                             Update-ProcessControls
                                         }
                                         else {
@@ -3851,12 +3853,13 @@ function Update-ProcessControls {
                         $afterBtn.FlatAppearance.BorderSize = 1
                         $afterBtn.Font = New-Object System.Drawing.Font("メイリオ", 9)
                         
-                        $afterBtn.Tag = @{ ProcessIndex = $i; BatchIndex = $batchIndex; Title = $text }
+                        $afterBtn.Tag = @{ ProcessIndex = $i; BatchIndex = $batchIndex; Title = $text; ComponentKey = $componentKey }
                         $afterBtn.Add_Click({
                                 $ctx = $this.Tag
                                 $pIdx = $ctx.ProcessIndex
                                 $bIdx = $ctx.BatchIndex
                                 $t = $ctx.Title
+                                $cKey = $ctx.ComponentKey
                              
                                 if ($script:editMode) {
                                     # ... (同上のファイル選択ロジック) ...
@@ -3907,7 +3910,7 @@ function Update-ProcessControls {
                                             $batch = $processConfig.BatchFiles[$bIdx]
                                             $batchPath = Resolve-BatchPath -Path $batch.Path
                                             $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $pIdx
-                                            Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey $componentKey
+                                            Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey $cKey
                                             Update-ProcessControls
                                         }
                                         else {
@@ -4165,6 +4168,8 @@ function Update-ProcessControls {
                                         $batch = $procConf.BatchFiles[1]
                                         $path = Resolve-BatchPath -Path $batch.Path
                                         Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "DirectImportButton_Executed"
+                                        Update-ProcessControls
                                     }
                                 }
                             }
@@ -4209,6 +4214,8 @@ function Update-ProcessControls {
                                         $batch = $procConf.BatchFiles[2]
                                         $path = Resolve-BatchPath -Path $batch.Path
                                         Invoke-BatchFile -BatchPath $path -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "AfterImportButton_Executed"
+                                        Update-ProcessControls
                                     }
                                 }
                             }

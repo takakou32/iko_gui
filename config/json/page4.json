@@ -46,7 +46,10 @@
                           "Enabled":  true,
                           "KdlKdbButton_Executed":  true,
                           "KdlEbButton_Executed":  true,
-                          "DirectImportButton_Executed":  true
+                          "DirectImportButton_Executed":  true,
+                          "AfterImportButton_Executed":  true,
+                          "MaintButton1_Executed":  true,
+                          "MaintButton2_Executed":  true
                       },
                       {
                           "Name":  "1.EE SQLLOADER実行",
@@ -81,7 +84,8 @@
                           "LogOutputDir":  "node_modules",
                           "Enabled":  true,
                           "KdlImportButton_Executed":  true,
-                          "DirectImportButton_Executed":  true
+                          "DirectImportButton_Executed":  true,
+                          "AfterImportButton_Executed":  true
                       },
                       {
                           "Name":  "EA SQLOADER実行",
@@ -118,7 +122,9 @@
                           "ExecutionDelay":  1,
                           "LogOutputDir":  "node_modules",
                           "Enabled":  true,
-                          "MaintButton_Executed":  true
+                          "MaintButton_Executed":  true,
+                          "DirectImportButton_Executed":  true,
+                          "AfterImportButton_Executed":  true
                       },
                       {
                           "ExecuteButtonText":  "実行",
