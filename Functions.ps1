@@ -1296,9 +1296,7 @@ function Save-PagePaths {
                 }
                 $pageJson.DestinationPath = $relativeDestPath
             }
-        }
-        "DEBUG: After DestinationPath LogStoragePath2: '$($pageJson.LogStoragePath2)'" | Out-File "c:\work\iko_gui\debug_log.txt" -Append
-        
+        }        
         if ($LogStoragePath) {
             $relativeLogPath = try {
                 # ユーザー要望により、GlobalLogPath（ツール格納場所）からの相対パスとして保存
@@ -5420,9 +5418,9 @@ function Update-ProcessControls {
             $script:fileMovePanel.Visible = $false
         }
         
-        # プロセスパネルの高さを調整（630px：プロセス3つの下に余裕を持たせる）
+        # プロセスパネルの高さを調整（320pxに短縮：1,2ページと同じ）
         if ($script:processPanel) {
-            $script:processPanel.Size = New-Object System.Drawing.Size(900, 630)
+            $script:processPanel.Size = New-Object System.Drawing.Size(900, 320)
         }
         
         # ログ格納セクションを表示
@@ -5430,22 +5428,22 @@ function Update-ProcessControls {
             $script:logStoragePanel.Visible = $true
         }
         
-        # ログ格納セクションの位置を調整（プロセスパネルの下：50 + 630 = 680px y座標）
+        # ログ格納セクションの位置を調整（プロセスパネルの下：50 + 320 = 370px y座標）
         if ($script:logStoragePanel) {
-            $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 680)
+            $script:logStoragePanel.Location = New-Object System.Drawing.Point(0, 370)
         }
         
 
         
-        # ログ出力エリアの位置を調整（ログ格納セクションの下：680 + 60 = 740px y座標、790px幅、150px高さ）
+        # ログ出力エリアの位置を調整（ログ格納セクションの下：370 + 60 = 430px y座標、740px幅、130px高さ）
         if ($script:logTextBox) {
-            $script:logTextBox.Location = New-Object System.Drawing.Point(10, 740)
-            $script:logTextBox.Size = New-Object System.Drawing.Size(790, 150)
+            $script:logTextBox.Location = New-Object System.Drawing.Point(10, 430)
+            $script:logTextBox.Size = New-Object System.Drawing.Size(740, 130)
         }
         
-        # フォームの高さを調整（ログ出力エリアの下：740 + 150 = 890px、余裕を持たせて920px）
+        # フォームの高さを調整（600px：他ページと同じ）
         if ($script:form) {
-            $script:form.Size = New-Object System.Drawing.Size(900, 920)
+            $script:form.Size = New-Object System.Drawing.Size(900, 600)
         }
     }
     else {

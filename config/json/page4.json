@@ -43,7 +43,7 @@
                           "ExecutionDelay":  1,
                           "LogOutputDir":  "node_modules",
                           "LogOutputDir2":  "test",
-                          "Enabled":  false
+                          "Enabled":  true
                       },
                       {
                           "Name":  "1.EE SQLLOADER実行",
@@ -75,10 +75,11 @@
                                                 ],
                           "ExecutionDelay":  1,
                           "LogOutputDir2":  "coverage",
-                          "LogOutputDir":  "node_modules"
+                          "LogOutputDir":  "node_modules",
+                          "Enabled":  true
                       },
                       {
-                          "Name":  "1.EC SQLLOADER実行",
+                          "Name":  "EA SQLOADER実行",
                           "ExecuteButtonText":  "実行",
                           "LogButtonText":  "ログ確認",
                           "KdlSourcePath":  "",
@@ -110,11 +111,12 @@
 
                                                 ],
                           "ExecutionDelay":  1,
-                          "LogOutputDir":  "node_modules"
+                          "LogOutputDir":  "node_modules",
+                          "Enabled":  true
                       },
                       {
                           "ExecuteButtonText":  "実行",
-                          "Name":  "新規プロセス",
+                          "Name":  "BZ SQLLOADER実行",
                           "CsvMoveOperations":  [
 
                                                 ],
@@ -130,7 +132,7 @@
                       },
                       {
                           "ExecuteButtonText":  "実行",
-                          "Name":  "新規プロセス",
+                          "Name":  "TG SQLLOADER実行",
                           "CsvMoveOperations":  [
 
                                                 ],
@@ -147,7 +149,7 @@
                       },
                       {
                           "ExecuteButtonText":  "実行",
-                          "Name":  "新規プロセス",
+                          "Name":  "EO SQLLOADER実行",
                           "CsvMoveOperations":  [
 
                                                 ],
@@ -163,7 +165,7 @@
                       },
                       {
                           "ExecuteButtonText":  "実行",
-                          "Name":  "新規プロセス",
+                          "Name":  "EJ SQLLOADER実行",
                           "CsvMoveOperations":  [
 
                                                 ],
