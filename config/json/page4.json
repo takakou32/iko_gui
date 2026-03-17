@@ -14,7 +14,7 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "KDL取込(KDB)",
-                                                 "Path":  ""
+                                                 "Path":  "iko_gui\\run.bat"
                                              },
                                              {
                                                  "Name":  "サンプル1",
@@ -25,12 +25,12 @@
                                                  "Name":  "バッチファイル"
                                              },
                                              {
-                                                 "Path":  "sample2.bat",
+                                                 "Path":  "iko_gui\\run.bat",
                                                  "Name":  "バッチファイル"
                                              },
                                              {
                                                  "Name":  "メンテEA",
-                                                 "Path":  ""
+                                                 "Path":  "iko_gui\\run.bat"
                                              },
                                              {
                                                  "Name":  "メンテEB",
@@ -43,7 +43,10 @@
                           "ExecutionDelay":  1,
                           "LogOutputDir":  "node_modules",
                           "LogOutputDir2":  "test",
-                          "Enabled":  true
+                          "Enabled":  true,
+                          "KdlKdbButton_Executed":  true,
+                          "KdlEbButton_Executed":  true,
+                          "DirectImportButton_Executed":  true
                       },
                       {
                           "Name":  "1.EE SQLLOADER実行",
@@ -62,7 +65,7 @@
                                                  "Name":  "バッチファイル"
                                              },
                                              {
-                                                 "Path":  "run.bat",
+                                                 "Path":  "SpringSample\\gradlew.bat",
                                                  "Name":  "バッチファイル"
                                              },
                                              {
@@ -76,7 +79,9 @@
                           "ExecutionDelay":  1,
                           "LogOutputDir2":  "coverage",
                           "LogOutputDir":  "node_modules",
-                          "Enabled":  true
+                          "Enabled":  true,
+                          "KdlImportButton_Executed":  true,
+                          "DirectImportButton_Executed":  true
                       },
                       {
                           "Name":  "EA SQLOADER実行",
@@ -92,11 +97,11 @@
                                              },
                                              {
                                                  "Name":  "直接取込",
-                                                 "Path":  ""
+                                                 "Path":  "SpringSample\\gradlew.bat"
                                              },
                                              {
                                                  "Name":  "取込後",
-                                                 "Path":  ""
+                                                 "Path":  "SpringSample\\gradlew.bat"
                                              },
                                              {
                                                  "Name":  "メンテ",
@@ -112,7 +117,8 @@
                                                 ],
                           "ExecutionDelay":  1,
                           "LogOutputDir":  "node_modules",
-                          "Enabled":  true
+                          "Enabled":  true,
+                          "MaintButton_Executed":  true
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -126,9 +132,19 @@
                                              {
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
+                                             },
+                                             {
+                                                 "Path":  "SpringSample\\gradlew.bat",
+                                                 "Name":  "バッチファイル"
+                                             },
+                                             {
+                                                 "Path":  "SpringSample\\gradlew.bat",
+                                                 "Name":  "バッチファイル"
                                              }
                                          ],
-                          "LogOutputDir":  "node_modules"
+                          "LogOutputDir":  "node_modules",
+                          "DirectImportButton_Executed":  true,
+                          "AfterImportButton_Executed":  true
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -142,10 +158,20 @@
                                              {
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
+                                             },
+                                             {
+                                                 "Path":  "SpringSample\\gradlew.bat",
+                                                 "Name":  "バッチファイル"
+                                             },
+                                             {
+                                                 "Path":  "SpringSample\\gradlew.bat",
+                                                 "Name":  "バッチファイル"
                                              }
                                          ],
                           "Enabled":  true,
-                          "LogOutputDir":  "coverage"
+                          "LogOutputDir":  "coverage",
+                          "DirectImportButton_Executed":  true,
+                          "AfterImportButton_Executed":  true
                       },
                       {
                           "ExecuteButtonText":  "実行",

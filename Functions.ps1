@@ -4005,9 +4005,13 @@ function Update-ProcessControls {
                         KdlDestMoveButton   = $kdlDestMoveButton
                         V1CsvDestTextBox    = $v1CsvDestTextBox
                         V1CsvDestMoveButton = $v1CsvDestMoveButton
-                        KdlImportButton     = $kdlImportButton       # Row 1ではKDB/EBのどちらかを割り当てるか、null? (要検討) - ここでは旧変数を使っているが、Row 1ではnullになる可能性。
+                        KdlImportButton     = $kdlImportButton
+                        KdlKdbButton        = $kdlKdbButton
+                        KdlEbButton         = $kdlEbButton
                         DirectImportButton  = $directImportButton
                         AfterImportButton   = $afterImportButton
+                        MaintButton1        = $maintButton1
+                        MaintButton2        = $maintButton2
                         LogButton           = $logButton
                         LogButton2          = $logButton2
                     }
@@ -4275,6 +4279,11 @@ function Update-ProcessControls {
                         DirectImportButton  = $directImportButton
                         AfterImportButton   = $afterImportButton
                         MaintButton         = $maintButton
+                        KdlImportButton     = $null
+                        KdlKdbButton        = $null
+                        KdlEbButton         = $null
+                        MaintButton1        = $null
+                        MaintButton2        = $null
                         LogButton           = $logButton
                     }
                 }
@@ -5280,9 +5289,13 @@ function Update-ProcessControls {
             if ($ctrlGroup.ExecuteButton) { $ctrlGroup.ExecuteButton.Enabled = $false; $ctrlGroup.ExecuteButton.BackColor = $grayColor }
             if ($ctrlGroup.CsvConvertButton) { $ctrlGroup.CsvConvertButton.Enabled = $false; $ctrlGroup.CsvConvertButton.BackColor = $grayColor }
             if ($ctrlGroup.KdlImportButton) { $ctrlGroup.KdlImportButton.Enabled = $false; $ctrlGroup.KdlImportButton.BackColor = $grayColor }
+            if ($ctrlGroup.KdlKdbButton) { $ctrlGroup.KdlKdbButton.Enabled = $false; $ctrlGroup.KdlKdbButton.BackColor = $grayColor }
+            if ($ctrlGroup.KdlEbButton) { $ctrlGroup.KdlEbButton.Enabled = $false; $ctrlGroup.KdlEbButton.BackColor = $grayColor }
             if ($ctrlGroup.DirectImportButton) { $ctrlGroup.DirectImportButton.Enabled = $false; $ctrlGroup.DirectImportButton.BackColor = $grayColor }
             if ($ctrlGroup.AfterImportButton) { $ctrlGroup.AfterImportButton.Enabled = $false; $ctrlGroup.AfterImportButton.BackColor = $grayColor }
             if ($ctrlGroup.MaintButton) { $ctrlGroup.MaintButton.Enabled = $false; $ctrlGroup.MaintButton.BackColor = $grayColor }
+            if ($ctrlGroup.MaintButton1) { $ctrlGroup.MaintButton1.Enabled = $false; $ctrlGroup.MaintButton1.BackColor = $grayColor }
+            if ($ctrlGroup.MaintButton2) { $ctrlGroup.MaintButton2.Enabled = $false; $ctrlGroup.MaintButton2.BackColor = $grayColor }
         }
         # 2. 個別ボタンが実行済みの場合（プロセスが有効であっても非活性化）
         elseif (-not $script:editMode) {
@@ -5295,6 +5308,12 @@ function Update-ProcessControls {
             if ($ctrlGroup.KdlImportButton -and $execFlags["KdlImportButton_Executed"]) { 
                 $ctrlGroup.KdlImportButton.Enabled = $false; $ctrlGroup.KdlImportButton.BackColor = $grayColor 
             }
+            if ($ctrlGroup.KdlKdbButton -and $execFlags["KdlKdbButton_Executed"]) { 
+                $ctrlGroup.KdlKdbButton.Enabled = $false; $ctrlGroup.KdlKdbButton.BackColor = $grayColor 
+            }
+            if ($ctrlGroup.KdlEbButton -and $execFlags["KdlEbButton_Executed"]) { 
+                $ctrlGroup.KdlEbButton.Enabled = $false; $ctrlGroup.KdlEbButton.BackColor = $grayColor 
+            }
             if ($ctrlGroup.DirectImportButton -and $execFlags["DirectImportButton_Executed"]) { 
                 $ctrlGroup.DirectImportButton.Enabled = $false; $ctrlGroup.DirectImportButton.BackColor = $grayColor 
             }
@@ -5303,6 +5322,12 @@ function Update-ProcessControls {
             }
             if ($ctrlGroup.MaintButton -and $execFlags["MaintButton_Executed"]) { 
                 $ctrlGroup.MaintButton.Enabled = $false; $ctrlGroup.MaintButton.BackColor = $grayColor 
+            }
+            if ($ctrlGroup.MaintButton1 -and $execFlags["MaintButton1_Executed"]) { 
+                $ctrlGroup.MaintButton1.Enabled = $false; $ctrlGroup.MaintButton1.BackColor = $grayColor 
+            }
+            if ($ctrlGroup.MaintButton2 -and $execFlags["MaintButton2_Executed"]) { 
+                $ctrlGroup.MaintButton2.Enabled = $false; $ctrlGroup.MaintButton2.BackColor = $grayColor 
             }
         }
     }
