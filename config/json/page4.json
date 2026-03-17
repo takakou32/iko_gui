@@ -44,12 +44,12 @@
                           "LogOutputDir":  "node_modules",
                           "LogOutputDir2":  "test",
                           "Enabled":  true,
-                          "KdlKdbButton_Executed":  true,
+                          "DirectImportButton_Executed":  false,
+                          "AfterImportButton_Executed":  false,
+                          "MaintButton1_Executed":  false,
+                          "MaintButton2_Executed":  false,
                           "KdlEbButton_Executed":  true,
-                          "DirectImportButton_Executed":  true,
-                          "AfterImportButton_Executed":  true,
-                          "MaintButton1_Executed":  true,
-                          "MaintButton2_Executed":  true
+                          "KdlKdbButton_Executed":  true
                       },
                       {
                           "Name":  "1.EE SQLLOADER実行",
