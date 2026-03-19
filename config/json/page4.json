@@ -48,8 +48,8 @@
                           "AfterImportButton_Executed":  false,
                           "MaintButton1_Executed":  false,
                           "MaintButton2_Executed":  false,
-                          "KdlEbButton_Executed":  true,
-                          "KdlKdbButton_Executed":  true
+                          "KdlEbButton_Executed":  false,
+                          "KdlKdbButton_Executed":  false
                       },
                       {
                           "Name":  "1.EE SQLLOADER実行",
@@ -149,8 +149,9 @@
                                              }
                                          ],
                           "LogOutputDir":  "node_modules",
-                          "DirectImportButton_Executed":  true,
-                          "AfterImportButton_Executed":  true
+                          "Enabled":  true,
+                          "DirectImportButton_Executed":  false,
+                          "AfterImportButton_Executed":  false
                       },
                       {
                           "ExecuteButtonText":  "実行",
@@ -208,24 +209,7 @@
                                                  "Name":  "バッチファイル",
                                                  "Path":  ""
                                              }
-                                         ],
-                          "LogOutputDir":  ""
-                      },
-                      {
-                          "ExecuteButtonText":  "実行",
-                          "Name":  "新規プロセス",
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "LogButtonText":  "ログ確認",
-                          "ExecutionDelay":  1,
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "バッチファイル",
-                                                 "Path":  ""
-                                             }
-                                         ],
-                          "LogOutputDir":  ""
+                                         ]
                       }
                   ],
     "LogStoragePath2":  "C:\\work\\iko_gui\\config",

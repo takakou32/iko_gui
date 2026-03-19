@@ -542,7 +542,7 @@ function Save-BatchFilePath {
         # 大文字小文字を区別せずに比較（共通パス配下かチェック）
         if (-not $fullBatchPath.StartsWith($fullLogStoragePath, [System.StringComparison]::OrdinalIgnoreCase)) {
             Write-Log "バッチファイルは共通パス（$fullLogStoragePath）配下に配置する必要があります: $fullBatchPath" "ERROR" $ProcessIndex
-            [void][System.Windows.Forms.MessageBox]::Show("バッチファイルは共通パス（LogStoragePath）配下に配置する必要があります。`n共通パス: $fullLogStoragePath", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            [System.Windows.Forms.MessageBox]::Show("バッチファイルは共通パス（LogStoragePath）配下に配置する必要があります。`n共通パス: $fullLogStoragePath", "設定エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
             return $false
         }
         
@@ -1974,6 +1974,12 @@ function Update-ProcessControls {
     # これにより、前のページのコントロールが確実に削除される
     $script:processPanel.Controls.Clear()
     
+    # 4ページ目の背景Paintハンドラをいったん解除（ページが変わる場合も対応）
+    if ($script:page4PaintHandler) {
+        try { $script:processPanel.remove_Paint($script:page4PaintHandler) } catch {}
+        $script:page4PaintHandler = $null
+    }
+    
     # ページ番号を判定（drawioのレイアウトを適用）
     $isPage1 = ($script:currentPage -eq 0)
     $isPage2 = ($script:currentPage -eq 1)
@@ -2792,11 +2798,63 @@ function Update-ProcessControls {
                 # 4ページ目：SQLLOADER実行のレイアウト（1列レイアウト）
                 $row = $i  # 1列レイアウトなので、行番号はインデックスそのまま
                 
-                # drawioの座標を参考に、プロセスパネルのy座標50を考慮
-                # 1行目: タスク名(30, 190)、KDL変換CSV格納元(170, 190)、KDL変換CSV格納先(510, 190)、V1抽出CSV格納先(510, 245)
-                # ボタン: KDL取込(430, 290)、直接取込(530, 290)、取込後(630, 290)、ログ確認(730, 290)
-                # プロセスパネルのy座標は50なので、実際のy座標は140から（190-50=140）
-                
+                # プロセス行の座標計算
+                $x = 35
+                if ($row -lt 2) {
+                    $y = [int](140 + $row * 220)
+                }
+                else {
+                    # 3行目以降は行間を詰める
+                    $y = [int](580 + ($row - 2) * 80)
+                    
+                }
+
+                # 4ページ目背景色: 最初の行勦だけ processPanel の Paint イベントを登録する
+                if ($i -eq 0) {
+                    $script:page4RowColors = @(
+                        [System.Drawing.Color]::FromArgb(210, 230, 245),  # 0: スカイブルー
+                        [System.Drawing.Color]::FromArgb(215, 238, 215),  # 1: 薄緑
+                        [System.Drawing.Color]::FromArgb(100, 100, 240),  # 2: ブルー
+                        [System.Drawing.Color]::FromArgb(220, 225, 190),  # 3: 油色
+                        [System.Drawing.Color]::FromArgb(100, 180, 100),  # 4: 緑
+                        [System.Drawing.Color]::FromArgb(255, 180, 255),  # 5: 赤紫
+                        [System.Drawing.Color]::FromArgb(240, 215, 225)   # 6: ピンク
+                    )
+                    # 既存ハンドラを解除して再登録
+                    if ($script:page4PaintHandler) {
+                        try { $script:processPanel.remove_Paint($script:page4PaintHandler) } catch {}
+                    }
+                    $script:page4PaintHandler = [System.Windows.Forms.PaintEventHandler] {
+                        param($paintSender, $paintArgs)
+                        $g = $paintArgs.Graphics
+                        $offsetY = $paintSender.AutoScrollPosition.Y
+                        $w = [Math]::Max($paintSender.ClientSize.Width, 850)
+
+                        # 行ごとの矩形 (TopY, Height)
+                        # y[0]=140→top=10、y[1]=360→top=335、y[2]=580→top=560
+                        # y[3]=660→top=640、y[4]=740→top=720、y[5]=820→top=800、y[6]=900→top=880
+                        $rowRects = @(
+                            @{Top = 10; H = 325 },  # 0: スカイブルー (y=10~335)
+                            @{Top = 335; H = 225 },  # 1: 薄緑       (y=335~560)
+                            @{Top = 560; H = 80 },   # 2: ブルー     (y=560~640)
+                            @{Top = 640; H = 80 },   # 3: 油色       (y=640~720)
+                            @{Top = 720; H = 80 },   # 4: 緑         (y=720~800)
+                            @{Top = 800; H = 80 },   # 5: 赤紫       (y=800~880)
+                            @{Top = 880; H = 80 }    # 6: ピンク     (y=880~960)
+                        )
+                        $cols = $script:page4RowColors
+                        for ($ri = 0; $ri -lt [Math]::Min($rowRects.Count, $cols.Count); $ri++) {
+                            $rect = $rowRects[$ri]
+                            $brush = New-Object System.Drawing.SolidBrush($cols[$ri])
+                            $g.FillRectangle($brush, 0, ($rect.Top + $offsetY), $w, $rect.H)
+                            $brush.Dispose()
+                        }
+                    }
+                    $script:processPanel.add_Paint($script:page4PaintHandler)
+                    # 再描画を強制
+                    $script:processPanel.Invalidate()
+                }
+
                 if ($i -eq 0) {
                     # 最初の行の場合のみ、V1抽出CSV格納元セクションを表示
                     # V1抽出CSV格納元ラベル
@@ -2823,7 +2881,6 @@ function Update-ProcessControls {
                                 $selectedPath = Show-FolderBrowser -InitialDirectory $v1CsvSourceTextBox.Text -Description "V1抽出CSV格納元フォルダを選択してください"
                                 if ($selectedPath) {
                                     $v1CsvSourceTextBox.Text = $selectedPath
-                                    # page4.jsonに保存
                                     Save-PagePaths -SourcePath $selectedPath
                                     Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
                                 }
@@ -2843,22 +2900,9 @@ function Update-ProcessControls {
                                 }
                             }
                         })
-                    # V1抽出CSV格納元の初期値はLoad-PagePathsで設定される（ページ4の場合も対応済み）
                     $script:processPanel.Controls.Add($v1CsvSourceTextBox)
                     $script:v1CsvSourceTextBox = $v1CsvSourceTextBox
                 }
-                
-                # プロセス行のレイアウト（行ごとに異なる）
-                $x = 35
-                if ($row -lt 2) {
-                    $y = [int](140 + $row * 220)
-                }
-                else {
-                    # 3行目以降は行間を詰める（前の行までの高さ580px + 80pxずつ）
-                    $y = [int](580 + ($row - 2) * 80)
-                }
-                
-
                 
                 # タスク名
                 $nameTextBox = New-Object System.Windows.Forms.TextBox
@@ -2888,12 +2932,15 @@ function Update-ProcessControls {
                 $enableCheckBox.Checked = $isEnabled
                 $enableCheckBox.Visible = $script:editMode
                 $enableCheckBox.Tag = $i
-                $enableCheckBox.Add_Click({
-                        $idx = $this.Tag
-                        $enabled = $this.Checked
-                        Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
-                        Update-ProcessControls
-                    })
+                if ($i -lt 3) {
+                    # Add_Click event only for index 0, 1, 2
+                    $enableCheckBox.Add_Click({
+                            $idx = $this.Tag
+                            $enabled = $this.Checked
+                            Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
+                            Update-ProcessControls
+                        })
+                }
                 $script:processPanel.Controls.Add($enableCheckBox)
                 
                 if ($i -lt 2) {
@@ -3295,8 +3342,8 @@ function Update-ProcessControls {
                                             }
                                         }
 
-                                        if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                            $initDir = $logStoragePath
+                                        if ($logStoragePath -and (Test-Path $initDir)) {
+                                            $fileDialog.InitialDirectory = $initDir
                                         }
                                     }
                                     
@@ -3416,8 +3463,8 @@ function Update-ProcessControls {
                                             }
                                         }
 
-                                        if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                            $initDir = $logStoragePath
+                                        if ($logStoragePath -and (Test-Path $initDir)) {
+                                            $fileDialog.InitialDirectory = $initDir
                                         }
                                     }
                                     
@@ -3537,8 +3584,8 @@ function Update-ProcessControls {
                                             }
                                         }
 
-                                        if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                            $initDir = $logStoragePath
+                                        if ($logStoragePath -and (Test-Path $initDir)) {
+                                            $fileDialog.InitialDirectory = $initDir
                                         }
                                     }
                                     
@@ -4296,18 +4343,11 @@ function Update-ProcessControls {
                 }
                 else {
                     # 4行目以降（Index 3以上）：V1抽出CSV格納先のみ
-                    # チェックボックス（編集モードON時のみ表示）
-                    $checkBox = New-Object System.Windows.Forms.CheckBox
+                    # 有効/無効切り替え用チェックボックス（Page 4 Index 3+ 用）
                     $calcX = $x - 25
                     $calcY = $y + 5
-                    $checkBox.Location = New-Object System.Drawing.Point($calcX, $calcY)
-                    $checkBox.Size = New-Object System.Drawing.Size(20, 20)
-                    $checkBox.Visible = $script:editMode
-                    $script:processPanel.Controls.Add($checkBox)
-                    
-                    # 有効/無効切り替え用チェックボックス（Page 4 Index 2+ 用）
                     $enableCheckBox = New-Object System.Windows.Forms.CheckBox
-                    $enableCheckBox.Location = New-Object System.Drawing.Point($calcX, [int]($calcY + 25))
+                    $enableCheckBox.Location = New-Object System.Drawing.Point($calcX, $calcY)
                     $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
                     $enableCheckBox.Checked = $isEnabled
                     $enableCheckBox.Visible = $script:editMode
@@ -4319,6 +4359,14 @@ function Update-ProcessControls {
                             Update-ProcessControls
                         })
                     $script:processPanel.Controls.Add($enableCheckBox)
+                    
+                    # 行削除用チェックボックス（編集モードON時のみ表示）
+                    $checkBox = New-Object System.Windows.Forms.CheckBox
+                    $checkBox.Location = New-Object System.Drawing.Point($calcX, [int]($calcY + 25))
+                    $checkBox.Size = New-Object System.Drawing.Size(20, 20)
+                    $checkBox.Visible = $script:editMode
+                    $checkBox.Tag = $i
+                    $script:processPanel.Controls.Add($checkBox)
                     
                     # V1抽出CSV格納先ラベル
                     $v1CsvDestLabel = New-Object System.Windows.Forms.Label
@@ -5724,3 +5772,4 @@ function Save-ProcessComponentExecuted {
         return $false
     }
 }
+

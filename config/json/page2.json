@@ -44,25 +44,6 @@
                                              }
                                          ],
                           "LogOutputDir":  "C:\\work\\test\\fizz-buzz"
-                      },
-                      {
-                          "ExecuteButtonText":  "実行",
-                          "Name":  "新規プロセス",
-                          "CsvMoveOperations":  [
-
-                                                ],
-                          "LogButtonText":  "ログ確認",
-                          "ExecutionDelay":  1,
-                          "BatchFiles":  [
-                                             {
-                                                 "Name":  "バッチファイル",
-                                                 "Path":  ""
-                                             },
-                                             {
-                                                 "Name":  "実行用バッチ",
-                                                 "Path":  ""
-                                             }
-                                         ]
                       }
                   ],
     "LogStoragePath2":  "C:\\GnuWin32\\man"
