@@ -3981,16 +3981,16 @@ function Update-ProcessControls {
 
                     if ($i -eq 0) {
                         # --- 1行目 (Index 0) ---
-                        # 取込後 (Batch 3), メンテEA (Batch 4), メンテEB (Batch 5)
+                        # 取込後EA (Batch 3),取込後EB (Batch 4), メンテ(Batch 5)
                         
-                        # 取込後 (X=540)
-                        $afterImportButton = Create-AfterImportButton -x 540 -batchIndex 3 -text "取込後"
+                        # 取込後EA (X=540)
+                        $afterImportButton = Create-AfterImportButton -x 540 -batchIndex 3 -text "取込後EA"
                         
-                        # メンテEA (X=630)
-                        $maintButton1 = Create-MaintButton -x 630 -text "メンテEA" -batchIndex 4 -title "メンテEA" -componentKey "MaintButton1_Executed"
+                        # 取込後EB (X=630)
+                        $maintButton1 = Create-MaintButton -x 630 -text "取込後EB" -batchIndex 4 -title "取込後EB" -componentKey "MaintButton1_Executed"
                         
-                        # メンテEB (X=720)
-                        $maintButton2 = Create-MaintButton -x 720 -text "メンテEB" -batchIndex 5 -title "メンテEB" -componentKey "MaintButton2_Executed"
+                        # メンテ (X=720)
+                        $maintButton2 = Create-MaintButton -x 720 -text "メンテ" -batchIndex 5 -title "メンテ" -componentKey "MaintButton2_Executed"
                         
                         # ログ確認 (Y+35)
                         # Log1 @ 240, Log2 @ 440 (Direct Import X)
@@ -5305,7 +5305,12 @@ function Update-ProcessControls {
                     $ctrlGroup.AfterImportButton.Text = "参照"
                 }
                 else {
-                    $ctrlGroup.AfterImportButton.Text = "取込後"
+                    if ($i -eq 0) {
+                        $ctrlGroup.AfterImportButton.Text = "取込後EA"
+                    }
+                    else {
+                        $ctrlGroup.AfterImportButton.Text = "取込後"
+                    }
                 }
             }
         }
