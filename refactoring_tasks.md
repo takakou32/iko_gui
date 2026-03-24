@@ -2,12 +2,15 @@
 
 各タスク（枝番）完了直後に必ずGUIが起動し、システムの全機能が正常動作すること（アトミック性、リリース可能性）を保証する手順で再構成しました。
 
+## コーディングルール
+- **エンコーディングの厳守:** PowerShellスクリプト（`.ps1`）を新規作成・編集した際は、文字化けや意図しない動作を防ぐため、**必ず「UTF-8（BOM付き）」で保存**してください。
+
 ## タスクリスト
 
 ### フェーズ1：UI描画ロジックの別ファイルへの隔離
-- [ ] **1.1:** 空の `UIPageRenderer.ps1` を作成し、`Main.ps1` からドットソースで読み込むよう追記する。（起動確認）
-- [ ] **1.2:** `Create-AfterImportButton` や `Create-MaintButton` などの、外部依存が少ない「コントロール生成補助関数群」だけを `Functions.ps1` から `UIPageRenderer.ps1` へ移動する。（起動・描画確認）
-- [ ] **1.3:** `Update-ProcessControls` 本体を `Functions.ps1` から `UIPageRenderer.ps1` へ移動する。（起動・描画確認、UI描画ファイルの隔離完了）
+- [x] **1.1:** 空の `UIPageRenderer.ps1` を作成し、`Main.ps1` からドットソースで読み込むよう追記する。（起動確認）
+- [x] **1.2:** `Create-AfterImportButton` や `Create-MaintButton` などの、外部依存が少ない「コントロール生成補助関数群」だけを `Functions.ps1` から `UIPageRenderer.ps1` へ移動する。（起動・描画確認）
+- [x] **1.3:** `Update-ProcessControls` 本体を `Functions.ps1` から `UIPageRenderer.ps1` へ移動する。（起動・描画確認、UI描画ファイルの隔離完了）
 
 ### フェーズ2：巨大な Update-ProcessControls の細分化
 - [ ] **2.1:** `Update-ProcessControls` 内の「1・2ページ目のレイアウト作成」処理を抽出し、`UIPageRenderer.ps1` 内に新関数 `Render-Page1And2Row` を作成する。同時に元の巨大ループからこの関数を呼び出すように書き換える。（1・2ページの動作確認）

@@ -70,6 +70,7 @@ else {
 
 # 関数定義モジュールの読み込み
 . $PSScriptRoot\Functions.ps1
+. $PSScriptRoot\UIPageRenderer.ps1
 
 # UIレイアウトモジュールの読み込み（アプリケーション起動）
 . $PSScriptRoot\UILayout.ps1

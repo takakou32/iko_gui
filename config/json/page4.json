@@ -14,11 +14,11 @@
                           "BatchFiles":  [
                                              {
                                                  "Name":  "KDL取込(KDB)",
-                                                 "Path":  "iko_gui\\run.bat"
+                                                 "Path":  "iko_gui\\upload\\ログアップロード.bat"
                                              },
                                              {
                                                  "Name":  "サンプル1",
-                                                 "Path":  "sample2.bat"
+                                                 "Path":  "iko_gui\\upload\\log_upload.bat"
                                              },
                                              {
                                                  "Path":  "sample2.bat",
@@ -48,8 +48,8 @@
                           "AfterImportButton_Executed":  false,
                           "MaintButton1_Executed":  false,
                           "MaintButton2_Executed":  false,
-                          "KdlEbButton_Executed":  false,
-                          "KdlKdbButton_Executed":  false
+                          "KdlKdbButton_Executed":  false,
+                          "KdlEbButton_Executed":  false
                       },
                       {
                           "Name":  "1.EE SQLLOADER実行",
@@ -83,9 +83,9 @@
                           "LogOutputDir2":  "coverage",
                           "LogOutputDir":  "node_modules",
                           "Enabled":  true,
-                          "KdlImportButton_Executed":  true,
-                          "DirectImportButton_Executed":  true,
-                          "AfterImportButton_Executed":  true
+                          "KdlImportButton_Executed":  false,
+                          "DirectImportButton_Executed":  false,
+                          "AfterImportButton_Executed":  false
                       },
                       {
                           "Name":  "EA SQLOADER実行",
@@ -122,9 +122,9 @@
                           "ExecutionDelay":  1,
                           "LogOutputDir":  "node_modules",
                           "Enabled":  true,
-                          "MaintButton_Executed":  true,
-                          "DirectImportButton_Executed":  true,
-                          "AfterImportButton_Executed":  true
+                          "MaintButton_Executed":  false,
+                          "DirectImportButton_Executed":  false,
+                          "AfterImportButton_Executed":  false
                       },
                       {
                           "ExecuteButtonText":  "実行",
