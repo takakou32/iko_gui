@@ -1,212 +1,437 @@
-﻿# ==============================================================================
-# UI描画専用モジュール (UIPageRenderer.ps1)
-# 
-# 用途: 
-#   Functions.ps1からUIの構築処理（Update-ProcessControls等）や
-#   コントロール生成処理を分離し、画面のレイアウト・描画のみを担当します。
-# 
-# ==============================================================================
-
-Write-Host "UIPageRenderer.ps1 loaded."
-
-# ==============================================================================
-# コントロール生成補助関数群
-# ==============================================================================
-
-# --- 共通ヘルパー関数: メンテボタン作成 ---
-function Create-MaintButton {
-    param($x, $text, $batchIndex, $title, $componentKey = "MaintButton_Executed")
-    $maintButton = New-Object System.Windows.Forms.Button
-    $maintButton.Location = New-Object System.Drawing.Point($x, $buttonY)
-    $maintButton.Size = New-Object System.Drawing.Size(80, 30)
-
+﻿
+# --- 3繝壹・繧ｸ逶ｮ陦後Ξ繧､繧｢繧ｦ繝域緒逕ｻ髢｢謨ｰ ---
+function Render-Page3Row {
+    param($i, $processConfig, $isEnabled)
+    # 3ページ目：JAVA移行ツール実行のレイアウト（1列レイアウト）
+    $row = $i  # 1列レイアウトなので、行番号はインデックスそのまま
+    
+    # 最初の行の場合のみ、V1抽出CSV格納元・格納先セクションを表示
+    if ($i -eq 0) {
+        # V1抽出CSV格納元ラベル
+        $v1CsvSourceLabel = New-Object System.Windows.Forms.Label
+        $v1CsvSourceLabel.Location = New-Object System.Drawing.Point(60, 60)
+        $v1CsvSourceLabel.Size = New-Object System.Drawing.Size(150, 20)
+        $v1CsvSourceLabel.Text = "V1抽出CSV格納元"
+        $v1CsvSourceLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
+        $script:processPanel.Controls.Add($v1CsvSourceLabel)
+        $script:v1CsvSourceLabel = $v1CsvSourceLabel
+        
+        # V1抽出CSV格納元パス入力
+        $v1CsvSourceTextBox = New-Object System.Windows.Forms.TextBox
+        $v1CsvSourceTextBox.Location = New-Object System.Drawing.Point(60, 85)
+        $v1CsvSourceTextBox.Size = New-Object System.Drawing.Size(350, 30)
+        $v1CsvSourceTextBox.Text = "パス"
+        $v1CsvSourceTextBox.ReadOnly = $true
+        $v1CsvSourceTextBox.BackColor = [System.Drawing.Color]::White
+        $v1CsvSourceTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+        $v1CsvSourceTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+        $v1CsvSourceTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+        $v1CsvSourceTextBox.Add_Click({
+                if ($script:editMode) {
+                    $selectedPath = Show-FolderBrowser -InitialDirectory $v1CsvSourceTextBox.Text -Description "V1抽出CSV格納元フォルダを選択してください"
+                    if ($selectedPath) {
+                        $v1CsvSourceTextBox.Text = $selectedPath
+                        # page3.jsonに保存
+                        Save-PagePaths -SourcePath $selectedPath
+                        Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
+                    }
+                }
+                else {
+                    $path = $this.Text
+                    if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                        if (-not [System.IO.Path]::IsPathRooted($path)) {
+                            $path = Join-Path $PSScriptRoot $path
+                        }
+                        if (Test-Path $path) {
+                            Open-PathInExplorer -Path $path
+                        }
+                        else {
+                            Write-Log "パスが存在しません: $path" "WARN"
+                        }
+                    }
+                }
+            })
+        $script:processPanel.Controls.Add($v1CsvSourceTextBox)
+        $script:v1CsvSourceTextBox = $v1CsvSourceTextBox
+        
+        # V1抽出CSV格納先ラベル
+        $v1CsvDestLabel = New-Object System.Windows.Forms.Label
+        $v1CsvDestLabel.Location = New-Object System.Drawing.Point(210, 135)
+        $v1CsvDestLabel.Size = New-Object System.Drawing.Size(150, 20)
+        $v1CsvDestLabel.Text = "V1抽出CSV格納先"
+        $v1CsvDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
+        $script:processPanel.Controls.Add($v1CsvDestLabel)
+        $script:v1CsvDestLabel = $v1CsvDestLabel
+    }
+    
+    # drawioの座標: タスク名(60, 210+), パス(210, 210+), 移動設定(440, 210+), CSV名変換(520, 210+), 実行(610, 210+), ログ確認(680, 210+)
+    # プロセスパネルのy座標は50なので、実際のy座標は160から（210-50=160）
+    $x = 60
+    $y = 160 + $row * 40
+    
+    # チェックボックス（編集モードON時のみ表示: 消去用など）
+    $checkBox = New-Object System.Windows.Forms.CheckBox
+    $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
+    $checkBox.Size = New-Object System.Drawing.Size(20, 20)
+    $checkBox.Visible = $script:editMode
+    $script:processPanel.Controls.Add($checkBox)
+    
+    # 有効/無効切り替え用チェックボックス
+    $enableCheckBox = New-Object System.Windows.Forms.CheckBox
+    $enableCheckBox.Location = New-Object System.Drawing.Point([int]($x - 45), [int]($y + 5))
+    $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
+    $enableCheckBox.Checked = $isEnabled
+    $enableCheckBox.Visible = $script:editMode
+    $enableCheckBox.Tag = $i
+    $enableCheckBox.Add_Click({
+            $idx = $this.Tag
+            $enabled = $this.Checked
+            Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
+            Update-ProcessControls
+        })
+    $script:processPanel.Controls.Add($enableCheckBox)
+    
+    # テキストボックス（タスク名表示用）
+    $nameTextBox = New-Object System.Windows.Forms.TextBox
+    $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
+    $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
+    $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
+    $nameTextBox.ReadOnly = -not $script:editMode
+    $nameTextBox.BackColor = [System.Drawing.Color]::FromArgb(230, 245, 255)
+    $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+    $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
+    $nameTextBox.Multiline = $false
+    $nameTextBox.Height = 30
+    $nameTextBox.Tag = $i
+    $nameTextBox.Add_Leave({
+            if ($script:editMode) {
+                $processIdx = $this.Tag
+                $newName = $this.Text
+                Save-ProcessName -ProcessIndex $processIdx -ProcessName $newName
+            }
+        })
+    $script:processPanel.Controls.Add($nameTextBox)
+    
+    # パス入力テキストボックス（V1抽出CSV格納先）
+    $pathTextBox = New-Object System.Windows.Forms.TextBox
+    $pathX = 210
+    $pathTextBox.Location = New-Object System.Drawing.Point($pathX, $y)
+    $pathTextBox.Size = New-Object System.Drawing.Size(220, 30)
+    # 各プロセスのDestinationPathを読み込んで設定
+    $destPathValue = "パス"
+    if ($processConfig.DestinationPath -and $processConfig.DestinationPath -ne "" -and $processConfig.DestinationPath -ne "パス") {
+        try {
+            $destPathValue = $processConfig.DestinationPath
+            # 相対パスの場合は絶対パスに変換
+            if (-not [System.IO.Path]::IsPathRooted($destPathValue)) {
+                # 共通基準パスを使用
+                $basePath = Get-CommonBasePath
+                $destPathValue = Join-Path $basePath $destPathValue
+            }
+            $destPathValue = [System.IO.Path]::GetFullPath($destPathValue)
+        }
+        catch {
+            # エラー時はデフォルト値を使用
+        }
+    }
+    $pathTextBox.Text = $destPathValue
+    $pathTextBox.ReadOnly = $true
+    $pathTextBox.BackColor = [System.Drawing.Color]::White
+    $pathTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+    $pathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $pathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
+    $pathTextBox.Tag = $i  # プロセスインデックスをTagに保存
+    $pathTextBox.Add_Click({
+            if ($script:editMode) {
+                $initialDir = "パス"
+                if ($this.Text -ne "パス") {
+                    $initialDir = $this.Text
+                }
+                $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "V1抽出CSV格納先フォルダを選択してください"
+                if ($selectedPath) {
+                    $this.Text = $selectedPath
+                    # 各プロセスのDestinationPathをpage3.jsonに保存
+                    $clickedProcessIdx = $this.Tag
+                    Save-ProcessDestinationPath -ProcessIndex $clickedProcessIdx -DestinationPath $selectedPath
+                    Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
+                }
+            }
+            else {
+                $path = $this.Text
+                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
+                    if (-not [System.IO.Path]::IsPathRooted($path)) {
+                        $path = Join-Path $PSScriptRoot $path
+                    }
+                    if (Test-Path $path) {
+                        Open-PathInExplorer -Path $path
+                    }
+                    else {
+                        Write-Log "パスが存在しません: $path" "WARN"
+                    }
+                }
+            }
+        })
+    $script:processPanel.Controls.Add($pathTextBox)
+    
+    # 移動設定ボタン（編集モードON時は水色、OFF時は紺色）
+    $fileMoveButton = New-Object System.Windows.Forms.Button
+    $fileMoveX = 440
+    $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
+    $fileMoveButton.Size = New-Object System.Drawing.Size(70, 30)
     if ($script:editMode) {
-        $maintButton.Text = "参照"
+        $fileMoveButton.Text = "移動設定"
+        $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
+        $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
     }
     else {
-        $maintButton.Text = $text
+        $fileMoveButton.Text = "移動"
+        $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
+        $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
     }
-    $maintButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
-    $maintButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-    $maintButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
-    $maintButton.FlatAppearance.BorderSize = 1
-    $maintButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-    
-    $maintButton.Tag = @{
-        ProcessIndex = $i
-        BatchIndex   = $batchIndex
-        Title        = $title
-        ComponentKey = $componentKey
-    }
-    
-    $maintButton.Add_Click({
-            $ctx = $this.Tag
-            $clickedProcessIdx = $ctx.ProcessIndex
-            $targetBatchIdx = $ctx.BatchIndex
-            $targetTitle = $ctx.Title
-            $cKey = $ctx.ComponentKey
-
+    $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $fileMoveButton.FlatAppearance.BorderSize = 1
+    $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $fileMoveButton.Visible = $true  # 常に表示
+    $fileMoveButton.Tag = $i
+    $fileMoveButton.Add_Click({
+            $clickedProcessIdx = $this.Tag
+            $currentProcessName = ""
+            $v1CsvSourcePath = ""
+            $v1CsvDestPath = ""
+        
+            # プロセス名とパスを取得
+            if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
+                $ctrlGroup = $script:processControls[$clickedProcessIdx]
+                if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
+                    $currentProcessName = $ctrlGroup.NameTextBox.Text
+                }
+                if ($ctrlGroup -and $ctrlGroup.PathTextBox) {
+                    $v1CsvDestPath = $ctrlGroup.PathTextBox.Text
+                }
+            }
+        
+            # V1抽出CSV格納元を取得
+            if ($script:v1CsvSourceTextBox) {
+                $v1CsvSourcePath = $script:v1CsvSourceTextBox.Text
+            }
+        
+            # 編集モードと非編集モードで動作を分岐
             if ($script:editMode) {
+                # 編集モード：移動設定ダイアログを表示
+                Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
+            }
+            else {
+                # 非編集モード：ファイル移動を実行
+                Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
+            }
+        })
+    $script:processPanel.Controls.Add($fileMoveButton)
+    
+    # CSV名変換ボタン（赤色）- 実行ボタンと同じ機能
+    $csvConvertButton = New-Object System.Windows.Forms.Button
+    $csvConvertX = 520
+    $csvConvertButton.Location = New-Object System.Drawing.Point($csvConvertX, $y)
+    $csvConvertButton.Size = New-Object System.Drawing.Size(80, 30)
+    if ($script:editMode) {
+        $csvConvertButton.Text = "参照"
+    }
+    else {
+        $csvConvertButton.Text = "CSV名変換"
+    }
+    $csvConvertButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
+    $csvConvertButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $csvConvertButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
+    $csvConvertButton.FlatAppearance.BorderSize = 1
+    $csvConvertButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $csvConvertButton.Tag = $i  # プロセスインデックスをTagに保存
+    $csvConvertButton.Add_Click({
+            $clickedProcessIdx = $this.Tag
+            if ($script:editMode) {
+                # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存（CSV名変換用：Index 1）
                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                $fileDialog.Title = "${targetTitle}用バッチファイルを選択してください"
+                $fileDialog.Title = "CSV名変換用バッチファイルを選択してください"
                 
+                # LogStoragePathを初期ディレクトリに設定
                 $pageConfig = $script:pages[$script:currentPage]
                 $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
                 if ($logStoragePath -and (Test-Path $logStoragePath)) {
                     $fileDialog.InitialDirectory = $logStoragePath
                 }
                 
-                # 初期値設定
+                # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
                 $currentProcesses = Get-CurrentPageProcesses
                 if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
                     $processConfig = $currentProcesses[$clickedProcessIdx]
-                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $targetBatchIdx) {
-                        $currentBatch = $processConfig.BatchFiles[$targetBatchIdx]
+                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                        $currentBatch = $processConfig.BatchFiles[1]
+                        # Resolve-BatchPathを使用してパスを解決
                         $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                        # パスが有効かチェック（空文字でのTest-Pathエラー防止）
-                        if ($initialPath -and (Test-Path $initialPath)) {
+                        if (Test-Path $initialPath) {
                             $fileDialog.InitialDirectory = Split-Path $initialPath
                             $fileDialog.FileName = Split-Path $initialPath -Leaf
-                        }
-                    }
-                    elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                        $currentBatch = $processConfig.BatchFiles[0]
-                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                        # パスが有効かチェック
-                        if ($initialPath -and (Test-Path $initialPath)) {
-                            $fileDialog.InitialDirectory = Split-Path $initialPath
                         }
                     }
                 }
                 
                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                     $selectedFile = $fileDialog.FileName
-                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex $targetBatchIdx) {
-                        Write-Log "${targetTitle}用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                        [System.Windows.Forms.MessageBox]::Show("${targetTitle}用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    # Save-BatchFilePath内でパス制限チェックが行われる
+                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1) {
+                        Write-Log "CSV名変換用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                        [System.Windows.Forms.MessageBox]::Show("CSV名変換用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                        
+                        # コントロールを更新して新しい設定を反映
                         Update-ProcessControls
                     }
                 }
                 $fileDialog.Dispose()
             }
             else {
-                # 実行
+                # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 1）
                 $currentProcesses = Get-CurrentPageProcesses
                 if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
                     $processConfig = $currentProcesses[$clickedProcessIdx]
-                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $targetBatchIdx) {
-                        $batch = $processConfig.BatchFiles[$targetBatchIdx]
+                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
+                        $batch = $processConfig.BatchFiles[1]
+                        # Resolve-BatchPathを使用してパスを解決
                         $batchPath = Resolve-BatchPath -Path $batch.Path
                         
                         $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey $cKey
+                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "CsvConvertButton_Executed"
                         Update-ProcessControls
                     }
                     else {
-                        Write-Log "${targetTitle}用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                        [System.Windows.Forms.MessageBox]::Show("${targetTitle}用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                        Write-Log "CSV名変換用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                        [System.Windows.Forms.MessageBox]::Show("CSV名変換用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
                     }
                 }
             }
         })
-    # 編集モードOFF時：Enabledフラグをmaintボタンに反映
+    # 編集モードOFF時：Enabledフラグをcsvconvertボタンに反映
     if (-not $script:editMode -and -not $isEnabled) {
-        $maintButton.Enabled = $false
+        $csvConvertButton.Enabled = $false
     }
-    $script:processPanel.Controls.Add($maintButton)
-    return $maintButton
-}
-
-# 取込後ボタン作成ヘルパー (BatchIndex可変対応)
-function Create-AfterImportButton {
-    param($x, $batchIndex, $text, $componentKey = "AfterImportButton_Executed")
-    $afterBtn = New-Object System.Windows.Forms.Button
-    $afterBtn.Location = New-Object System.Drawing.Point($x, $buttonY)
-    $afterBtn.Size = New-Object System.Drawing.Size(80, 30)
-    if ($script:editMode) { $afterBtn.Text = "参照" } else { $afterBtn.Text = $text }
-    $afterBtn.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)
-    $afterBtn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-    $afterBtn.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)
-    $afterBtn.FlatAppearance.BorderSize = 1
-    $afterBtn.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $script:processPanel.Controls.Add($csvConvertButton)
     
-    $afterBtn.Tag = @{ ProcessIndex = $i; BatchIndex = $batchIndex; Title = $text; ComponentKey = $componentKey }
-    $afterBtn.Add_Click({
-            $ctx = $this.Tag
-            $pIdx = $ctx.ProcessIndex
-            $bIdx = $ctx.BatchIndex
-            $t = $ctx.Title
-            $cKey = $ctx.ComponentKey
-            
+    # 実行ボタン（オレンジ）
+    $executeButton = New-Object System.Windows.Forms.Button
+    $executeX = 610
+    $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
+    $executeButton.Size = New-Object System.Drawing.Size(60, 30)
+    if ($script:editMode) {
+        $executeButton.Text = "参照"
+    }
+    else {
+        $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
+    }
+    $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
+    $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
+    $executeButton.FlatAppearance.BorderSize = 1
+    $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $executeButton.Tag = $i  # プロセスインデックスをTagに保存
+    $executeButton.Add_Click({
+            $clickedProcessIdx = $this.Tag
             if ($script:editMode) {
-                # 簡略化のためCreate-MaintButtonと同じロジックを使用
+                # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存（実行用：Index 0）
                 $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
                 $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                $fileDialog.Title = "${t}用バッチファイルを選択してください"
-            
+                $fileDialog.Title = "実行用バッチファイルを選択してください"
+                
+                # LogStoragePathを初期ディレクトリに設定
                 $pageConfig = $script:pages[$script:currentPage]
                 $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
-                if ($logStoragePath -and (Test-Path $logStoragePath)) { $fileDialog.InitialDirectory = $logStoragePath }
-            
+                if ($logStoragePath -and (Test-Path $logStoragePath)) {
+                    $fileDialog.InitialDirectory = $logStoragePath
+                }
+                
+                # 現在のバッチファイルパスを初期値として設定（BatchIndex = 0）
                 $currentProcesses = Get-CurrentPageProcesses
-                if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
-                    $processConfig = $currentProcesses[$pIdx]
-                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $bIdx) {
-                        $currentBatch = $processConfig.BatchFiles[$bIdx]
+                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                    $processConfig = $currentProcesses[$clickedProcessIdx]
+                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                        $currentBatch = $processConfig.BatchFiles[0]
+                        # Resolve-BatchPathを使用してパスを解決
                         $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                        if ($initialPath -and (Test-Path $initialPath)) {
+                        if (Test-Path $initialPath) {
                             $fileDialog.InitialDirectory = Split-Path $initialPath
                             $fileDialog.FileName = Split-Path $initialPath -Leaf
                         }
                     }
-                    elseif ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                        $currentBatch = $processConfig.BatchFiles[0]
-                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                        if ($initialPath -and (Test-Path $initialPath)) { $fileDialog.InitialDirectory = Split-Path $initialPath }
-                    }
                 }
-            
+                
                 if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                     $selectedFile = $fileDialog.FileName
-                    if (Save-BatchFilePath -ProcessIndex $pIdx -BatchFilePath $selectedFile -BatchIndex $bIdx) {
-                        Write-Log "${t}用バッチファイルを設定しました: $selectedFile" "INFO" $pIdx
-                        [System.Windows.Forms.MessageBox]::Show("${t}用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
+                        Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
+                        [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+                        
+                        # コントロールを更新して新しい設定を反映
                         Update-ProcessControls
                     }
                 }
                 $fileDialog.Dispose()
             }
             else {
+                # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 0）
                 $currentProcesses = Get-CurrentPageProcesses
-                if ($currentProcesses -and $pIdx -lt $currentProcesses.Count) {
-                    $processConfig = $currentProcesses[$pIdx]
-                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt $bIdx) {
-                        $batch = $processConfig.BatchFiles[$bIdx]
+                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
+                    $processConfig = $currentProcesses[$clickedProcessIdx]
+                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
+                        $batch = $processConfig.BatchFiles[0]
+                        # Resolve-BatchPathを使用してパスを解決
                         $batchPath = Resolve-BatchPath -Path $batch.Path
-                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $pIdx
-                        Save-ProcessComponentExecuted -ProcessIndex $pIdx -ComponentKey $cKey
+                        $this.Enabled = $false
+                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
+                        $this.Enabled = $true
+                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "ExecuteButton_Executed"
                         Update-ProcessControls
                     }
                     else {
-                        Write-Log "${t}用バッチファイルが設定されていません" "ERROR" $pIdx
-                        [System.Windows.Forms.MessageBox]::Show("${t}用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+                        Write-Log "実行用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
+                        [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
                     }
                 }
             }
         })
-    # 編集モードOFF時：EnabledフラグをafterBtnに反映
-    if (-not $script:editMode -and -not $isEnabled) {
-        $afterBtn.Enabled = $false
+    $script:processPanel.Controls.Add($executeButton)
+    
+    # ログ確認ボタン（緑）
+    $logButton = New-Object System.Windows.Forms.Button
+    $logX = 680
+    $logButton.Location = New-Object System.Drawing.Point($logX, $y)
+    $logButton.Size = New-Object System.Drawing.Size(70, 30)
+    if ($script:editMode) {
+        $logButton.Text = "参照"
     }
-    $script:processPanel.Controls.Add($afterBtn)
-    return $afterBtn
+    else {
+        $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
+    }
+    $logButton.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
+    $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
+    $logButton.FlatAppearance.BorderSize = 1
+    $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
+    $logButton.Tag = $i  # プロセスインデックスをTagに保存
+    $logButton.Add_Click({
+            $clickedProcessIdx = $this.Tag
+            Show-ProcessLog -ProcessIndex $clickedProcessIdx
+        })
+    $script:processPanel.Controls.Add($logButton)
+    
+    # 3ページ目用のコントロール情報を保存
+    $script:processControls += @{
+        CheckBox         = $checkBox
+        EnableCheckBox   = $enableCheckBox
+        NameTextBox      = $nameTextBox
+        PathTextBox      = $pathTextBox
+        FileMoveButton   = $fileMoveButton
+        CsvConvertButton = $csvConvertButton
+        ExecuteButton    = $executeButton
+        LogButton        = $logButton
+    }
 }
-
-# ==============================================================================
-# UI描画メイン関数
-# ==============================================================================
-
 function Update-ProcessControls {
     # ページ遷移時にJSONファイルを読み込む
     $currentProcesses = @(Get-CurrentPageProcesses)
@@ -335,779 +560,9 @@ function Update-ProcessControls {
             }
             
             if ($useDrawioLayout) {
-                # ページ1・2：2列レイアウト
-                $row = [Math]::Floor($i / 2)
-                $col = $i % 2
-                # 1ページ目・2ページ目：drawioのレイアウトに合わせる
-                # drawioの座標: タスク名(60, 100+), セット/チェック(200, 100+), 実行(280, 100+), ログ確認(350, 100+)
-                # プロセスパネルのy座標は50なので、実際のy座標は50から（100-50=50）
-                $x = if ($col -eq 0) { 60 } else { 440 }
-                $y = 50 + $row * 60
-                
-                # テキストボックス（タスク名表示用）
-                $nameTextBox = New-Object System.Windows.Forms.TextBox
-                # チェックボックス（編集モードON時のみ表示）
-                $checkBox = New-Object System.Windows.Forms.CheckBox
-                $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
-                $checkBox.Size = New-Object System.Drawing.Size(20, 20)
-                $checkBox.Visible = $script:editMode
-                $script:processPanel.Controls.Add($checkBox)
+                Render-Page1And2Row -i $i -isPage1 $isPage1 -processConfig $processConfig -isEnabled $isEnabled
+            }
 
-                # 有効/無効切り替え用チェックボックス（新規）
-                $enableCheckBox = New-Object System.Windows.Forms.CheckBox
-                $enableCheckBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 30))
-                $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
-                $enableCheckBox.Checked = $isEnabled
-                $enableCheckBox.Visible = $script:editMode
-                $enableCheckBox.Tag = $i
-                $enableCheckBox.Add_Click({
-                        $idx = $this.Tag
-                        $enabled = $this.Checked
-                        Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
-                        Update-ProcessControls
-                    })
-                $script:processPanel.Controls.Add($enableCheckBox)
-                
-                $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
-                $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
-                $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
-                $nameTextBox.ReadOnly = -not $script:editMode
-                $nameTextBox.BackColor = [System.Drawing.Color]::FromArgb(230, 245, 255)
-                $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
-                $nameTextBox.Multiline = $false
-                $nameTextBox.Height = 30
-                $nameTextBox.Tag = $i
-                $nameTextBox.Add_Leave({
-                        if ($script:editMode) {
-                            $processIdx = $this.Tag
-                            $newName = $this.Text
-                            Save-ProcessName -ProcessIndex $processIdx -ProcessName $newName
-                        }
-                    })
-                $script:processPanel.Controls.Add($nameTextBox)
-                
-                # ファイル移動設定ボタン（セット/チェックボタン、赤色）
-                # 1ページ目は「実行」ボタンと同じ機能、2ページ目は「セット」（ファイル移動設定）
-                $fileMoveButton = New-Object System.Windows.Forms.Button
-                $fileMoveX = $x + 140
-                $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
-                $fileMoveButton.Size = New-Object System.Drawing.Size(70, 30)
-                if ($isPage1) {
-                    # 1ページ目：実行ボタンと同じ機能だが、見た目は設計書通りの「チェック」ボタン（fillColor=#ffcccc, strokeColor=#b85450）
-                    # 編集モードONの時は「参照」、OFFの時は「チェック」と表示
-                    if ($script:editMode) {
-                        $fileMoveButton.Text = "参照"
-                    }
-                    else {
-                        $fileMoveButton.Text = "チェック"  # 設計書通り「チェック」と表示
-                    }
-                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc（設計書通りの赤色）
-                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450（設計書通りの赤色ボーダー）
-                    $fileMoveButton.Visible = $true  # 常に表示
-                    $fileMoveButton.Tag = $i  # プロセスインデックスをTagに保存
-                    $fileMoveButton.Add_Click({
-                            $clickedProcessIdx = $this.Tag
-                            
-                            if ($script:editMode) {
-                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                                $fileDialog.Title = "チェック用バッチファイルを選択してください"
-                            
-                                # 現在のバッチファイルパスを初期値として設定（Index 0）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                        $currentBatch = $processConfig.BatchFiles[0]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
-                                        if (Test-Path $initialPath) {
-                                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                                            $fileDialog.FileName = Split-Path $initialPath -Leaf
-                                        }
-                                    }
-                                }
-                            
-                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedFile = $fileDialog.FileName
-                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
-                                        Write-Log "チェック用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                    
-                                        # コントロールを更新して新しい設定を反映
-                                        Update-ProcessControls
-                                    }
-                                }
-                                $fileDialog.Dispose()
-                            }
-                            else {
-                                # 編集モードOFF時はチェック用バッチファイルを実行（Index 0）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                        $batch = $processConfig.BatchFiles[0]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $batchPath = Resolve-BatchPath -Path $batch.Path
-                                        
-                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "FileMoveButton_Executed"
-                                        Update-ProcessControls
-                                    }
-                                    else {
-                                        Write-Log "チェック用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルが設定されていません。`n編集モードで設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-                                    }
-                                }
-                            }
-                        })
-                }
-                else {
-                    # 2ページ目：セットボタン
-                    # 編集モードOFF時は「セット」と表示し、実行ボタンと同じ機能（プロセス実行）
-                    # 編集モードON時は「参照」と表示し、実行ボタンの編集モードON時と同じ機能（ファイル選択ウィザードを開き、パスをJSONに保存）
-                    if ($script:editMode) {
-                        $fileMoveButton.Text = "参照"
-                    }
-                    else {
-                        $fileMoveButton.Text = "セット"
-                    }
-                    $processIdx = $i
-                    $fileMoveButton.Tag = $i  # プロセスインデックスをTagに保存
-                    $fileMoveButton.Add_Click({
-                            $clickedProcessIdx = $this.Tag  # Tagからプロセスインデックスを取得
-                            # 編集モードON時は実行ボタンと同じ機能（ファイル選択ウィザードを開き、パスをJSONに保存）
-                            if ($script:editMode) {
-                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                                $fileDialog.Title = "チェック用バッチファイルを選択してください"
-                            
-                                # 現在のバッチファイルパスを初期値として設定（Index 0）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                        $currentBatch = $processConfig.BatchFiles[0]
-                                        $initialPath = if ([System.IO.Path]::IsPathRooted($currentBatch.Path)) {
-                                            $currentBatch.Path
-                                        }
-                                        else {
-                                            Join-Path $PSScriptRoot $currentBatch.Path
-                                        }
-                                        if (Test-Path $initialPath) {
-                                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                                            $fileDialog.FileName = Split-Path $initialPath -Leaf
-                                        }
-                                    }
-                                }
-                            
-                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedFile = $fileDialog.FileName
-                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
-                                        Write-Log "チェック用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                    
-                                        # コントロールを更新して新しい設定を反映
-                                        Update-ProcessControls
-                                    }
-                                }
-                                $fileDialog.Dispose()
-                            }
-                            else {
-                                # 編集モードOFF時はチェック用バッチファイルを実行（Index 0）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                        $batch = $processConfig.BatchFiles[0]
-                                        $batch = $processConfig.BatchFiles[0]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $batchPath = Resolve-BatchPath -Path $batch.Path
-                                        
-                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "FileMoveButton_Executed"
-                                        Update-ProcessControls
-                                    }
-                                    else {
-                                        Write-Log "チェック用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("チェック用バッチファイルが設定されていません。`n編集モードで設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-                                    }
-                                }
-                            }
-                        })
-                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
-                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
-                    $fileMoveButton.Visible = $true  # 編集モードOFF時も表示
-                }
-                $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $fileMoveButton.FlatAppearance.BorderSize = 1
-                $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                # 編集モードOFF時：Enabledフラグをボタンに反映
-                if (-not $script:editMode -and -not $isEnabled) {
-                    $fileMoveButton.Enabled = $false
-                }
-                $script:processPanel.Controls.Add($fileMoveButton)
-                
-                # 実行ボタン（オレンジ）
-                $executeButton = New-Object System.Windows.Forms.Button
-                $executeX = $x + 220
-                $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
-                $executeButton.Size = New-Object System.Drawing.Size(60, 30)
-                if ($script:editMode) {
-                    $executeButton.Text = "参照"
-                }
-                else {
-                    $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
-                }
-                # 実行ボタンの見た目（設計書通り：fillColor=#ffcc99, strokeColor=#d6b656）
-                $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
-                $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
-                $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $executeButton.FlatAppearance.BorderSize = 1
-                $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $executeButton.Tag = $i  # プロセスインデックスをTagに保存
-                $executeButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        
-                        if ($script:currentPage -eq 0 -or $script:currentPage -eq 1) {
-                            if ($script:editMode) {
-                                $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-                                $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                                $fileDialog.Title = "実行用バッチファイルを選択してください"
-                                
-                                # LogStoragePathを初期ディレクトリに設定
-                                $pageConfig = $script:pages[$script:currentPage]
-                                $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
-                                if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                    $fileDialog.InitialDirectory = $logStoragePath
-                                }
-                            
-                                # 現在のバッチファイルパスを初期値として設定（Index 1）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
-                                        $currentBatch = $processConfig.BatchFiles[1]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                        if (Test-Path $initialPath) {
-                                            $fileDialog.InitialDirectory = Split-Path $initialPath
-                                            $fileDialog.FileName = Split-Path $initialPath -Leaf
-                                        }
-                                    }
-                                }
-                            
-                                if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                    $selectedFile = $fileDialog.FileName
-                                    if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1) {
-                                        Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                    
-                                        # コントロールを更新して新しい設定を反映
-                                        Update-ProcessControls
-                                    }
-                                }
-                                $fileDialog.Dispose()
-                            }
-                            else {
-                                # 編集モードOFF時は実行用バッチファイルを実行（Index 1）
-                                $currentProcesses = Get-CurrentPageProcesses
-                                if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                    $processConfig = $currentProcesses[$clickedProcessIdx]
-                                    if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
-                                        $batch = $processConfig.BatchFiles[1]
-                                        # Resolve-BatchPathを使用してパスを解決
-                                        $batchPath = Resolve-BatchPath -Path $batch.Path
-                                        
-                                        $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                        Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "ExecuteButton_Executed"
-                                        Update-ProcessControls
-                                    }
-                                    else {
-                                        Write-Log "実行用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                        [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルが設定されていません。`n編集モードで設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-                                    }
-                                }
-                            }
-                        }
-                        else {
-                            Start-ProcessFlow -ProcessIndex $clickedProcessIdx
-                        }
-                    })
-                # 編集モードOFF時：Enabledフラグをexecuteボタンに反映
-                if (-not $script:editMode -and -not $isEnabled) {
-                    $executeButton.Enabled = $false
-                }
-                $script:processPanel.Controls.Add($executeButton)
-                
-                # ログ確認ボタン（緑）
-                $logButton = New-Object System.Windows.Forms.Button
-                $logX = $x + 290
-                $logButton.Location = New-Object System.Drawing.Point($logX, $y)
-                $logButton.Size = New-Object System.Drawing.Size(70, 30)
-                if ($script:editMode) {
-                    $logButton.Text = "参照"
-                }
-                else {
-                    $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
-                }
-                $logButton.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
-                $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
-                $logButton.FlatAppearance.BorderSize = 1
-                $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $logButton.Tag = $i  # プロセスインデックスをTagに保存
-                $logButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
-                    })
-                $script:processPanel.Controls.Add($logButton)
-                
-                # 1ページ目・2ページ目用のコントロール情報を保存
-                $script:processControls += @{
-                    CheckBox       = $checkBox
-                    NameTextBox    = $nameTextBox
-                    FileMoveButton = $fileMoveButton
-                    ExecuteButton  = $executeButton
-                    LogButton      = $logButton
-                }
-            }
-            elseif ($isPage3) {
-                # 3ページ目：JAVA移行ツール実行のレイアウト（1列レイアウト）
-                $row = $i  # 1列レイアウトなので、行番号はインデックスそのまま
-                
-                # 最初の行の場合のみ、V1抽出CSV格納元・格納先セクションを表示
-                if ($i -eq 0) {
-                    # V1抽出CSV格納元ラベル
-                    $v1CsvSourceLabel = New-Object System.Windows.Forms.Label
-                    $v1CsvSourceLabel.Location = New-Object System.Drawing.Point(60, 60)
-                    $v1CsvSourceLabel.Size = New-Object System.Drawing.Size(150, 20)
-                    $v1CsvSourceLabel.Text = "V1抽出CSV格納元"
-                    $v1CsvSourceLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
-                    $script:processPanel.Controls.Add($v1CsvSourceLabel)
-                    $script:v1CsvSourceLabel = $v1CsvSourceLabel
-                    
-                    # V1抽出CSV格納元パス入力
-                    $v1CsvSourceTextBox = New-Object System.Windows.Forms.TextBox
-                    $v1CsvSourceTextBox.Location = New-Object System.Drawing.Point(60, 85)
-                    $v1CsvSourceTextBox.Size = New-Object System.Drawing.Size(350, 30)
-                    $v1CsvSourceTextBox.Text = "パス"
-                    $v1CsvSourceTextBox.ReadOnly = $true
-                    $v1CsvSourceTextBox.BackColor = [System.Drawing.Color]::White
-                    $v1CsvSourceTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                    $v1CsvSourceTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                    $v1CsvSourceTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
-                    $v1CsvSourceTextBox.Add_Click({
-                            if ($script:editMode) {
-                                $selectedPath = Show-FolderBrowser -InitialDirectory $v1CsvSourceTextBox.Text -Description "V1抽出CSV格納元フォルダを選択してください"
-                                if ($selectedPath) {
-                                    $v1CsvSourceTextBox.Text = $selectedPath
-                                    # page3.jsonに保存
-                                    Save-PagePaths -SourcePath $selectedPath
-                                    Write-Log "V1抽出CSV格納元を設定しました: $selectedPath" "INFO"
-                                }
-                            }
-                            else {
-                                $path = $this.Text
-                                if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
-                                    if (-not [System.IO.Path]::IsPathRooted($path)) {
-                                        $path = Join-Path $PSScriptRoot $path
-                                    }
-                                    if (Test-Path $path) {
-                                        Open-PathInExplorer -Path $path
-                                    }
-                                    else {
-                                        Write-Log "パスが存在しません: $path" "WARN"
-                                    }
-                                }
-                            }
-                        })
-                    $script:processPanel.Controls.Add($v1CsvSourceTextBox)
-                    $script:v1CsvSourceTextBox = $v1CsvSourceTextBox
-                    
-                    # V1抽出CSV格納先ラベル
-                    $v1CsvDestLabel = New-Object System.Windows.Forms.Label
-                    $v1CsvDestLabel.Location = New-Object System.Drawing.Point(210, 135)
-                    $v1CsvDestLabel.Size = New-Object System.Drawing.Size(150, 20)
-                    $v1CsvDestLabel.Text = "V1抽出CSV格納先"
-                    $v1CsvDestLabel.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
-                    $script:processPanel.Controls.Add($v1CsvDestLabel)
-                    $script:v1CsvDestLabel = $v1CsvDestLabel
-                }
-                
-                # drawioの座標: タスク名(60, 210+), パス(210, 210+), 移動設定(440, 210+), CSV名変換(520, 210+), 実行(610, 210+), ログ確認(680, 210+)
-                # プロセスパネルのy座標は50なので、実際のy座標は160から（210-50=160）
-                $x = 60
-                $y = 160 + $row * 40
-                
-                # チェックボックス（編集モードON時のみ表示: 消去用など）
-                $checkBox = New-Object System.Windows.Forms.CheckBox
-                $checkBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
-                $checkBox.Size = New-Object System.Drawing.Size(20, 20)
-                $checkBox.Visible = $script:editMode
-                $script:processPanel.Controls.Add($checkBox)
-                
-                # 有効/無効切り替え用チェックボックス
-                $enableCheckBox = New-Object System.Windows.Forms.CheckBox
-                $enableCheckBox.Location = New-Object System.Drawing.Point([int]($x - 45), [int]($y + 5))
-                $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
-                $enableCheckBox.Checked = $isEnabled
-                $enableCheckBox.Visible = $script:editMode
-                $enableCheckBox.Tag = $i
-                $enableCheckBox.Add_Click({
-                        $idx = $this.Tag
-                        $enabled = $this.Checked
-                        Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
-                        Update-ProcessControls
-                    })
-                $script:processPanel.Controls.Add($enableCheckBox)
-                
-                # テキストボックス（タスク名表示用）
-                $nameTextBox = New-Object System.Windows.Forms.TextBox
-                $nameTextBox.Location = New-Object System.Drawing.Point($x, $y)
-                $nameTextBox.Size = New-Object System.Drawing.Size(130, 30)
-                $nameTextBox.Text = if ($processConfig.Name) { $processConfig.Name } else { "" }
-                $nameTextBox.ReadOnly = -not $script:editMode
-                $nameTextBox.BackColor = [System.Drawing.Color]::FromArgb(230, 245, 255)
-                $nameTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                $nameTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9, [System.Drawing.FontStyle]::Bold)
-                $nameTextBox.Multiline = $false
-                $nameTextBox.Height = 30
-                $nameTextBox.Tag = $i
-                $nameTextBox.Add_Leave({
-                        if ($script:editMode) {
-                            $processIdx = $this.Tag
-                            $newName = $this.Text
-                            Save-ProcessName -ProcessIndex $processIdx -ProcessName $newName
-                        }
-                    })
-                $script:processPanel.Controls.Add($nameTextBox)
-                
-                # パス入力テキストボックス（V1抽出CSV格納先）
-                $pathTextBox = New-Object System.Windows.Forms.TextBox
-                $pathX = 210
-                $pathTextBox.Location = New-Object System.Drawing.Point($pathX, $y)
-                $pathTextBox.Size = New-Object System.Drawing.Size(220, 30)
-                # 各プロセスのDestinationPathを読み込んで設定
-                $destPathValue = "パス"
-                if ($processConfig.DestinationPath -and $processConfig.DestinationPath -ne "" -and $processConfig.DestinationPath -ne "パス") {
-                    try {
-                        $destPathValue = $processConfig.DestinationPath
-                        # 相対パスの場合は絶対パスに変換
-                        if (-not [System.IO.Path]::IsPathRooted($destPathValue)) {
-                            # 共通基準パスを使用
-                            $basePath = Get-CommonBasePath
-                            $destPathValue = Join-Path $basePath $destPathValue
-                        }
-                        $destPathValue = [System.IO.Path]::GetFullPath($destPathValue)
-                    }
-                    catch {
-                        # エラー時はデフォルト値を使用
-                    }
-                }
-                $pathTextBox.Text = $destPathValue
-                $pathTextBox.ReadOnly = $true
-                $pathTextBox.BackColor = [System.Drawing.Color]::White
-                $pathTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                $pathTextBox.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $pathTextBox.Cursor = [System.Windows.Forms.Cursors]::Hand
-                $pathTextBox.Tag = $i  # プロセスインデックスをTagに保存
-                $pathTextBox.Add_Click({
-                        if ($script:editMode) {
-                            $initialDir = "パス"
-                            if ($this.Text -ne "パス") {
-                                $initialDir = $this.Text
-                            }
-                            $selectedPath = Show-FolderBrowser -InitialDirectory $initialDir -Description "V1抽出CSV格納先フォルダを選択してください"
-                            if ($selectedPath) {
-                                $this.Text = $selectedPath
-                                # 各プロセスのDestinationPathをpage3.jsonに保存
-                                $clickedProcessIdx = $this.Tag
-                                Save-ProcessDestinationPath -ProcessIndex $clickedProcessIdx -DestinationPath $selectedPath
-                                Write-Log "V1抽出CSV格納先を設定しました: $selectedPath" "INFO" $clickedProcessIdx
-                            }
-                        }
-                        else {
-                            $path = $this.Text
-                            if (-not [string]::IsNullOrWhiteSpace($path) -and $path -ne "パス") {
-                                if (-not [System.IO.Path]::IsPathRooted($path)) {
-                                    $path = Join-Path $PSScriptRoot $path
-                                }
-                                if (Test-Path $path) {
-                                    Open-PathInExplorer -Path $path
-                                }
-                                else {
-                                    Write-Log "パスが存在しません: $path" "WARN"
-                                }
-                            }
-                        }
-                    })
-                $script:processPanel.Controls.Add($pathTextBox)
-                
-                # 移動設定ボタン（編集モードON時は水色、OFF時は紺色）
-                $fileMoveButton = New-Object System.Windows.Forms.Button
-                $fileMoveX = 440
-                $fileMoveButton.Location = New-Object System.Drawing.Point($fileMoveX, $y)
-                $fileMoveButton.Size = New-Object System.Drawing.Size(70, 30)
-                if ($script:editMode) {
-                    $fileMoveButton.Text = "移動設定"
-                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(218, 232, 252)  # #dae8fc（水色）
-                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(108, 142, 191)  # #6c8ebf
-                }
-                else {
-                    $fileMoveButton.Text = "移動"
-                    $fileMoveButton.BackColor = [System.Drawing.Color]::FromArgb(30, 58, 138)  # #1e3a8a（紺色）
-                    $fileMoveButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(20, 40, 100)  # 濃い紺色
-                }
-                $fileMoveButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $fileMoveButton.FlatAppearance.BorderSize = 1
-                $fileMoveButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $fileMoveButton.Visible = $true  # 常に表示
-                $fileMoveButton.Tag = $i
-                $fileMoveButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        $currentProcessName = ""
-                        $v1CsvSourcePath = ""
-                        $v1CsvDestPath = ""
-                    
-                        # プロセス名とパスを取得
-                        if ($script:processControls -and $clickedProcessIdx -lt $script:processControls.Count) {
-                            $ctrlGroup = $script:processControls[$clickedProcessIdx]
-                            if ($ctrlGroup -and $ctrlGroup.NameTextBox) {
-                                $currentProcessName = $ctrlGroup.NameTextBox.Text
-                            }
-                            if ($ctrlGroup -and $ctrlGroup.PathTextBox) {
-                                $v1CsvDestPath = $ctrlGroup.PathTextBox.Text
-                            }
-                        }
-                    
-                        # V1抽出CSV格納元を取得
-                        if ($script:v1CsvSourceTextBox) {
-                            $v1CsvSourcePath = $script:v1CsvSourceTextBox.Text
-                        }
-                    
-                        # 編集モードと非編集モードで動作を分岐
-                        if ($script:editMode) {
-                            # 編集モード：移動設定ダイアログを表示
-                            Show-FileMoveSettingsDialog -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName
-                        }
-                        else {
-                            # 非編集モード：ファイル移動を実行
-                            Invoke-FileMoveOperation -ProcessIndex $clickedProcessIdx -ProcessName $currentProcessName -V1CsvSourcePath $v1CsvSourcePath -V1CsvDestinationPath $v1CsvDestPath
-                        }
-                    })
-                $script:processPanel.Controls.Add($fileMoveButton)
-                
-                # CSV名変換ボタン（赤色）- 実行ボタンと同じ機能
-                $csvConvertButton = New-Object System.Windows.Forms.Button
-                $csvConvertX = 520
-                $csvConvertButton.Location = New-Object System.Drawing.Point($csvConvertX, $y)
-                $csvConvertButton.Size = New-Object System.Drawing.Size(80, 30)
-                if ($script:editMode) {
-                    $csvConvertButton.Text = "参照"
-                }
-                else {
-                    $csvConvertButton.Text = "CSV名変換"
-                }
-                $csvConvertButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 204)  # #ffcccc
-                $csvConvertButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $csvConvertButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(184, 84, 80)  # #b85450
-                $csvConvertButton.FlatAppearance.BorderSize = 1
-                $csvConvertButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $csvConvertButton.Tag = $i  # プロセスインデックスをTagに保存
-                $csvConvertButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        if ($script:editMode) {
-                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存（CSV名変換用：Index 1）
-                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                            $fileDialog.Title = "CSV名変換用バッチファイルを選択してください"
-                            
-                            # LogStoragePathを初期ディレクトリに設定
-                            $pageConfig = $script:pages[$script:currentPage]
-                            $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
-                            if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                $fileDialog.InitialDirectory = $logStoragePath
-                            }
-                            
-                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 1）
-                            $currentProcesses = Get-CurrentPageProcesses
-                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                $processConfig = $currentProcesses[$clickedProcessIdx]
-                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
-                                    $currentBatch = $processConfig.BatchFiles[1]
-                                    # Resolve-BatchPathを使用してパスを解決
-                                    $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                    if (Test-Path $initialPath) {
-                                        $fileDialog.InitialDirectory = Split-Path $initialPath
-                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
-                                    }
-                                }
-                            }
-                            
-                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $selectedFile = $fileDialog.FileName
-                                # Save-BatchFilePath内でパス制限チェックが行われる
-                                if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 1) {
-                                    Write-Log "CSV名変換用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("CSV名変換用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                    
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
-                                }
-                            }
-                            $fileDialog.Dispose()
-                        }
-                        else {
-                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 1）
-                            $currentProcesses = Get-CurrentPageProcesses
-                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                $processConfig = $currentProcesses[$clickedProcessIdx]
-                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 1) {
-                                    $batch = $processConfig.BatchFiles[1]
-                                    # Resolve-BatchPathを使用してパスを解決
-                                    $batchPath = Resolve-BatchPath -Path $batch.Path
-                                    
-                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                    Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "CsvConvertButton_Executed"
-                                    Update-ProcessControls
-                                }
-                                else {
-                                    Write-Log "CSV名変換用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("CSV名変換用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-                                }
-                            }
-                        }
-                    })
-                # 編集モードOFF時：Enabledフラグをcsvconvertボタンに反映
-                if (-not $script:editMode -and -not $isEnabled) {
-                    $csvConvertButton.Enabled = $false
-                }
-                $script:processPanel.Controls.Add($csvConvertButton)
-                
-                # 実行ボタン（オレンジ）
-                $executeButton = New-Object System.Windows.Forms.Button
-                $executeX = 610
-                $executeButton.Location = New-Object System.Drawing.Point($executeX, $y)
-                $executeButton.Size = New-Object System.Drawing.Size(60, 30)
-                if ($script:editMode) {
-                    $executeButton.Text = "参照"
-                }
-                else {
-                    $executeButton.Text = if ($processConfig.ExecuteButtonText) { $processConfig.ExecuteButtonText } else { "実行" }
-                }
-                $executeButton.BackColor = [System.Drawing.Color]::FromArgb(255, 204, 153)  # #ffcc99
-                $executeButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $executeButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(214, 182, 86)  # #d6b656
-                $executeButton.FlatAppearance.BorderSize = 1
-                $executeButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $executeButton.Tag = $i  # プロセスインデックスをTagに保存
-                $executeButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        if ($script:editMode) {
-                            # 編集モードON：ファイル選択ダイアログでバッチファイルのパスをJSONに保存（実行用：Index 0）
-                            $fileDialog = New-Object System.Windows.Forms.OpenFileDialog
-                            $fileDialog.Filter = "バッチファイル (*.bat)|*.bat|すべてのファイル (*.*)|*.*"
-                            $fileDialog.Title = "実行用バッチファイルを選択してください"
-                            
-                            # LogStoragePathを初期ディレクトリに設定
-                            $pageConfig = $script:pages[$script:currentPage]
-                            $logStoragePath = if ($pageConfig.LogStoragePath) { $pageConfig.LogStoragePath } else { "" }
-                            if ($logStoragePath -and (Test-Path $logStoragePath)) {
-                                $fileDialog.InitialDirectory = $logStoragePath
-                            }
-                            
-                            # 現在のバッチファイルパスを初期値として設定（BatchIndex = 0）
-                            $currentProcesses = Get-CurrentPageProcesses
-                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                $processConfig = $currentProcesses[$clickedProcessIdx]
-                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                    $currentBatch = $processConfig.BatchFiles[0]
-                                    # Resolve-BatchPathを使用してパスを解決
-                                    $initialPath = Resolve-BatchPath -Path $currentBatch.Path
-                                    if (Test-Path $initialPath) {
-                                        $fileDialog.InitialDirectory = Split-Path $initialPath
-                                        $fileDialog.FileName = Split-Path $initialPath -Leaf
-                                    }
-                                }
-                            }
-                            
-                            if ($fileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                                $selectedFile = $fileDialog.FileName
-                                if (Save-BatchFilePath -ProcessIndex $clickedProcessIdx -BatchFilePath $selectedFile -BatchIndex 0) {
-                                    Write-Log "実行用バッチファイルを設定しました: $selectedFile" "INFO" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルを設定しました。`n$selectedFile", "設定完了", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-                                    
-                                    # コントロールを更新して新しい設定を反映
-                                    Update-ProcessControls
-                                }
-                            }
-                            $fileDialog.Dispose()
-                        }
-                        else {
-                            # 編集モードOFF：JSONに設定されたバッチファイルを実行（BatchIndex = 0）
-                            $currentProcesses = Get-CurrentPageProcesses
-                            if ($currentProcesses -and $clickedProcessIdx -lt $currentProcesses.Count) {
-                                $processConfig = $currentProcesses[$clickedProcessIdx]
-                                if ($processConfig.BatchFiles -and $processConfig.BatchFiles.Count -gt 0) {
-                                    $batch = $processConfig.BatchFiles[0]
-                                    # Resolve-BatchPathを使用してパスを解決
-                                    $batchPath = Resolve-BatchPath -Path $batch.Path
-                                    $this.Enabled = $false
-                                    $result = Invoke-BatchFile -BatchPath $batchPath -DisplayName $batch.Name -ProcessIndex $clickedProcessIdx
-                                    $this.Enabled = $true
-                                    Save-ProcessComponentExecuted -ProcessIndex $clickedProcessIdx -ComponentKey "ExecuteButton_Executed"
-                                    Update-ProcessControls
-                                }
-                                else {
-                                    Write-Log "実行用バッチファイルが設定されていません" "ERROR" $clickedProcessIdx
-                                    [System.Windows.Forms.MessageBox]::Show("実行用バッチファイルが設定されていません。`n編集モードでバッチファイルを設定してください。", "エラー", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-                                }
-                            }
-                        }
-                    })
-                $script:processPanel.Controls.Add($executeButton)
-                
-                # ログ確認ボタン（緑）
-                $logButton = New-Object System.Windows.Forms.Button
-                $logX = 680
-                $logButton.Location = New-Object System.Drawing.Point($logX, $y)
-                $logButton.Size = New-Object System.Drawing.Size(70, 30)
-                if ($script:editMode) {
-                    $logButton.Text = "参照"
-                }
-                else {
-                    $logButton.Text = if ($processConfig.LogButtonText) { $processConfig.LogButtonText } else { "ログ確認" }
-                }
-                $logButton.BackColor = [System.Drawing.Color]::FromArgb(213, 232, 212)  # #d5e8d4
-                $logButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-                $logButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(130, 179, 102)  # #82b366
-                $logButton.FlatAppearance.BorderSize = 1
-                $logButton.Font = New-Object System.Drawing.Font("メイリオ", 9)
-                $logButton.Tag = $i  # プロセスインデックスをTagに保存
-                $logButton.Add_Click({
-                        $clickedProcessIdx = $this.Tag
-                        Show-ProcessLog -ProcessIndex $clickedProcessIdx
-                    })
-                $script:processPanel.Controls.Add($logButton)
-                
-                # 3ページ目用のコントロール情報を保存
-                $script:processControls += @{
-                    CheckBox         = $checkBox
-                    EnableCheckBox   = $enableCheckBox
-                    NameTextBox      = $nameTextBox
-                    PathTextBox      = $pathTextBox
-                    FileMoveButton   = $fileMoveButton
-                    CsvConvertButton = $csvConvertButton
-                    ExecuteButton    = $executeButton
-                    LogButton        = $logButton
-                }
-            }
             elseif ($isPage4) {
                 # 4ページ目：SQLLOADER実行のレイアウト（1列レイアウト）
                 $row = $i  # 1列レイアウトなので、行番号はインデックスそのまま

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Select-String -Path UIPageRenderer.ps1 -Pattern ''^function '' | ForEach-Object { $_.LineNumber.ToString\\(\\) + '': '' + $_.Line }\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File 'c:\\\\work\\\\iko_gui\\\\_transform_2_1.ps1')"
+    ]
+  }
+}

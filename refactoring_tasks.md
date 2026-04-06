@@ -13,7 +13,7 @@
 - [x] **1.3:** `Update-ProcessControls` 本体を `Functions.ps1` から `UIPageRenderer.ps1` へ移動する。（起動・描画確認、UI描画ファイルの隔離完了）
 
 ### フェーズ2：巨大な Update-ProcessControls の細分化
-- [ ] **2.1:** `Update-ProcessControls` 内の「1・2ページ目のレイアウト作成」処理を抽出し、`UIPageRenderer.ps1` 内に新関数 `Render-Page1And2Row` を作成する。同時に元の巨大ループからこの関数を呼び出すように書き換える。（1・2ページの動作確認）
+- [x] **2.1:** `Update-ProcessControls` 内の「1・2ページ目のレイアウト作成」処理を抽出し、`UIPageRenderer.ps1` 内に新関数 `Render-Page1And2Row` を作成する。同時に元の巨大ループからこの関数を呼び出すように書き換える。（1・2ページの動作確認）
 - [ ] **2.2:** 「3ページ目の特有レイアウト」処理を抽出し、新関数 `Render-Page3Row` を作成。元のループから呼び出すように書き換える。（3ページの動作確認）
 - [ ] **2.3:** 「4ページ目の特有レイアウト」処理を抽出し、新関数 `Render-Page4Row` を作成。元のループから呼び出すように書き換える。（4ページの動作確認、細分化完了）
 
