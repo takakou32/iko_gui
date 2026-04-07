@@ -2925,23 +2925,22 @@ function Update-ProcessControls {
                     })
                 $script:processPanel.Controls.Add($nameTextBox)
 
-                # 有効/無効切り替え用チェックボックス（Page 4 Index 0-1 用）
-                $enableCheckBox = New-Object System.Windows.Forms.CheckBox
-                $enableCheckBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
-                $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
-                $enableCheckBox.Checked = $isEnabled
-                $enableCheckBox.Visible = $script:editMode
-                $enableCheckBox.Tag = $i
+                # 有効/無効切り替え用チェックボックス（Page 4 Index 0-2 用）
                 if ($i -lt 3) {
-                    # Add_Click event only for index 0, 1, 2
+                    $enableCheckBox = New-Object System.Windows.Forms.CheckBox
+                    $enableCheckBox.Location = New-Object System.Drawing.Point([int]($x - 25), [int]($y + 5))
+                    $enableCheckBox.Size = New-Object System.Drawing.Size(20, 20)
+                    $enableCheckBox.Checked = $isEnabled
+                    $enableCheckBox.Visible = $script:editMode
+                    $enableCheckBox.Tag = $i
                     $enableCheckBox.Add_Click({
                             $idx = $this.Tag
                             $enabled = $this.Checked
                             Save-ProcessEnabled -ProcessIndex $idx -Enabled $enabled
                             Update-ProcessControls
                         })
+                    $script:processPanel.Controls.Add($enableCheckBox)
                 }
-                $script:processPanel.Controls.Add($enableCheckBox)
                 
                 if ($i -lt 2) {
 
